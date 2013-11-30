@@ -1,0 +1,242 @@
+#main {
+    width: 650px;
+    margin: 0 auto;
+    font-family: Tahoma, sans-serif;
+    color:#000;
+    font-size: 14px;
+}
+
+h1 {font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+	font-size: 40px;
+	font-weight: bold;
+	color: #FF0000;
+	text-align: center;
+	line-height: 45px;}
+ .otziv{
+        
+    }
+        .otziv h2{
+            font: 20px calibri;
+            color:#000000;
+        }
+        .otziv_box{
+            width:550px;
+        }
+            .otziv_box li{
+                background:#f7f7f7;
+                margin: 0 0 10px 0;
+                padding: 15px 15px 15px 15px;
+                border-radius: 15px 15px 15px 15px;
+                -moz-border-radius: 15px 15px 15px 15px;
+                -webkit-border-radius: 15px 15px 15px 15px;
+                border: #d2d2d2 1px solid ;
+            }
+                .otziv_box li .name{
+                    display: block;
+                    margin:0 0 10px 0;
+                }
+                    .otziv_box li .name a{
+                        font: 14px calibri;
+                        color:#006ab3;
+                    }
+                .otziv_box li .text{
+                    display: block;
+                    font: 14px calibri;
+                    color:#000000;
+                }
+h2 {
+    font-size: 22px;
+    margin: 30px;
+    text-align: center;
+}
+h3 {
+    font-size: 19px;
+    margin: 30px;
+    text-align: center;
+}
+.d {
+text-decoration:line-through;
+ color: #ff0000;
+    font-size: 35px;
+    text-align: center;
+
+
+}
+#myphoto {
+    float: left;
+    margin: 0 20px 20px 15px;
+}
+
+#beginText {
+    text-align: center;
+}
+
+p {
+    margin: 20px;
+}
+
+.testimonial {
+    width: 450px;
+    margin: 20px auto;
+    background-color: #EFFEEA;
+    border: 1px solid #ccc;
+    padding: 20px;
+    padding-top: 0;
+    margin-bottom: 0;
+}
+
+.testimonial h2 {
+    text-align: center;
+    color: #cc0000;
+}
+
+.testimonial img {
+    float: left;
+    margin: 0 20px 20px 25px;
+}
+
+.testimonial  p {
+    font-family: Verdana, sans-serif;
+    font-size: 12px;
+}
+
+.shadow {
+    text-align: center;
+}
+
+#price {
+    color: #008000;
+    font-size: 25px;
+    text-align: center;
+}
+
+#button {
+    width: 252px;
+    height: 66px;
+    margin: 15px auto;
+    background-image: url("/img/button2.png");
+    background-position: 0 0;
+    background-repeat: no-repeat;
+    cursor: pointer;
+}
+
+#button:hover {
+    background-position: 0 -66px;
+}
+
+#copy p {
+    font-size: 10px;
+    font-family: Verdana, sans-serif;
+    color:#333;
+    text-align: center;
+    margin: 2px;
+}
+h2.subtitle {
+	margin-top: 0px;
+	margin-bottom: 40px;
+}
+
+#container {
+	margin: 100px auto;
+	width: 700px;
+	color: #555;
+}
+
+#countdown_dashboard {
+	height: 110px;
+	margin-left:50px;
+}
+
+
+.dash {
+	width: 110px;
+	height: 114px;
+	background: transparent url('/img/dash.png') 0 0 no-repeat;
+	float: left;
+	margin-left: 20px;
+	position: relative;
+}
+
+.dash .digit {
+	font-size: 55pt;
+	font-weight: bold;
+	float: left;
+	width: 55px;
+	text-align: center;
+	font-family: Times;
+	color: #555;
+	position: relative;
+}
+
+.dash_title {
+	position: absolute;
+	display: block;
+	bottom: 0px;
+	right: 6px;
+	font-size: 9pt;
+	color: #555;
+	text-transform: uppercase;
+	letter-spacing: 2px;
+}
+
+.dev_comment {
+	font-size: 14pt;
+	color: #777;
+	text-align: center;
+	font-style: italic;
+	margin: 40px 10px;
+}
+
+#subscribe_form {
+	position: relative;
+} 
+
+#email_field {
+	font-size: 16pt;
+	padding: 6px 10px;
+	width: 300px;
+}
+
+#subscribe_button {
+	font-size: 14pt;
+	color: #333;
+	padding: 4px 8px;
+}
+
+.copyright {
+	font-size: 9pt;
+	color: #333;
+	margin: 40px 0px;
+}
+
+.faded {
+	color: #999;
+}
+
+.form_message {
+	width: 400px;
+	padding: 10px;
+	margin: 15px auto;
+	display: none;
+}
+
+#error_message {
+	background-color: #ffe;
+	border-left: 5px solid #bb3;
+	border-right: 5px solid #bb3;
+	color: #770;
+}
+
+#info_message {
+	background-color: #f0f9ff;
+	border: 1px solid #eef;
+}
+
+#loading {
+	text-align: center;
+	margin: 10px;
+	display: none;
+	position: absolute;
+	width: 100%;
+	top: 60px;
+}

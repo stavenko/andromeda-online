@@ -1,0 +1,490 @@
+!!!5
+html
+	head
+		title Часы IRON Samurai - Интернет магазин
+		script(type="text/javascript", src="/js/jquery-1.10.2.min.js")
+		script(type="text/javascript", src="/js/underscore-min.js")
+		script(type="text/javascript", src="/js/bootstrap.min.js")
+		script(type="text/javascript", src="/js/moment.min.js")
+		script(src="/js/jquery.countdown.js", type="text/javascript", charset="utf-8")
+		script(type="text/javascript", src="/js/jstz.min.js")
+		
+		script(type="text/javascript")
+		
+			function checkForm_29817(f){
+				console.log('check')
+				if((f.fam.value=="")||(f.name.value=="")||(f.otch.value=="")||(f.country_id.value=="")||(f.city.value=="")||(f.index.value=="")||(f.address.value=="")){
+					alert("Вы указали не всю информацию!!! Все поля, отмеченные знаком '*', обязательны для заполнения!");
+					return false;
+				}
+			if(!f.count.value.match(/^[1-9]{1}[0-9]*$/i)){
+				alert ("Введите корректное количество заказываемого товара!");
+				f.count.focus();
+				return false;
+			}
+			if(!f.email.value.match(/^[\w]{1}[\w\.\-_]*@[\w]{1}[\w\-_\.]*\.[\w]{2,4}$/i)){
+				alert ("Введите корректно Ваш E-Mail адрес!");
+				f.email.focus();
+				return false;
+			}
+			var phone1=true;
+			var phone2=true;
+
+			if(!f.cod_str_mob.value.match(/^[0-9]+$/i) || !f.cod_oper_mob.value.match(/^[0-9]+$/i) || !f.phone_mob.value.match(/^[0-9]+$/i)) phone1=false;
+
+			if(!f.cod_str_dom.value.match(/^[0-9]+$/i) || !f.cod_oper_dom.value.match(/^[0-9]+$/i) || !f.phone_dom.value.match(/^[0-9]+$/i))phone2=false;
+
+
+			if(!phone1 && !phone2)
+			{
+				alert ("Введите полностью и корректно (допускаются только цифры) хотя бы один номер телефона!");
+				return false;
+			}
+
+			if(confirm("Вы подтверждаете правильность введенной Вами информации?"))
+				return true;
+			else
+				return false;
+			}
+			
+			$(function(){
+				var end = moment(moment().format('YYYY M D') + " 23:59");
+				var now = moment();
+				
+				var x = end.diff(now, 'seconds')
+				var secs = x % 60
+				x = Math.floor(x / 60)
+				var mins = x % 60
+				x = Math.floor(x / 60)
+				var hrs = x % 24
+				x = Math.floor(x / 24)
+				
+				if (hrs < 10){
+					hrs = '0' + hrs
+				}else{hrs = '' + hrs}
+				if (x < 10){
+					x = '0' + x
+				}else{x = '' + x}
+				
+				
+				
+				var start = x +':'+hrs+':'+mins+':' + secs
+				$('#counter1').countdown({
+					image: '/img/digits.png',
+					startTime: start
+				});
+				$('#counter').countdown({
+					image: '/img/digits.png',
+					startTime: start
+				});
+			
+				var sitename="Stick & click";
+				var C = '<div class="input-group">' + 
+				'<span class="input-group-addon">+7</span> ' +
+				' <input type="text" id="my-phone-number" class="form-control" placeholder="Номер телефона"> '+	
+				'<span class="input-group-btn">'+
+				'				<button id="send-phone-number" class="btn btn-success" type="button">'+
+				'<span class="glyphicon glyphicon-ok"></span></button>'+
+				'			</span>'+
+				'</div>'
+	
+				$('#back-call').popover({content:C, html:true})
+				.on('shown.bs.popover', function () {
+					$('#send-phone-number').click(function(){
+						var v = $('#my-phone-number').val();
+						var tz = jstz.determine()
+						var tzname = tz.name();
+						$('#my-phone-number').val('');	
+						$('#back-call').popover('hide');
+						$.ajax({
+							url:"/back-call/",
+							data: {phone:v, from:sitename, tz:tzname},
+							success: function(){
+							}
+						})
+				
+					})
+				})
+				
+				var item = $('.order-butt')
+				item.click(function(){
+					var submit = function(){
+						var form = $('#e-autopay-order-form')
+						var res = checkForm_29817(form[0])
+						if (res){
+							form.submit();
+							$('#order-submit').off('click')
+							
+						}
+								
+						
+					}
+					$('#modal-title').text("Купить Светодиодный Светильник")
+					$('#orderModal').modal()
+					$('#order-submit').off('click')
+					$('#order-submit').on('click', submit)
+					
+				})
+			})
+		
+		block css
+			link(rel='stylesheet', href='/css/bootstrap.min.css')
+			link(rel='stylesheet', href='/css/style.css')
+			style
+				.button {
+					BORDER-TOP-WIDTH: 0px; FONT-WEIGHT: bold; BORDER-LEFT-WIDTH: 0px; FONT-SIZE: 9pt; BORDER-BOTTOM-WIDTH: 0px; COLOR: white; FONT-FAMILY: Arial; BACKGROUND-COLOR:#003366; BORDER-RIGHT-WIDTH: 0px
+				}
+				.input {
+					BORDER-RIGHT: #7F9DB9 1px solid; BORDER-TOP: #7F9DB9 1px solid; BORDER-LEFT: #7F9DB9 1px solid; WIDTH: 220px; BORDER-BOTTOM: #7F9DB9 1px solid
+				}
+				.input2 {
+					BORDER-RIGHT: #7F9DB9 1px solid; BORDER-TOP: #7F9DB9 1px solid; BORDER-LEFT: #7F9DB9 1px solid; WIDTH: 40px; BORDER-BOTTOM: #7F9DB9 1px solid
+				}
+				.cod {
+					BORDER-RIGHT: #7F9DB9 1px solid; BORDER-TOP: #7F9DB9 1px solid; BORDER-LEFT: #7F9DB9 1px solid; WIDTH: 40px; BORDER-BOTTOM: #7F9DB9 1px solid
+				}
+				.phone {
+					BORDER-RIGHT: #7F9DB9 1px solid; BORDER-TOP: #7F9DB9 1px solid; BORDER-LEFT: #7F9DB9 1px solid; WIDTH: 117px; BORDER-BOTTOM: #7F9DB9 1px solid
+				}
+				.small {font-size: 9px;}
+				.small2 {font-size: 11px;}
+		
+	body#top(data-spy="scroll", data-target=".navbar")
+		div.container.head
+			div.row-flex
+				.col-md-6.col-sm-8(style="height:65px;border-bottom:1px solid gray")
+					h3
+						img(src='/img/logo.png', width='32').pull-left
+						| &nbsp; Интернет Магазин
+						br
+				.col-md-6.col-sm-6
+					.row
+						.col-md-6.col-sm-12.phone-no-wrap
+							div
+								h3
+										span.glyphicon.glyphicon-earphone.earphone
+										| &nbsp; 
+										span.small.muted 8 495 
+										| 20 
+										span.phone-center 415 
+										| 90
+							div
+								Круглосуточно и без выходных
+								
+				
+						.col-md-6.col-sm-12
+							h2
+								a#back-call.btn.btn-primary(data-toggle='tooltip',data-placement='bottom', title="Заказ обратного звонка", href='#')
+									Заказать обратный звонок &nbsp;
+									span.glyphicon.glyphicon-earphone
+		div.container
+			div.row
+				.col-md-12
+					h1 
+						| Легендарные часы Iron Samurai
+						br
+						small Поразительные часы - браслет. Бестселлер 2013 года.
+			div.row.content
+				.col-md-6
+					div#img-carousel.carousel.slide
+						ol.carousel-indicators
+							li.active(data-target='#img-carousel', data-slide-to='0')
+							li(data-target='#img-carousel', data-slide-to='1')
+							li(data-target='#img-carousel', data-slide-to='2')
+						div.carousel-inner.iron-samurai
+							div.item.active
+								div.slide0.slide
+									div.carousel-caption
+										p Выглядят отлично
+									
+							div.item
+								div.slide1.slide
+								div.carousel-caption
+									p Разные цвета
+								
+							div.item 
+								div.slide2.slide
+								div.carousel-caption
+									p Унисекс
+								
+							
+								
+						a.carousel-control.left(href="#img-carousel", data-slide="prev") &lsaquo;
+						a.carousel-control.right(href="#img-carousel", data-slide="next")&rsaquo;
+							
+					
+					
+				div.col-md-6
+					ul.list-unstyled.big
+						li 
+							span.glyphicon.glyphicon-ok-sign.green
+							| &nbsp; Отличный подарок
+						li 
+							span.glyphicon.glyphicon-ok-sign.green
+							| &nbsp; Выбор расцветок
+						li 
+							span.glyphicon.glyphicon-ok-sign.green
+							| &nbsp; Простой и лаконичный дизайн по доступной цене.
+							
+						li 
+							span.glyphicon.glyphicon-ok-sign.green
+							| &nbsp; Гарантия - если вам не нравится товар - возвращаем ваши деньги!
+						li 
+							span.glyphicon.glyphicon-ok-sign.green
+							| &nbsp; Доставка по всей России
+						
+						.text-center
+							h1.red 
+								b Цена
+							h2.red
+								s 1200 руб 
+								span.green 
+									b.bigger 699 руб
+						
+						a.btn.btn-danger.btn-lg.order.order-butt Заказать со скидкой &nbsp;
+							span.glyphicon.glyphicon-circle-arrow-right
+							
+									
+				div.clearfix
+				.col-md-12.text-center
+					h1.red
+						b Внимание Акция !!!
+					.row
+						.col-md-8.col-md-offset-3
+							#counter1
+					.text-center
+						h1.red 
+							b Цена
+						h2.red
+							s 1200 руб
+						h2.green
+							| 699 руб
+						a.btn.btn-success.btn-lg.order.order-butt Заказать &nbsp;
+							span.glyphicon.glyphicon-circle-arrow-right
+				div.clearfix
+				.col-md-12(style='height:5em')
+					span
+				
+				.col-md-7
+					h3.dgreen обзорное видео - посмотрите перед покупкой
+					p.lead
+						Наши покупатели говорят очень много хорошего об этих часах. Это на самом деле отличный подарок. Или модный аксессуар. Покупайте сегодня и получите скидку на часы. 
+							
+				.col-md-5
+						iframe(width="420", height="315", src="//www.youtube.com/embed/VG2EOvTd8rU", frameborder="0", allowfullscreen)
+				
+				div.clearfix
+							
+				.col-md-12.text-center
+					h1.red
+						b Акция закончится сегодня!!!
+					.row
+						.col-md-8.col-md-offset-3
+							#counter
+					.text-center
+						h1.red 
+							b Цена
+						h2.red
+							s 1200 руб
+						h2.green
+							| 699 руб
+						a.btn.btn-success.btn-lg.order.order-butt Заказать &nbsp;
+							span.glyphicon.glyphicon-circle-arrow-right
+				div.clearfix
+								
+			.row#feedback
+			.col-md-12
+				h2 Отзывы наших клиентов
+				.col-md-4.col-sm-6
+					img.img-circle(src='/img/f/3.jpg', width=64)
+					b Александр (Москва) 
+					div	Часы тяжеловаты, но мне нравится их холодная тяжесть. У меня много часов было - это одни из самых удобных
+				.col-md-4.col-sm-6
+					img.img-circle(src='/img/f/6.jpg', width=64)
+				
+					b Елена (Новосибирск) 
+					
+					div Купила сыну на день рождения, отлично! 
+				.col-md-4.col-sm-6
+					img.img-circle(src='/img/f/2.jpg', width=64)
+					b Юрий (Москва) 
+					
+					div Мне очень нравится. Давно не носил часов. Вечно их терял. Эти почему-то нравятся. Не потерял пока.
+				.col-md-4.col-sm-6
+					img.img-circle(src='/img/f/4.jpg', width=64)
+					b Паша ( Москва) 
+					div Обожаю серебристые. Очень хорошо.
+				.col-md-4.col-sm-6
+					img.img-circle(src='/img/f/1.jpg', width=64)
+					b Михаил	(Петропавловск-Камчатский)
+					div На прошедшей акции к ним еще очки в подарок шли. Очки неплохо смотрятся с часами. Жаль акция кончилась - поцарапал очки.
+				.col-md-4.col-sm-6
+					img.img-circle(src='/img/f/5.jpg', width=64)
+					b Роман (Белгород) 
+					div Я взял себе пару разного цвета - на руке висят крест-накрест. Тяжеловато, но очень стильно вышло.
+			#orderedModal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='myModalLabel', aria-hidden='true')
+				.modal-dialog
+					.modal-content
+						.modal-header
+							h4 Ваш заказ принят
+						.modal-body
+							Ваш заказ принят в обработку. Наш менеджер свяжется с вами через некоторое время.
+						.modal-footer
+							button.btn.btn-primary(type='button', data-dismiss='modal') Закрыть
+					
+			#orderModal.modal.fade(tabindex='-1', role='dialog', aria-labelledby='myModalLabel', aria-hidden='true')
+				.modal-dialog
+					.modal-content
+						.modal-header
+							button.close(type='button', data-dismiss='modal', aria-hidden='true') ×
+							h4#modal-title.modal-title Modal title
+						
+						.modal-body
+							form#e-autopay-order-form(action='http://vgstavenko.e-autopay.com/ordering/do_order.php', method='post', name='order_form_29817', target='_parent')
+									table(style='FONT-SIZE: 10pt; FONT-FAMILY: Arial;', cellspacing='2', cellpadding='2', width='98%', align='center', border='0')
+											tbody
+												tr
+													td(align='right', width='50%')
+														b Фамилия*
+													td
+														input.input(name='fam', value='', maxlength='20')
+												tr
+													td(align='right', width='50%')
+														b Имя*
+													td
+														input.input(name='name', value='', maxlength='50')
+												tr
+													td(align='right', width='50%')
+														b Отчество*
+													td
+														input.input(name='otch', value='', maxlength='20')
+												tr
+													td(height='10', colspan='2')					 
+												tr
+													td(align='right', width='50%', valign='top')
+														b Страна*
+													td
+														select#country_id.input(name='country_id')
+															option(value='') Выберите страну
+															option(value='1') Россия
+												tr
+													td(align='right', width='50%')
+														b Область (край), район
+													td
+														input.input(name='area', value='', maxlength='100')
+												tr
+													td(align='right', width='50%')
+														b Город*
+													td
+														input.input(name='city', value='', maxlength='50')
+												tr
+													td(align='right', width='50%')
+														b Адрес (улица, дом, квартира...)*
+													td
+														textarea.input(name='address', rows='2', cols='20')
+												tr
+													td(align='right', width='50%')
+														b Почтовый индекс*
+													td
+														input.input(name='index', value='', maxlength='10')
+												tr
+													td(height='10', colspan='2')					 
+												tr
+													td(align='right', width='50%')
+														b E-mail*
+													td
+														input.input(name='email', value='', maxlength='50')
+												tr
+													td(align='right', valign='top', style='padding-top: 5px;')
+														b Телефон мобильный
+														| +
+													td
+														table(border='0', cellspacing='0', cellpadding='0')
+															tr
+																td
+																	input#cod_str_mob.cod(name='cod_str_mob', maxlength='3')
+																td  
+																td(align='center')
+																	input#cod_oper_mob.cod(name='cod_oper_mob', maxlength='5')
+																td  
+																td
+																	input#phone_mob.phone(name='phone_mob', maxlength='10')
+															tr
+																td.small(align='center')
+																	| код
+																	br
+																	| страны
+																td  
+																td.small(width='55', align='center')
+																	| код
+																	br
+																	| оператора
+																td  
+																td.small(align='center', valign='top') номер телефона
+												tr
+													td(align='right', valign='top', style='padding-top: 5px;')
+														b Телефон домашний
+														| +
+													td(nowrap='nowrap')
+														table(border='0', cellspacing='0', cellpadding='0')
+															tr
+																td
+																	input#cod_str_dom.cod(name='cod_str_dom', maxlength='3')
+																td  
+																td(align='center')
+																	input#cod_oper_dom.cod(name='cod_oper_dom', maxlength='5')
+																td  
+																td
+																	input#phone_dom.phone(name='phone_dom', maxlength='10')
+															tr
+																td.small(align='center')
+																	| код
+																	br
+																	| страны
+																td  
+																td.small(width='55', align='center')
+																	| код
+																	br
+																	| города
+																td  
+																td.small(align='center', valign='top') номер телефона
+												tr
+													td(height='15', colspan='2')
+														.small2(align='center') Необходимо обязательно указать хотя бы один номер телефона!
+												tr
+													td(height='10', colspan='2')					 
+												tr
+													td(align='right', width='50%')
+														b Количество*
+													td
+														input.input2(name='count', value='1', maxlength='6')
+														//- input.button(type='submit', value='Оформить Заказ')
+										center
+											input(type='hidden', name='pay_mode', value='3')
+											input(type='hidden', name='tovar_id', value='30091')
+									script(language='JavaScript')
+									div(align='center')
+										font(face='Arial', size='1')
+											b
+												a(href='http://e-autopay.com/', target='_blank', style='text-decoration: none; color: #C0C0C0;') © E-AutoPay.com - сервис приема и оплаты заказов и партнерских программ
+							
+							
+						.modal-footer
+							button.btn.btn-default(type='button', data-dismiss='modal') Закрыть
+							button.btn.btn-primary#order-submit(type='button') Заказать
+			
+			.hidden
+				| <!-- Yandex.Metrika informer --><a href="http://metrika.yandex.ru/stat/?id=22899682&amp;from=informer" target="_blank" rel="nofollow"><img src="//bs.yandex.ru/informer/22899682/3_1_FFFFFFFF_EFEFEFFF_0_pageviews" style="width:88px; height:31px; border:0;" alt="Яндекс.Метрика" title="Яндекс.Метрика: данные за сегодня (просмотры, визиты и уникальные посетители)" onclick="try{Ya.Metrika.informer({i:this,id:22899682,lang:'ru'});return false}catch(e){}"/></a><!-- /Yandex.Metrika informer --><!-- Yandex.Metrika counter --><script type="text/javascript">(function (d, w, c) { (w[c] = w[c] || []).push(function() { try { w.yaCounter22899682 = new Ya.Metrika({id:22899682, webvisor:true, clickmap:true, trackLinks:true, accurateTrackBounce:true}); } catch(e) { } }); var n = d.getElementsByTagName("script")[0], s = d.createElement("script"), f = function () { n.parentNode.insertBefore(s, n); }; s.type = "text/javascript"; s.async = true; s.src = (d.location.protocol == "https:" ? "https:" : "http:") + "//mc.yandex.ru/metrika/watch.js"; if (w.opera == "[object Opera]") { d.addEventListener("DOMContentLoaded", f, false); } else { f(); } })(document, window, "yandex_metrika_callbacks");</script><noscript><div><img src="//mc.yandex.ru/watch/22899682" style="position:absolute; left:-9999px;" alt="" /></div></noscript><!-- /Yandex.Metrika counter -->
+		.container.footer 
+			
+			footer.text-center
+				p Онлайн-магазин	az-az.ru(с). Все права защищены 2011-2013;
+				p ООО 
+					b "Студия L" 
+					| ОГРН 1124201010375 
+				p ИНН / КПП 4201154050/420101001 
+
+		
+				
+				
+			

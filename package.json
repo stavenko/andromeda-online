@@ -1,0 +1,16 @@
+{
+  "name": "az-az.ru",
+  "version": "0.0.1",
+  "private": "true",
+  "dependencies": {
+    "express": "latest",
+    "jade": "*",
+    "stylus": "*",
+    "connect-flash": "*",
+	"nodemailer": "latest",
+	"socket.io":"latest",
+	"three.js":"latest"
+	
+	
+  }
+}

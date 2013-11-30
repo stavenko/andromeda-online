@@ -1,0 +1,320 @@
+!!! 5
+html
+	head
+		meta(http-equiv='Content-Type', content='text/html; charset=utf-8')
+		title LED часы 
+		link(href='/style/style.css', rel='stylesheet', type='text/css')
+		script(type="text/javascript", src="/js/jquery-1.10.2.min.js")
+		script(type="text/javascript", src="http://code.jquery.com/jquery-migrate-1.2.1.min.js")
+		
+		
+		
+		script(language='Javascript', type='text/javascript', src='/js/jquery.lwtCountdown-1.0.js')
+		script(language='Javascript', type='text/javascript', src='/js/misc.js')
+		script(type='text/javascript', src='/js/jquery.reveal.js')
+	
+		link(rel='stylesheet', href='/style/reveal.css')
+	body
+		style
+			.button {
+				BORDER-TOP-WIDTH: 0px; FONT-WEIGHT: bold; BORDER-LEFT-WIDTH: 0px; FONT-SIZE: 9pt; BORDER-BOTTOM-WIDTH: 0px; COLOR: white; FONT-FAMILY: Arial; BACKGROUND-COLOR:#003366; BORDER-RIGHT-WIDTH: 0px
+			}
+			.input {
+				BORDER-RIGHT: #7F9DB9 1px solid; BORDER-TOP: #7F9DB9 1px solid; BORDER-LEFT: #7F9DB9 1px solid; WIDTH: 220px; BORDER-BOTTOM: #7F9DB9 1px solid
+			}
+			.input2 {
+				BORDER-RIGHT: #7F9DB9 1px solid; BORDER-TOP: #7F9DB9 1px solid; BORDER-LEFT: #7F9DB9 1px solid; WIDTH: 40px; BORDER-BOTTOM: #7F9DB9 1px solid
+			}
+			.cod {
+				BORDER-RIGHT: #7F9DB9 1px solid; BORDER-TOP: #7F9DB9 1px solid; BORDER-LEFT: #7F9DB9 1px solid; WIDTH: 40px; BORDER-BOTTOM: #7F9DB9 1px solid
+			}
+			.phone {
+				BORDER-RIGHT: #7F9DB9 1px solid; BORDER-TOP: #7F9DB9 1px solid; BORDER-LEFT: #7F9DB9 1px solid; WIDTH: 117px; BORDER-BOTTOM: #7F9DB9 1px solid
+			}
+			.small {font-size: 9px;}
+			.small2 {font-size: 11px;}
+		#main
+			h1
+				| Хочешь Крутые Часы?
+				br
+				| Эти Часы Произвели Фурор!
+			h2 Модная Новинка! Хит Продаж!
+			h3 нажмите play и посмотрите видео
+			#beginText
+				iframe(width='560', height='315', src='http://www.youtube.com/embed/VnAt0MJMufw?rel=0', frameborder='0', allowfullscreen='allowfullscreen')
+			h2 Часы, которые удивляют!
+			div(align='center')
+				img(src='/img/1.jpg', width='600', height='532')
+				h1 Внимание Акция!!!
+		
+			#countdown_dashboard
+				.dash.days_dash
+					span.dash_title дней
+					.digit 0
+					.digit 0
+				.dash.hours_dash
+					span.dash_title часов
+					.digit 0
+					.digit 0
+				.dash.minutes_dash
+					span.dash_title минут
+					.digit 0
+					.digit 0
+				.dash.seconds_dash
+					span.dash_title секунд
+					.digit 0
+					.digit 0
+			script(language='javascript', type='text/javascript')
+				jQuery(document).ready(function() {
+				$('#countdown_dashboard').countDown({
+				targetOffset: {
+				'day': 		0,
+				'month': 	0,
+				'year': 	0,
+				'hour': 	07,
+				'min': 		15,
+				'sec': 		00 }
+				});
+				});
+			h1 Цена
+			p.d 1200 руб.
+			p#price 699 руб.
+			a(href='#', data-reveal-id='myModal')
+				#button
+			#myModal.reveal-modal
+				p Способ оплаты наложенным платежом Почтой России 
+				img(src='/img/1234.gif', width='150', height='75')
+				p
+					| Оплата при получении посылки на руки, в ближайшем к Вашему дому почтовом отделении.
+				.modal-dialog
+					.modal-content
+						.modal-header
+							button.close(type='button', data-dismiss='modal', aria-hidden='true') ×
+							h4#modal-title.modal-title Modal title
+						
+						.modal-body
+							form#e-autopay-order-form(action='http://vgstavenko.e-autopay.com/ordering/do_order.php', method='post', name='order_form_29817', target='_parent')
+									table(style='FONT-SIZE: 10pt; FONT-FAMILY: Arial;', cellspacing='2', cellpadding='2', width='98%', align='center', border='0')
+											tbody
+												tr
+													td(align='right', width='50%')
+														b Фамилия*
+													td
+														input.input(name='fam', value='', maxlength='20')
+												tr
+													td(align='right', width='50%')
+														b Имя*
+													td
+														input.input(name='name', value='', maxlength='50')
+												tr
+													td(align='right', width='50%')
+														b Отчество*
+													td
+														input.input(name='otch', value='', maxlength='20')
+												tr
+													td(height='10', colspan='2')					 
+												tr
+													td(align='right', width='50%', valign='top')
+														b Страна*
+													td
+														select#country_id.input(name='country_id')
+															option(value='') Выберите страну
+															option(value='1') Россия
+												tr
+													td(align='right', width='50%')
+														b Область (край), район
+													td
+														input.input(name='area', value='', maxlength='100')
+												tr
+													td(align='right', width='50%')
+														b Город*
+													td
+														input.input(name='city', value='', maxlength='50')
+												tr
+													td(align='right', width='50%')
+														b Адрес (улица, дом, квартира...)*
+													td
+														textarea.input(name='address', rows='2', cols='20')
+												tr
+													td(align='right', width='50%')
+														b Почтовый индекс*
+													td
+														input.input(name='index', value='', maxlength='10')
+												tr
+													td(height='10', colspan='2')					 
+												tr
+													td(align='right', width='50%')
+														b E-mail*
+													td
+														input.input(name='email', value='', maxlength='50')
+												tr
+													td(align='right', valign='top', style='padding-top: 5px;')
+														b Телефон мобильный
+														| +
+													td
+														table(border='0', cellspacing='0', cellpadding='0')
+															tr
+																td
+																	input#cod_str_mob.cod(name='cod_str_mob', maxlength='3')
+																td  
+																td(align='center')
+																	input#cod_oper_mob.cod(name='cod_oper_mob', maxlength='5')
+																td  
+																td
+																	input#phone_mob.phone(name='phone_mob', maxlength='10')
+															tr
+																td.small(align='center')
+																	| код
+																	br
+																	| страны
+																td  
+																td.small(width='55', align='center')
+																	| код
+																	br
+																	| оператора
+																td  
+																td.small(align='center', valign='top') номер телефона
+												tr
+													td(align='right', valign='top', style='padding-top: 5px;')
+														b Телефон домашний
+														| +
+													td(nowrap='nowrap')
+														table(border='0', cellspacing='0', cellpadding='0')
+															tr
+																td
+																	input#cod_str_dom.cod(name='cod_str_dom', maxlength='3')
+																td  
+																td(align='center')
+																	input#cod_oper_dom.cod(name='cod_oper_dom', maxlength='5')
+																td  
+																td
+																	input#phone_dom.phone(name='phone_dom', maxlength='10')
+															tr
+																td.small(align='center')
+																	| код
+																	br
+																	| страны
+																td  
+																td.small(width='55', align='center')
+																	| код
+																	br
+																	| города
+																td  
+																td.small(align='center', valign='top') номер телефона
+												tr
+													td(height='15', colspan='2')
+														.small2(align='center') Необходимо обязательно указать хотя бы один номер телефона!
+												tr
+													td(height='10', colspan='2')					 
+												tr
+													td(align='right', width='50%')
+														b Количество*
+													td
+														input.input2(name='count', value='1', maxlength='6')
+														input.button(type='submit', value='Оформить Заказ')
+										center
+											input(type='hidden', name='pay_mode', value='3')
+											input(type='hidden', name='tovar_id', value='30091')
+									script(language='JavaScript')
+									div(align='center')
+										font(face='Arial', size='1')
+											b
+												a(href='http://e-autopay.com/', target='_blank', style='text-decoration: none; color: #C0C0C0;') © E-AutoPay.com - сервис приема и оплаты заказов и партнерских программ
+							
+							
+						
+				a.close-reveal-modal ×
+			.otziv
+				h2
+					strong Отзывы покупателей:
+				ul.otziv_box
+					li
+						span.name
+							a(href='#') Юрий, Москва
+						span.text Сегодня получил часы. Доволен как ребенок)) очень классные и молодежные часы!
+					li
+						span.name
+							a(href='#') Вадим, Зеленокумск
+						span.text
+							| Надёжные, хотя стараюсь их не мочить. Очень хорошо смотрятся на руке. Функционал для меня достаточный и ничего лишнего.	Часами очень доволен, на руке часы как "продолжение руки" очень удобно лежат!!! Хорошие стильные часы! Рекомендую )))
+					li
+						span.name
+							a(href='#') Александр, Хабаровск
+						span.text
+							| Больше в россии таких моделей не нашел. Вобщем, просто и со вкусом) Спасибо! Буду рекомендовать вас друзьям, в случае необходимости.
+					li
+						span.name
+							a(href='#') Ноомиджейн Каюла, Самара
+						span.text
+							| Подарила мужу на день Р. второй день пищит от удовольствия, доволен вожделенными взглядами коллег и фразами "На его месте должен быть я".Говорит траки супер!!! Спасибо вам большое:)))
+					li
+						span.name
+							a(href='#') Алексей, Балтийск
+						span.text
+							| Часики отличные!, нет слов. Особенно понравилась необычная свтеодиодная подствека и браслет. Берите, если найдете, поскольку эту модельку чуть ли не с руками отрывают, пожаловались в магазине. =))
+					li
+						span.name
+							a(href='#') Андрей, Тейково
+						span.text
+							| Я очень доволен покупкой! Стал обладателем часов самурай.	Рекомендую: товар качественный, заявленному описанию соответствует а цена адекватная!!! Супер!!!
+					li
+						span.name
+							a(href='#') Антон, Москва
+						span.text
+							| Вчера получил часы. Я просто восторге, даже лучше чем на сайте реклама. Мне всегда нравиться все простое без каких либо примочек. Во общем кому они понравились берите не задумываясь, не о чем не пожалеете.
+					li
+						span.name
+							a(href='#') Олег, Мурманска
+						span.text
+							| Получил часы.Очень доволен.Шли до Мурманска 10 дней.Буду и дальше пользоваться услугами магазина.Спасибо.Посмотрим в работе.
+					li
+						span.name
+							a(href='#') Сергей, Санкт-Петербург
+						span.text
+							| Увидел часы в рекламе, и дизайн заставил не задумываясь купить их.
+							br
+							| + : Дизайн, точность времени, простота в настройке и управлении, батарейка кажется вечной)
+							br
+							| + : Цена ниже чем в других местах, проверено.
+							br
+							| + : Яркая подсветка, даже в солнечные дни на дисплее очень четко отображается время. Так что если хотите что нибудь интересное и новое, то эти часы для вас)
+					li
+						span.name
+							a(href='#') Ильдар, Казань
+						span.text
+							| Я думал, что никогда не буду носить часы, типо зачем, на это и телефона хватает, но когда я увидел Samurai тотчас заказал, и "посылка" ничуть не разочаровала, они на самом деле громоздкие классные ОРИГИНАЛЬНЫЕ. Я без них уже никуда не выхожу, часы стали частью моего стиля)
+					li
+						span.name
+							a(href='#') Алексей, Сызрань
+						span.text
+							| Часы понравились своей формой,в целом как один целый браслет.на руке смотрятся отлично.браслет уменьшается разобраться не трудно.с установкой времени и даты разобрался сразу всё просто и доступно.ожидание того стоило,за такие деньги хороший товар,доволен как слон.Спасибо
+					li
+						span.name
+							a(href='#') Владимир, Хабаровск
+						span.text
+							| Часы заставляют обратить на них внимание. Мощный брутальный браслет. Оригинальная вещь. Покупкой доволен.
+					li
+						span.name
+							a(href='#') Михаил, Озерск
+						span.text
+							| Часы просто класс! Когда впервые увидел на сайте - просто обалдел! Люблю оригинальные и стильные штучки! Спустя месяц после получения на рыбалке случайно зацепил застёжку браслета и уронил в воду... Расстроился, думал - всё! Полежали в тепле сутки и пошли опять! Ничего не разбирал, сами просохли. Большое спасибо!теперь буду постоянно пользоваться Вашими услугами!
+					li
+						span.name
+							a(href='#') Елена, Зеленогорск
+						span.text
+							| Получила часы, супер. Муж доволен. Будем заказывать ещё.
+					li
+						span.name
+							a(href='#') Ольга Петровна, Йошкар-Ола
+						span.text
+							| Спасибо, часы носит сын, браслет уменьшил сам и очень ловко и быстро. Всё семейство довольно.
+					li
+						span.name
+							a(href='#') Иван, Москва
+						span.text
+							| Получил сей девайс сегодня - 10/05/2012. Успел сделать себе подарок на день рождения. Отличный девайс! Массивные (берешь в руку - маешь вещь!) - понимаешь, что не из дешевой пластмассы, а из нормального металла, крупные, но аккуратные, и очень симпатичные. В общем - очень понравились! Спасибо!
+				h2
+					strong Присылайте отзывы на: drim.nik@ya.ru
+					
+			.hidden
+				| <!-- Yandex.Metrika informer --><a href="http://metrika.yandex.ru/stat/?id=22899682&amp;from=informer" target="_blank" rel="nofollow"><img src="//bs.yandex.ru/informer/22899682/3_1_FFFFFFFF_EFEFEFFF_0_pageviews" style="width:88px; height:31px; border:0;" alt="Яндекс.Метрика" title="Яндекс.Метрика: данные за сегодня (просмотры, визиты и уникальные посетители)" onclick="try{Ya.Metrika.informer({i:this,id:22899682,lang:'ru'});return false}catch(e){}"/></a><!-- /Yandex.Metrika informer --><!-- Yandex.Metrika counter --><script type="text/javascript">(function (d, w, c) { (w[c] = w[c] || []).push(function() { try { w.yaCounter22899682 = new Ya.Metrika({id:22899682, webvisor:true, clickmap:true, trackLinks:true, accurateTrackBounce:true}); } catch(e) { } }); var n = d.getElementsByTagName("script")[0], s = d.createElement("script"), f = function () { n.parentNode.insertBefore(s, n); }; s.type = "text/javascript"; s.async = true; s.src = (d.location.protocol == "https:" ? "https:" : "http:") + "//mc.yandex.ru/metrika/watch.js"; if (w.opera == "[object Opera]") { d.addEventListener("DOMContentLoaded", f, false); } else { f(); } })(document, window, "yandex_metrika_callbacks");</script><noscript><div><img src="//mc.yandex.ru/watch/22899682" style="position:absolute; left:-9999px;" alt="" /></div></noscript><!-- /Yandex.Metrika counter -->
