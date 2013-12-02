@@ -104,17 +104,17 @@ window.A.init = function(){
 			//console.log(code, action)
 			
 		}else{
-			console.log('uknown', code);
+			console.log('unknown', code);
 		}
 		
 	}, false)
 	
-    var socket = io.connect('http://localhost:3002');
+    //var socket = io.connect('http://localhost:3002');
 	
-    socket.on('resp', function (data) {
-      console.log(data);
-      socket.emit('data', { my: 'data' });
-    });
+    //socket.on('resp', function (data) {
+    //  console.log(data);
+    //  socket.emit('data', { my: 'data' });
+    //});
 	
 	
 }
@@ -210,55 +210,57 @@ window.A.load_scene =function(){
 	    ctx.fill();
 		ctx.stroke();   
 	}
-	$.ajax({url:'/scenes/first/',
-			dataType:'JSON',
-			success: function(json){
-				self.loaded_objects_count = 0;
+	xhr = new XMLHttpRequest()
+	xhr.onload = function(){
+		console.log('fff')
+		var json = JSON.parse(this.responseText)
+		return (function(json){
+			self.loaded_objects_count = 0;
+			
+			self.actors = json.actors;
+			
+			_.each(json.objects, function(object, ix){
 				
-				self.actors = json.actors;
-				
-				//console.log(self.actors);
-				$.each(json.objects, function(ix, object){
-					self.total_objects_count +=1;
-					loader.load( object.model, function(geom, mat){
-						//console.log('loaded from net')
-						var material = new THREE.MeshFaceMaterial( mat );
-						
-						var m = new THREE.Matrix4()
-						m.identity()
-						
-						var mesh = new THREE.Mesh( geom, material );
-						
-						for(i in object.physical){
-							var v = new THREE.Vector3()
-							v.set.apply(v, object.physical[i])
-							mesh[i] = v
-							
-						}
-						mesh.position = mesh.pos;
-						mesh.cameras = object.cameras;
-						mesh.engines = object.engines;
-						mesh.has_engines =true;
-						mesh.on_engines_rotation = [];
-						mesh.on_engines_propulsion = [];
-						mesh.put_off = put_off
-						mesh.put_on  = put_on
-						mesh.mass = object.mass;
-						var label = makeTextSprite("mesh: " + ix);
-						label.position = new THREE.Vector3(0,0,0);
-						mesh.add(label);
-						
-						
-						self.scene.add( mesh );
-						
-						self.meshes[ix] = mesh;
-						self.loaded_objects_count +=1;
-						
-						console.log('model loaded');
-					});
-				})
-			}
-		})
+				self.total_objects_count +=1;
+				loader.load( object.model, function(geom, mat){
+					//console.log('loaded from net')
+					var material = new THREE.MeshFaceMaterial( mat );
+					
+					var m = new THREE.Matrix4()
+					m.identity()
+					
+					var mesh = new THREE.Mesh( geom, material );
+					
+					for(i in object.physical){
+						var v = new THREE.Vector3()
+						v.set.apply(v, object.physical[i])
+						mesh[i] = v
+					}
+					mesh.position = mesh.pos;
+					mesh.cameras = object.cameras;
+					mesh.engines = object.engines;
+					mesh.has_engines =true;
+					mesh.on_engines_rotation = [];
+					mesh.on_engines_propulsion = [];
+					mesh.put_off = put_off
+					mesh.put_on  = put_on
+					mesh.mass = object.mass;
+					var label = makeTextSprite("mesh: " + ix);
+					label.position = new THREE.Vector3(0,0,0);
+					mesh.add(label);
+					self.scene.add( mesh );
+					self.meshes[ix] = mesh;
+					self.loaded_objects_count +=1;
+					console.log('model loaded');
+				});
+			})
+		})(json)
+		
+	}
+	console.log(xhr);
+	xhr.open("get", "/scenes/first/", true);
+	xhr.send();
+	console.log('H');
 }
 window.A.bindCamera = function(){
 	

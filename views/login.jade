@@ -1,0 +1,31 @@
+!!!5
+html
+	head
+		title Интернет магазин  Az-Az.
+		script(type="text/javascript", src="/js/jquery-1.10.2.min.js")
+		script(type="text/javascript", src="/js/bootstrap.min.js")
+		script(type="text/javascript", src="/js/jstz.min.js")
+		
+		block css
+			link(rel='stylesheet', href='/css/bootstrap.min.css')
+			link(rel='stylesheet', href='/css/bootstrap-glyphicons.css')
+			// link(href='http://fonts.googleapis.com/css?family=Ubuntu:300,400,500,400italic&subset=latin,cyrillic', rel='stylesheet', type='text/css')
+			link(rel='stylesheet', href='/css/style.css')
+
+		script
+	body
+		h1 RPG login
+	
+		.container
+			.row
+				.col-md-12
+					form(role='form', method='post')
+						.form-group
+							label(for='email') email
+							input#email(name='username' type='email')
+						.form-group
+							label(for='password') password
+							input#password(name='password' type='password')
+						.form-group
+							button.btn.btn-primary(type='submit') Login
+				

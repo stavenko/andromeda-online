@@ -3,13 +3,15 @@
   "version": "0.0.1",
   "private": "true",
   "dependencies": {
-    "express": "latest",
+    "express": "3.4.5",
     "jade": "*",
     "stylus": "*",
     "connect-flash": "*",
-	"nodemailer": "latest",
-	"socket.io":"latest",
-	"three.js":"latest"
+	"nodemailer": "0.5.11",
+	"socket.io":"0.9.16",
+	"underscore":"1.5.2",
+	"passport":"0.1.17",
+	"passport-local":"0.1.6"
 	
 	
   }

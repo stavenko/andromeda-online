@@ -5,7 +5,7 @@ html
 		
 		script(type="text/javascript", src="/js/gl/three.min.js")
 		
-		script(type="text/javascript", src="/js/jquery-1.10.2.min.js")
+		script(type="text/javascript", src="/js/underscore-min.js")
 		
 		script(type="text/javascript", src="/js/gl/ST-online.js")
 		script(type="text/javascript", src="/js/gl/controller.js")
@@ -18,11 +18,12 @@ html
 				
 			
 		script
-			$(function(){
+			
+			var init = function(){
 				A.init();
 				A.go();
-			})
+			}
 
 
 			
-	body
+	body(onload="init()")

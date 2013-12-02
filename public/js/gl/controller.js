@@ -1,4 +1,4 @@
-var CPilotController = function(){
+var CPilotController = function(actor_name){
 	this.type='pilot';
 	this.action_types=['rotate', 'move']
 	function get_axis(a){
@@ -18,8 +18,8 @@ var CPilotController = function(){
 	
 	this.act = function(W, action, is_down ){
 		//console.log('Wat');
-		console.log(W.actors['__'].control.oid)
-		var C = W.meshes[ W.actors['__'].control.oid ]
+		console.log(W.actors[actor_name].control.oid)
+		var C = W.meshes[ W.actors[actor_name].control.oid ]
 		
 	
 
@@ -60,9 +60,23 @@ var CPilotController = function(){
 };
 
 CPilotController.prototype = {constructor:CPilotController}
-var PilotController = new CPilotController();
+var PilotController = new CPilotController("__");
 
-function BasicActor(W, id, coid){
+function basicAutoPilotActor(W, id, oid){
+	this.targets = ["orbit_object", "close_to_object"];
+	this.default_distance = 200
+	this.get_foes = function(){
+		this.foes = []
+		for (var i =0; i < W.meshes.length; i++){
+			if(i != id) foes.push({id:id, obj:W.meshes[i]})
+			
+		}
+	}
+	
+}
+function BasicBulletActor(W, id, coid){ 
+	// id = is object in the world controllable by this actor
+	// coid  MUST BE an object, who shoot this bullet
 	this.name = "Basic_actor" + (performance.now())
 	this.W;
 	this.oid = id
@@ -213,11 +227,11 @@ var CTurretController = function(){
 			
 			bullet.has_engines = false;
 			bullet.vel = mpv//.multiplyScalar(0.10);
-			bullet.mass = 0.01;
+			bullet.mass = 0.1;
 			W.scene.add( bullet );
 			var ix = W.meshes.push( bullet );
 			
-			var bullet_actor = new BasicActor(W,ix-1,W.actors['__'].control.oid)
+			var bullet_actor = new BasicBulletActor(W, ix-1, W.actors['__'].control.oid)
 			W.actors[bullet_actor.name] = bullet_actor;
 			
 			
@@ -227,6 +241,7 @@ var CTurretController = function(){
 	
 };
 var TurretController = new CTurretController()
+
 //console.log(TurretController.act, PilotController.act)
 var ControllersActionMap = {
 	'move': PilotController,
