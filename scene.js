@@ -1,8 +1,10 @@
 var THREE = require('./three.min.node.js');
 var _     = require('underscore');
 var fs    = require('fs')
+var u = require('./utils.js')
 
 var Scene = {description: "Scene routines"}
+
 
 Scene.create = function(){
 	var objects_count = 10;
@@ -23,7 +25,7 @@ Scene.create = function(){
 					"back":{
 							"label":"main",
 							"position": [0,0,2],
-							"direction":[0,0,100]
+							"direction":[0,0,1]
 							}
 						
 			},
@@ -115,11 +117,59 @@ Scene.create = function(){
 				
 	scene.objects = objs;
 	this._scene = scene
+	this._loaded = false;
 	return this
 }
+Scene.create_from_world = function(globalx, globaly, globalz ){
+	// globalx-y-z - galaxy coords with 1 meter accuracy
+	var closest_scene_with_distance = this.get_closest_scene(globalx, globaly, globalz);
+	// if closest_scene is not null - we must inject object with actors to that scene - it's already_loaded
+	// else - We finding objects for that scene
+				
+	var objects_within_coords = this.get_objects_in(globalx, globaly, globalz)
+	
+	// creating scene
+	
+	this._scene = {coords :[ globalx, globaly, globalz ], actors:{}, GUID: u.make_guid(), objects:{} } 
+	this.GUID = this._scene.GUID;
+	
+	// prepare actors - all of them would control object_id = 0, viewports - each for each
+	
+	
+	// Injecting other objects
+	var objects = {}
+	// objects[for_object.GUID] = for_object;
+	
+	for ( var i = 0; i < objects_within_coords.length ; i++ ){
+		objects[ objects_within_coords[i].GUID ] =   objects_within_coords[i];
+	}
+	_.extend(this._scene.objects, objects)
+	
+	return this
+	
+}
+Scene.get_actors = function(){
+	return this._scene.actors
+}
+Scene.get_closest_scene = function(){
+	return undefined
+}
+Scene.get_objects_in = function(){
+	return [];
+}
+Scene.join_object = function( object ){
+	this._scene.objects[object.GUID] = object
+}
+Scene.join_actor = function( actor ){
+	this._scene.actors[actor.login] = actor
+	
+	return this
+	
+}
+
 Scene.load = function(cb){
 	var self = this;
-	self.meshes = []
+	self.meshes = {}
 	self.loader =  new THREE.JSONLoader();
 	self.total_objects_count = 0;
 	self._call_back = cb;
@@ -147,6 +197,7 @@ Scene.load = function(cb){
 	self.loaded_objects_count = 0
 	
 	//console.log(self.actors);
+	console.log(json);
 	_.each(json.objects, function( object,ix ){
 		//console.log('looping')
 		self.total_objects_count +=1;
@@ -176,14 +227,16 @@ Scene.load = function(cb){
 					mesh.position = mesh.pos;
 					mesh.cameras = object.cameras;
 					mesh.engines = object.engines;
-					mesh.has_engines =true;
-					mesh.on_engines_rotation = [];
-					mesh.on_engines_propulsion = [];
+					mesh.has_engines = object.engines !== undefined;
+					if (mesh.has_engines){
+						mesh.on_engines_rotation = [];
+						mesh.on_engines_propulsion = [];
+					}
 					mesh.put_off = put_off
 					mesh.put_on  = put_on
 					mesh.mass = object.mass;
 			
-					self.meshes[ix] = mesh;
+					self.meshes[ object.GUID ] = mesh;
 					self.loaded_objects_count +=1;
 					self._model_loaded( ix )
 					// console.log('ok loaded ', ix)
@@ -208,6 +261,7 @@ Scene.load = function(cb){
 Scene._model_loaded = function(ix){
 	if (this.loaded_objects_count == this.total_objects_count){
 		// scene loaded
+		this._loaded = true;
 		if (this._call_back){
 			this._call_back()
 		}

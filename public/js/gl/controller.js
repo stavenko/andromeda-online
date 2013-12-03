@@ -71,6 +71,7 @@ function basicAutoPilotActor(W, id, oid){
 			if(i != id) foes.push({id:id, obj:W.meshes[i]})
 			
 		}
+		
 	}
 	
 }

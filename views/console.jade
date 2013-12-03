@@ -27,20 +27,27 @@ html
 					table.table.table-striped
 						tr
 							th #
-							th Starts
+							th Creator
 							th Name
-						tr
-							td 1
-							td today
-							td Hunting for rats in ElXS
-						tr
-							td 2
-							td Now...
-							td Protection of transport in ASi4
-						tr 
-							td 3 
-							td in 15 minutes
-							td Attack of the doorway to Jigutil's Dangeon
+						-var C = 0;
+						-each mission,key in missions
+							-C = C+1;
+							tr
+								td #{C}
+								td #{mission.creator}
+								td 
+									a.btn.btn-primary(href="/missions/join/#{key}/") join
+							tr
+						-
+						//-	
+								td 2
+								td Now...
+								td Protection of transport in ASi4
+						//- 
+							tr 
+								td 3 
+								td in 15 minutes
+								td Attack of the doorway to Jigutil's Dangeon
 				.col-md-6.col-xs-6
 					h3 Positions in mission
 					table.table.table-striped
@@ -59,7 +66,7 @@ html
 							td Gun Man
 							td small projectile turret lvl 2
 							td --
-							
+					a.btn.btn-primary(href='/missions/create/') create!
 								
 		
 			

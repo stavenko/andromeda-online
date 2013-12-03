@@ -8,6 +8,7 @@ var app = require('express')()
   , nodemailer = require('nodemailer')
   , server = require('http').Server(app)
   , ios = require('socket.io') // (server)
+  , Mission = require("./missions.js")
   , Sc  = require("./scene.js")
   , path = require('path');
   
@@ -166,13 +167,19 @@ app.get('/webgl-test/', function(req,res){
 	res.render('webgl-test', {   })
 })
 
-var SCENES = {}
+var SCENES = {} // guid : scene
+var MISSIONS= {} // guid : mission
+var LOGINS = {} // login : {object, scene} map
 
-app.get('/scenes/:name/', function(req, res){
+
+/*
+app.get('/scene/:mission_id/', function(req, res){
 	//console.log(req.params.name, SCENES)
-	if (req.params.name in SCENES){
+	var M = Missions[req.param.mission_id]
+	M._scen
+	if (Missions[req.param.mission_id]){
 		//console.log("cache hit")
-		res.end(JSON.stringify(SCENES[req.params.name]))
+		res.end(JSON.stringify(MsSCENES[req.params.id]))
 	}else{
 		var S = Sc.create();
 		S.load();
@@ -180,12 +187,36 @@ app.get('/scenes/:name/', function(req, res){
 		SCENES[req.params.name] = js
 		res.end(JSON.stringify(js));
 	}
+})*/
+app.get('/world/', ensureAuthenticated, function(req,res){
+	res.render('world',{})
+})
+// Adding and joining missions
+function share_info(M, S, user){
+	if (M){
+		MISSIONS[M.GUID] = M
+	}
+	SCENES[S.GUID] = S
+	actor_info = {object: S.get_actors()[user].control.object_guid,
+				  scene : S.GUID}
+	LOGINS[user] = actor_info
+	
+}
+app.get('/missions/create/', ensureAuthenticated, function(req, res){
+	var M = Mission.create(req.user.username)
+	share_info( M, M._scene, req.user.username )
+	//console.log(MISSIONS);
+	res.end('{success:true}');
+})
+app.get('/missions/join/:m_id/', ensureAuthenticated, function(req, res){
+	var M = MISSIONS[req.params.m_id]
+	M.join_player(req.user.username)
+	share_info( M, M._scene, req.user.username )
+	
+	res.end('{success:true}');
 })
 
-
 app.get('/auth/login/', function(req, res){
-	// console.log(req.headers);
-	// console.log(">>")
 	res.render('login', {})// { user: req.user, message: req.flash('error') });
 });
 
@@ -202,7 +233,8 @@ app.get('/auth/logout/', function(req, res){
 });
 
 app.get('/console/', function(req, res){
-	res.render('console');
+	// MMM = {"aaa":{"bbb":"ccc"}}
+	res.render('console', {'missions':MISSIONS});
 })
 
 
