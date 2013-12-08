@@ -1,7 +1,7 @@
 !!!5
 html
 	head
-		title Интернет магазин  Az-Az.
+		title Консоль управления 
 		script(type="text/javascript", src="/js/jquery-1.10.2.min.js")
 		script(type="text/javascript", src="/js/bootstrap.min.js")
 		script(type="text/javascript", src="/js/jstz.min.js")
@@ -18,6 +18,7 @@ html
 			
 			h1 RPG login
 			h2 Player console
+			a.btn.btn-primary(href="/auth/logout/") Выйти
 			.row
 				.col-md-12.col-xs-12
 					h3 Assets
@@ -36,7 +37,11 @@ html
 								td #{C}
 								td #{mission.creator}
 								td 
-									a.btn.btn-primary(href="/missions/join/#{key}/") join
+									-if (mission._mission_logins.indexOf(user.username ) !== -1){
+										a.btn.btn-success(href="/world/") Go to my controls
+									-}else{
+										a.btn.btn-primary(href="/missions/join/#{key}/") join
+									-}
 							tr
 						-
 						//-	

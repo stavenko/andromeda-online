@@ -11,7 +11,9 @@
 	"socket.io":"0.9.16",
 	"underscore":"1.5.2",
 	"passport":"0.1.17",
-	"passport-local":"0.1.6"
+	"passport-local":"0.1.6",
+	"connect-redis":"1.4.6",
+	"browserify-express" :"0.1.2"
 	
 	
   }

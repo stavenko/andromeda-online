@@ -1,18 +1,24 @@
 var app = require('express')()
+  , _     = require('underscore')
+  , crypto = require('crypto')
   , express= require('express')
   , passport = require('passport')
   , LocalStrategy = require('passport-local').Strategy
-
+  , RedisStore = require('connect-redis')(express)
   , stylus = require('stylus')
   , flash = require('connect-flash')
   , nodemailer = require('nodemailer')
   , server = require('http').Server(app)
   , ios = require('socket.io') // (server)
-  , Mission = require("./missions.js")
-  , Sc  = require("./scene.js")
+  
+  , Mission = require("./server/missions.js")
+  , Sc  = require("./server/scene.js")
+  , browserify_express = require('browserify-express')
   , path = require('path');
   
-
+  
+  
+  
 var DEBUG = false;
 
 
@@ -38,8 +44,8 @@ function compile(str, path) {
 }
 
 var users = [
-      { id: 1, username: 'stavenko@gmail.com', password: 'gfhjkm', email: 'stavenko@gmail.com' }
-    , { id: 2, username: 'vg.stavenko@yandex.ru', password: 'birthday', email: 'vg.stavenko@yandex.ru' }
+      { id: 1, username: 'stavenko@gmail.com', password: '123', email: 'stavenko@gmail.com' , auth_hash:''}
+    , { id: 2, username: 'vg.stavenko@yandex.ru', password: 'birthday', email: 'vg.stavenko@yandex.ru', auth_hash:'' }
 ];
   
 // Authentication stuff  
@@ -74,11 +80,11 @@ passport.deserializeUser(function(id, done) {
   
 passport.use(new LocalStrategy(
   function(username, password, done) {
-	  console.log("we");
+	  //console.log("we");
 	  
     // asynchronous verification, for effect...
     process.nextTick(function () {
-		console.log("iiha");
+		// console.log("iiha");
       
       // Find the user by username.  If there is no user with the given
       // username, or the password is not correct, set the user to `false` to
@@ -90,6 +96,10 @@ passport.use(new LocalStrategy(
 		
         if (!user) { return done(null, false, { message: 'Unknown user ' + username }); }
         if (user.password != password) { return done(null, false, { message: 'Invalid password' }); }
+		sha1 = crypto.createHash('sha1')
+		sha1.update(user.password + user.username + new Date())
+		user.auth_hash = sha1.digest('hex');
+		// console.log(user)
         return done(null, user);
       })
     });
@@ -112,15 +122,27 @@ app.configure(function(){
 		}
 	))
 	app.use(express.static(__dirname + '/public'))
-    app.use(express.cookieParser());
-	
-    app.use(express.session({ secret: 'keyboard cat' }));
-	
-    app.use(express.bodyParser());
+    
+	app.use(express.cookieParser());
+	app.use(express.bodyParser());
+    app.use(express.session({ secret: 'keyboard cat', store: new RedisStore }));
 	
 	app.use(flash());
     app.use(passport.initialize());
     app.use(passport.session());
+	
+    var bundle = browserify_express({
+        entry: __dirname + '/server/entry.js',
+		ignore: ["./three.min.node.js"],
+        watch: __dirname + '/server/',
+        mount: '/appjs/main.js',
+        verbose: true,
+        //minify: true,
+        bundle_opts: { debug: true }, // enable inline sourcemap on js files 
+        write_file: __dirname + '/public/js/gl/main.js'
+    });
+
+    app.use(bundle);
 	
     app.use(app.router);
 	
@@ -134,12 +156,83 @@ var io =  ios.listen(server);
 
 server.listen(3002)
 
+var SCENES = {} // guid : scene
+var MISSIONS= {} // guid : mission
+var LOGINS = {} // login : {object, scene} map
+var SOCKET_AUTH_MAP = {} // auth_hash: login
+var SOCKET_MAP = {} // login: socket
+
 io.on('connection', function(socket){
-	//console.log('connected', socket)
+	socket.emit('connected',{})
 	
-	socket.emit("resp", {resp:"onse"})
+	var newActortoSceneBcast = function(Scene, actor){
+		var new_actor = Scene.actors[actor]
+		//console.log(new_actor)
+		_.each(SOCKET_MAP, function(s,k){
+			console.log("LOOP", k , _(Scene.get_actors()).keys());
+			if (_(Scene.get_actors()).keys().indexOf(k) != -1){
+				//console.log("emit>")
+				s.emit("join_actor", new_actor)
+			}
+			
+		})
+	}
 	
-	socket.on("data", function(data){
+	socket.on("auth_hash", function(data){
+		//console.log(data)
+		var login = SOCKET_AUTH_MAP[data.auth];
+		if (login === undefined){
+			socket.emit('server_fault', {})
+		}else{
+			var auth_info = LOGINS[login]
+			var scene = SCENES[auth_info.scene]
+			var mission = MISSIONS[auth_info.mission]
+			if (!scene.is_loaded){
+				scene.load();
+			}
+			socket.emit("scene", scene._scene)
+			SOCKET_MAP[login] = socket
+			newActortoSceneBcast(scene, login);
+			
+			
+			
+		}
+		var sendToSceneClients = function(action,on_off){
+			// console.log(SOCKET_MAP)
+			if (auth_info){
+				var S = SCENES[auth_info.scene]
+				_.each(S.actors, function(a){
+					//console.log("AA",a, auth);
+					if (a.login !== login){
+						console.log("sending to", a.login)
+						var socket = SOCKET_MAP[a.login]
+						if(on_off)socket.emit('player_controls_on', action)
+						else socket.emit("player_controls_off", action)
+					}
+				})
+			}
+		}
+		var applyAction = function(action, on_off, login){
+			
+		}
+		
+		socket.on('control_on', function(data){
+			to_others = {login:login, action:data}
+			applyAction(data, true, login)
+			sendToSceneClients(to_others, true);
+			
+		})
+		socket.on('control_off', function(data){
+			to_others = {login:login, action:data}
+			applyAction(data, false, login)
+			sendToSceneClients(to_others, false);
+		})
+		
+		
+		
+		
+		
+		
 		//console.log("data", data)
 	})
 })
@@ -167,10 +260,22 @@ app.get('/webgl-test/', function(req,res){
 	res.render('webgl-test', {   })
 })
 
-var SCENES = {} // guid : scene
-var MISSIONS= {} // guid : mission
-var LOGINS = {} // login : {object, scene} map
 
+function share_info(req, M, S, user){
+	SCENES[S.GUID] = S
+	console.log(S.get_actors())
+	actor_info = {object: S.get_actors()[user].control.object_guid,
+				  scene : S.GUID,
+				  actor_auth_hash: user.auth_hash}
+	if (M){
+		MISSIONS[M.GUID] = M
+		actor_info.mission = M.GUID
+	}
+
+	LOGINS[user] = actor_info
+	SOCKET_AUTH_MAP[req.session.auth_hashes[user] ] = user
+	
+}
 
 /*
 app.get('/scene/:mission_id/', function(req, res){
@@ -189,31 +294,22 @@ app.get('/scene/:mission_id/', function(req, res){
 	}
 })*/
 app.get('/world/', ensureAuthenticated, function(req,res){
-	res.render('world',{})
+	// console.log(req.session.auth_hashes);
+	res.render('world',{ 'user': req.user, auth_hash: req.session.auth_hashes[req.user.username]})
 })
 // Adding and joining missions
-function share_info(M, S, user){
-	if (M){
-		MISSIONS[M.GUID] = M
-	}
-	SCENES[S.GUID] = S
-	actor_info = {object: S.get_actors()[user].control.object_guid,
-				  scene : S.GUID}
-	LOGINS[user] = actor_info
-	
-}
 app.get('/missions/create/', ensureAuthenticated, function(req, res){
 	var M = Mission.create(req.user.username)
-	share_info( M, M._scene, req.user.username )
-	//console.log(MISSIONS);
-	res.end('{success:true}');
+	share_info(req,  M, M._scene, req.user.username )
+	// console.log(MISSIONS);
+	res.redirect('/console/');
 })
 app.get('/missions/join/:m_id/', ensureAuthenticated, function(req, res){
 	var M = MISSIONS[req.params.m_id]
 	M.join_player(req.user.username)
-	share_info( M, M._scene, req.user.username )
+	share_info(req, M, M._scene, req.user.username )
 	
-	res.end('{success:true}');
+	res.redirect('/console/');
 })
 
 app.get('/auth/login/', function(req, res){
@@ -223,6 +319,10 @@ app.get('/auth/login/', function(req, res){
 
 app.post('/auth/login/',  passport.authenticate('local', { failureRedirect: '/auth/login/', failureFlash: true }),
 	function(req, res) {
+		if (req.session.auth_hashes === undefined){
+			req.session.auth_hashes = {}; // Правильно будет хранить эти хэши в базе данных. Но пока так
+		}
+		req.session.auth_hashes[req.user.username] = req.user.auth_hash
 		res.redirect('/console/');
 	});
 
@@ -232,9 +332,13 @@ app.get('/auth/logout/', function(req, res){
 	res.redirect('/');
 });
 
-app.get('/console/', function(req, res){
+app.get('/console/', ensureAuthenticated, function(req, res){
 	// MMM = {"aaa":{"bbb":"ccc"}}
-	res.render('console', {'missions':MISSIONS});
+	res.render('console', {'missions':MISSIONS, 'user': req.user});
+})
+app.get('/', function(req, res){
+	// MMM = {"aaa":{"bbb":"ccc"}}
+	res.render('index', {'missions':MISSIONS, 'user': req.user});
 })
 
 

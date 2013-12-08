@@ -1,0 +1,34 @@
+!!!5
+html
+	head
+		title Симуляция
+		script(type="text/javascript", src="/js/gl/three.min.js")
+		
+		script(type="text/javascript", src="/js/underscore-min.js")
+		
+		script(type="text/javascript", src="/js/gl/init.js")
+		//- script(type="text/javascript", src="/js/gl/controller.js")
+		//- script(type="text/javascript", src="/js/gl/sprite_utils.js")
+		script(type="text/javascript", src="/js/gl/main.js")
+		
+		//- script(type="text/javascript", src="/js/gl/utils.js")
+		
+		script(src="/socket.io/socket.io.js")
+		
+		style.
+			body,html{
+				margin:0px;
+				padding:0px;
+			}
+			
+		script
+			function starter(){
+				var hash = "#{auth_hash}";
+				var login = "#{ user.username }"
+				// console.log(hash, login)
+				var W = World.init(hash, login);
+			}
+		
+	body(onload="starter()")
+		
+		
