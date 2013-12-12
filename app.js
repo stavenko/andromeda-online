@@ -13,6 +13,8 @@ var app = require('express')()
   
   , Mission = require("./server/missions.js")
   , Sc  = require("./server/scene.js")
+  , Con = require("./server/controller.js")
+  , Core = require('./server/core.js')
   , browserify_express = require('browserify-express')
   , path = require('path');
   
@@ -91,7 +93,7 @@ passport.use(new LocalStrategy(
       // indicate failure and set a flash message.  Otherwise, return the
       // authenticated `user`.
       findByUsername(username, function(err, user) {
-		  console.log(err, user);
+		  // console.log(err, user);
         if (err) { return done(err); }
 		
         if (!user) { return done(null, false, { message: 'Unknown user ' + username }); }
@@ -133,7 +135,7 @@ app.configure(function(){
 	
     var bundle = browserify_express({
         entry: __dirname + '/server/entry.js',
-		ignore: ["./three.min.node.js"],
+		ignore: ["./three.min.node.js", "./three.node.js"],
         watch: __dirname + '/server/',
         mount: '/appjs/main.js',
         verbose: true,
@@ -151,7 +153,7 @@ app.configure(function(){
 // var server = http.Server(app)
 //console.log(ios)
 
-var io =  ios.listen(server);
+var io =  ios.listen(server, {log:false});
 
 
 server.listen(3002)
@@ -161,6 +163,16 @@ var MISSIONS= {} // guid : mission
 var LOGINS = {} // login : {object, scene} map
 var SOCKET_AUTH_MAP = {} // auth_hash: login
 var SOCKET_MAP = {} // login: socket
+// var SCENE_SOCKET_MAP = {} // SCENE_GUID: Socket
+var Controllers = {} // login: NetworkController
+
+var Globals = {
+	Scenes:SCENES,
+	Missions:MISSIONS,
+	Logins:LOGINS,
+	Sockets:SOCKET_MAP
+}
+new Core(Globals).launch();
 
 io.on('connection', function(socket){
 	socket.emit('connected',{})
@@ -169,7 +181,7 @@ io.on('connection', function(socket){
 		var new_actor = Scene.actors[actor]
 		//console.log(new_actor)
 		_.each(SOCKET_MAP, function(s,k){
-			console.log("LOOP", k , _(Scene.get_actors()).keys());
+			//console.log("LOOP", k , _(Scene.get_actors()).keys());
 			if (_(Scene.get_actors()).keys().indexOf(k) != -1){
 				//console.log("emit>")
 				s.emit("join_actor", new_actor)
@@ -193,6 +205,13 @@ io.on('connection', function(socket){
 			socket.emit("scene", scene._scene)
 			SOCKET_MAP[login] = socket
 			newActortoSceneBcast(scene, login);
+			var na = Con.NetworkActor(scene, socket, function(){
+				
+				console.log('acted');
+			})
+			Controllers[login] = na
+			
+			
 			
 			
 			
@@ -204,7 +223,7 @@ io.on('connection', function(socket){
 				_.each(S.actors, function(a){
 					//console.log("AA",a, auth);
 					if (a.login !== login){
-						console.log("sending to", a.login)
+						//console.log("sending to", a.login)
 						var socket = SOCKET_MAP[a.login]
 						if(on_off)socket.emit('player_controls_on', action)
 						else socket.emit("player_controls_off", action)
@@ -213,7 +232,9 @@ io.on('connection', function(socket){
 			}
 		}
 		var applyAction = function(action, on_off, login){
-			
+			var na = Controllers[login]
+			console.log("acting")
+			na.act(null, action, on_off, login)
 		}
 		
 		socket.on('control_on', function(data){
@@ -227,32 +248,10 @@ io.on('connection', function(socket){
 			applyAction(data, false, login)
 			sendToSceneClients(to_others, false);
 		})
-		
-		
-		
-		
-		
-		
-		//console.log("data", data)
+
 	})
 })
 
-/*
-app.get('/', function(req,res){
-	res.render('index', {   })
-})
-
-app.get('/stickclick/', function(req,res){
-	res.render('stick-click0', {   })
-})
-
-app.get('/ironsamurai/', function(req,res){
-	res.render('iron-samurai', {   })
-})
-app.get('/led-shower/', function(req,res){
-	res.render('led-shower-gen', {   })
-})
-*/
 
 
 
@@ -263,7 +262,7 @@ app.get('/webgl-test/', function(req,res){
 
 function share_info(req, M, S, user){
 	SCENES[S.GUID] = S
-	console.log(S.get_actors())
+	//console.log(S.get_actors())
 	actor_info = {object: S.get_actors()[user].control.object_guid,
 				  scene : S.GUID,
 				  actor_auth_hash: user.auth_hash}
@@ -319,6 +318,7 @@ app.get('/auth/login/', function(req, res){
 
 app.post('/auth/login/',  passport.authenticate('local', { failureRedirect: '/auth/login/', failureFlash: true }),
 	function(req, res) {
+		console.log(req.session)
 		if (req.session.auth_hashes === undefined){
 			req.session.auth_hashes = {}; // Правильно будет хранить эти хэши в базе данных. Но пока так
 		}

@@ -1,6 +1,6 @@
 var fs    = require('fs');
 var u = require('./utils.js');
-var THR = require('./three.min.node.js');
+var THR = require('./three.node.js');
 
 var _     = require('underscore');
 
@@ -10,141 +10,39 @@ if(typeof window === 'undefined'){
 	Scene.THREE = THR // Saveing THREE.js as part of scene - this step could be done on a certain platform
 	Scene.do_prepare_rendering = false
 	Scene.ajax_load_models = false
+	Scene.need_update_matrix = true
 	
 }else{
 	Scene.THREE = THREE
 	Scene.do_prepare_rendering = true
 	Scene.ajax_load_models = true
+	Scene.need_update_matrix = false
+	
 }
 
 
 
 
 Scene.mesh_for = function(actor){
-	//console.log(">>>",this.meshes()[this.scene.actors[actor].control.object_guid]);
 	return this.meshes[this.actors[actor].control.object_guid]
 }
 Scene.create = function(){
 	this.is_loaded = false
+	this._create();
+	this._d = false
+	//console.log( "CLOCK", this.clock);
 	
 	return this;
 }
-/*function(){
-	var objects_count = 10;
-	var objs = []
-	var vectors = ['pos', 'vel', 'acc',  'rot',    'avel', 'aacc'];
-	var limits  = [100, 2,        0.1,     Math.PI, 0    ,   0];
-	
-	
-	for(var c =0; c< objects_count; c++){	
-		var obj = {
-			"physical":{},
-			"cameras":{
-					"front":{
-						"label":"main",
-						"position": [0,0,0],
-						"direction":[0,0,-1]
-						},
-					"back":{
-							"label":"main",
-							"position": [0,0,2],
-							"direction":[0,0,1]
-							}
-						
-			},
-			'engines':{
-				'rotation':{
-					'x+':1,'x-':1,
-					'y+':1,'y-':1,
-					'z+':1,'z-':1
-				},
-				'propulsion':{
-					'x+':1,'x-':1,
-					'y+':1,'y-':1,
-					'z+':10,'z-':10
-				}
-			},
-			
-			'mass': 10000,
-			
-			
-			
-			
-			//"direction":[1,0,0],
-			"model": "/models/StarCruiser.js"
-		}
-		if (c == 0) obj.direction = [0,0,-1]
-		else obj.direction = [0,0,-1]
-		
-		for (var j =0; j < vectors.length; j++){
-			var v = vectors[j]
-			var vv = []
-			for (var i = 0; i < 3; i++){
-				vv[i] =  (Math.random() * limits[j]) - limits[j]/2
-			}
-			obj.physical[v] = vv;
-		}
-		
-		objs.push(obj)
-	}
-	// Add pivot cubes
-	poses = [[20,20,20], [20,-20,20], [-20,20,20], [-20,-20,20],
-			 [20,20,-20], [20,-20,-20], [-20,20,-20], [-20,-20,-20],
-	 ]
-	 limits[1]=0
-	for(var c =0; c< 8; c++){	
-		var obj = {
-			"physical":{},
-			"cameras":
-			{
-					"front":{
-						"label":"main",
-						"position": [0,0,0],
-						"direction":[0,0,-1]
-						},
-					"back":{
-							"label":"main",
-							"position": [0,0,0],
-							"direction":[0,0,10]
-							}
-						
-			},
-			"direction":[1,0,0],
-			mass:1000000,
-			
-			"model": "/models/sp.js"
-		}
-		for (var j =1; j < vectors.length; j++){
-			var v = vectors[j]
-			var vv = []
-			for (var i = 0; i < objects_count; i++){
-				vv[i] =  (Math.random() * limits[j]) - limits[j]/2
-			}
-			obj.physical[v] = vv;
-		}
-		obj.physical.pos = poses[c]
-		
-		objs.push(obj)
-	}		
-	
-	var scene = {
-		"actors":{"__":{
-					 	"control": {"oid":0,"vp":"back"}
-						}
-				},
-		"controllers":{
-			"front":{"types":["turret", "launcher", 'pilot'], "camera": "front"},
-			"back" :{"types":["turret", "launcher"], "camera": "back"}
-		}
-			}
-				
-	scene.objects = objs;
-	this._scene = scene
-	this.is_loaded = false;
-	return this
-}
-	*/
 
+Scene._create = function(){
+	this.clock = new (this.THREE.Clock)();
+	this.time_inc  = 0;
+	this._scene_object_cache = {}
+	// this.simulation_runs = false
+	// console.log(this.clock);
+	
+}
 Scene.create_from_world = function(globalx, globaly, globalz ){
 	// globalx-y-z - galaxy coords with 1 meter accuracy
 	var closest_scene_with_distance = this.get_closest_scene(globalx, globaly, globalz);
@@ -169,6 +67,9 @@ Scene.create_from_world = function(globalx, globaly, globalz ){
 		objects[ objects_within_coords[i].GUID ] =   objects_within_coords[i];
 	}
 	_.extend(this._scene.objects, objects)
+	this._create();
+	// console.log(
+	// console.log( "CLOCK", this.clock);
 	
 	return this
 	
@@ -194,6 +95,7 @@ Scene.join_actor = function( actor ){
 Scene.set_from_json = function(object){
 	this._scene = object
 	this.GUID = object.GUID
+	
 }
 Scene.controllable = function(login){
 	return this.meshes[this.actors[login].control.object_guid]
@@ -201,6 +103,7 @@ Scene.controllable = function(login){
 Scene.load = function(onload, three_scene){
 	// three scene - is a param for adding meshes to
 	var self = this;
+	
 	self.meshes = {}
 	self.loader =  new self.THREE.JSONLoader();
 	self.total_objects_count = 0;
@@ -245,28 +148,31 @@ Scene.load = function(onload, three_scene){
 		
 		if (! self.ajax_load_models){
 			var m = object.model_3d.split('/')[2];
-			model_path= "./public/models/" + m
+			var model_path= "./public/models/" + m
 		}
+		// console.log(model_path);
 		
 		var rf = function(){
 			var with_geom_and_mat = function(geom, mat){
-				// console.log(mat)
+				// console.log(geom.faces.length)
 				var m = new self.THREE.Matrix4()
 				m.identity()
 			
 		
 				var mesh = new self.THREE.Mesh( geom, mat );
+				mesh.type=object.type
 				var object_rotated = false
 				if ( object.physical ){
 					for(i in object.physical){
+						
 						var _is = 'to' in object.physical[i]
 						if (!_is){
-							var v = new THREE.Vector3()
+							var v = new self.THREE.Vector3()
 							v.set.apply(v, object.physical[i])
 							mesh[i] = v
 						
 						}else{
-							var p = new THREE.Vector3(object.physical[i].to[0], object.physical[i].to[1], object.physical[i].to[2])
+							var p = new self.THREE.Vector3(object.physical[i].to[0], object.physical[i].to[1], object.physical[i].to[2])
 							// Try to rotate p on 180 
 							//p.rotateX(2* Math.PI);
 							mesh.lookAt(p.negate())
@@ -290,6 +196,7 @@ Scene.load = function(onload, three_scene){
 					var uel = new THREE.Euler(mesh.rot.x, mesh.rot.y, mesh.rot.z);
 					mesh.rotation = uel;
 				}
+				// console.log(mesh.position)
 				mesh.cameras = object.cameras;
 				mesh.engines = object.engines;
 				mesh.has_engines = object.engines !== undefined;
@@ -302,11 +209,11 @@ Scene.load = function(onload, three_scene){
 				mesh.mass = object.mass;
 		
 				if (self.do_prepare_rendering){
-					if (object.type !=='pivot'){
+					if (object.type !=='static'){
 						var label = SpriteUtils.makeTextSprite("mesh: " + ix);
 						label.position = new self.THREE.Vector3(0,0,0);
 						mesh.add(label);
-						console.log("added");
+						// console.log("added");
 					}
 					three_scene.add( mesh );
 					
@@ -344,6 +251,7 @@ Scene._ajax_getter=function(name, cb) {
 }
 Scene._fs_getter=function(name, cb){
 	var self = this;
+	console.log(name);
 	fs.readFile(name, function(err,data){
 		//console.log("start loading");
 		if(err) throw err;
@@ -373,6 +281,16 @@ Scene._get_model = function(name, getter, with_geom_and_mat){
 	}
 				
 }
+Scene._delete_object = function(guid){
+	var self = this;
+	if(self.three_scene){
+		self.three_scene.remove(self.meshes[guid]) // удяляем ядро из сцены
+	}
+	delete self.meshes[ guid ]; // ... из мешей
+	delete self._scene_object_cache[ guid ]
+	
+	
+}
 Scene._model_loaded = function(ix){
 	if (this.loaded_objects_count == this.total_objects_count){
 		// scene loaded
@@ -385,7 +303,156 @@ Scene._model_loaded = function(ix){
 		//console.log('not yet', this.loaded_objects_count , this.total_objects_count);
 	}
 }
+Scene.sync = function(sync){
+	var self = this;
+	_.each(sync, function(object, guid){
+		if (!(guid in self.meshes)) return;
+		_.each(object, function(vec, name){
+			if (name =='rotation'){
+				var v = new self.THREE.Euler()
+				
+			}else{
+				var v = new self.THREE.Vector3()
+				
+			}
+			v.fromArray(vec)
+			
+			self.meshes[guid][name] = v
+			
+			
+			
+			//if (!v.equals(ov)){
+			//	console.log(name, vec, ov.toArray() )
+			//}
+		
+		})
+		
+	})
+}
 Scene.get = function(){
 	return this._scene
+}
+Scene.get_almanach = function(){
+	// var self = this;
+	
+	return this._scene_object_cache
+	
+}
+Scene.tick = function(){
+	var self = this;
+	//var time_inc = 0;
+	var time_left = self.clock.getDelta();
+	self.time_inc += time_left;
+	//console.log(self.time_inc);
+	
+	// var actor = self.get_current_actor()
+	// var C = self.meshes()[actor.control.object_guid]
+	// console.log(self.automatic_actors);
+	_.each(self.automatic_actors, function(actor){
+		//console.log(actor);
+		actor.run(time_left);
+	})
+	//console.log(time_inc)
+	
+	if((Math.floor(self.time_inc) % 5 ) ===0){
+		if (!self._d){
+			self._d = true
+			//console.log("5sek tick")
+			// only two first
+			for(i in self.meshes){
+				var m = self.meshes[i]
+				if (m.type == 'ship'){
+					var v = m.vel;
+					var p = m.pos;
+					
+					var r = m.rot;
+					
+					if (v){
+						console.log(i, v.x, v.y, v.z)
+						console.log(i, p.x, p.y, p.z)
+						
+					}
+					//if (r){
+					//	console.log(i, r.x, r.y, r.z)
+					//}
+					
+				}
+			}
+			/*
+			for(i in self.scene.actors){
+				var a = self.scene.actors[i]
+				console.log(a.control.object_guid);
+				var m = self.scene.meshes[a.control.object_guid]
+				var v = m.vel;
+				if (v){
+					console.log(i, v.x, v.y, v.z)
+				}
+			}
+			*/
+			
+		}
+		
+	}else{
+		self._d = false
+	}
+	
+	_.each(self.meshes, function(mesh, i){
+		if (mesh.type == 'static') return;
+		// var mesh = self.meshes[i];
+		if(mesh.has_engines){
+			total_acc = new self.THREE.Vector3(0,0,0);
+			
+			for (var j = 0; j < mesh.on_engines_propulsion.length; j++){
+			
+				var engine = mesh.on_engines_propulsion[j]
+				var axis = engine[0] == 'x'?new self.THREE.Vector3(1,0,0):(engine[0] =='y'?new self.THREE.Vector3(0, 1, 0): new self.THREE.Vector3(0,0,1))
+				var dir  = engine[1] == '+'?1:-1
+				var acc = mesh.engines.propulsion[engine] / mesh.mass
+				axis.multiplyScalar(acc).multiplyScalar(dir).applyQuaternion(mesh.quaternion);
+				total_acc.add(axis)
+			}
+			if(mesh.vel === undefined)mesh.vel = new self.THREE.Vector3(0,0,0)
+			mesh.vel = total_acc.clone().multiplyScalar(time_left).add(mesh.vel) 
+			mesh.pos = total_acc.clone().multiplyScalar(time_left * time_left)
+					       .add(mesh.vel.clone().multiplyScalar(time_left))
+						   .add(mesh.pos);
+				   
+			var total_aacc = new self.THREE.Vector3(0,0,0)
+			// console.log(mesh.on_engines_rotation);
+			for(var j =0; j < mesh.on_engines_rotation.length; j++){
+				// console.log("WTF");
+				var engine = mesh.on_engines_rotation[j]
+				var axis = engine[0] == 'x'?new self.THREE.Vector3(1,0,0):(engine[0] =='y'?new self.THREE.Vector3(0, 1, 0): new self.THREE.Vector3(0,0,1))
+				var dir  = engine[1] == '+'?1:-1
+				var aacc = mesh.engines.rotation[engine] / mesh.mass
+				axis.multiplyScalar(aacc).multiplyScalar(dir)
+				total_aacc.add(axis)
+			}
+			if(mesh.avel === undefined) mesh.avel = new self.THREE.Vector3(0,0,0)
+			// console.log(mesh.avel)
+			mesh.avel = total_aacc.clone().multiplyScalar(time_left).add(mesh.avel)
+			mesh.rot  = total_aacc.clone().multiplyScalar(time_left * time_left)
+					       .add(mesh.avel.clone().multiplyScalar(time_left))
+			mesh.rotateX(mesh.rot.x)
+			mesh.rotateY(mesh.rot.y)
+			mesh.rotateZ(mesh.rot.z);
+		
+		}else{
+			// console.log(mesh.pos);
+			if (mesh.vel){
+				mesh.pos =mesh.vel.clone().multiplyScalar(time_left).add(mesh.pos);
+			}
+			
+			
+		}
+		mesh.position = mesh.pos;
+		var _this_cache={}
+		_.each(['position', 'rotation', 'vel', 'avel','acc', 'aacc'], function(v){
+			var vec = mesh[v];
+			if( vec ) _this_cache[v] = vec.toArray();
+		})
+		self._scene_object_cache[i] = _this_cache;
+		
+	})
 }
 module.exports = Scene

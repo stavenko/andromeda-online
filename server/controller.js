@@ -1,5 +1,6 @@
-var THR = require('./three.min.node.js');
-
+var THR = require('./three.node.js');
+var Utils = require("./Utils.js");
+var _     = require('underscore');
 
 var Controller = {
 	T:function(){
@@ -17,7 +18,7 @@ var Controller = {
 		var map = Controller.ControllersActionMap()
 		var self = this;
 		socket.on('player_controls_on', function(data){
-			console.log('ok recv', data)
+			// console.log('ok recv', data)
 			var actor_login = data.login
 			var action = data.action;
 			self.act(S, action, true, actor_login)
@@ -25,7 +26,7 @@ var Controller = {
 		})
 	
 		socket.on('player_controls_off', function(data){
-			console.log('ok recv', data)
+			// console.log('ok recv', data)
 			var actor_login = data.login
 			var action = data.action;
 			self.act(S, action, false, actor_login)
@@ -34,8 +35,9 @@ var Controller = {
 		this.run = function(){
 			// no need to bother - event style
 		}
-		this.act=function(W, action, is_on, actor){
+		this.act=function(placeholder, action, is_on, actor){
 			//var C = W.meshes[ W.actors[actor].control.object_guid ]
+			// console.log(action)
 			var _a = map[action.type].act(S, action, is_on, actor, onAct);
 		
 		}
@@ -79,24 +81,26 @@ var Controller = {
 			// 1. Send to server action
 			var action = _.clone(self.actions[keycode]);
 			// console.log(action);
-			_.each(action, function(item, k){
-				// console.log('a');
-				if (k[0] == '_'){
-					item(action,k)
-				}
-			})
-			//console.log(action);
-			if (up_or_down){
-				socket.emit('control_on', action);
-			}else{
-				socket.emit('control_off', action);
+			if (action){
+				_.each(action, function(item, k){
+					// console.log('a');
+					if (k[0] == '_'){
+						item(action,k)
+					}
+				})
+				//console.log(action);
+				if (up_or_down){
+					socket.emit('control_on', action);
+				}else{
+					socket.emit('control_off', action);
 			
+				}
+				// DONE
+				// 2. Act it locally
+				var onAct = function(){ console.log('this is keyboard controller - no need in onAct here') }
+				local_controller = map[action.type]
+				local_controller.act(self.World.scene, action, up_or_down, actor, onAct);
 			}
-			// DONE
-			// 2. Act it locally
-			var onAct = function(){ console.log('this is keyboard controller - no need in onAct here')}
-			local_controller = map[action.type]
-			local_controller.act(self.World.scene, action, up_or_down, actor, onAct);
 			//DONE
 		}
 	},
@@ -120,7 +124,7 @@ var Controller = {
 		
 		}
 	
-		this.act = function(S, action, is_down, actor ){
+		this.act = function(S, action, is_down, actor, onAct ){
 			// console.log('Wat');
 			// console.log("move by", actor)
 			//if (actor === undefined){
@@ -165,6 +169,7 @@ var Controller = {
 			//	W.camera.quaternion.multiply( _q );
 			//	W.setCamera();
 			//}
+			onAct(C.GUID)
 		}
 		// return this;
 	
@@ -185,7 +190,7 @@ var Controller = {
 		// id = is object in the world controllable by this actor
 		// coid  MUST BE an object, who shoot this bullet
 		//var S = W.scene
-		this.name = "Basic_actor" + (performance.now())
+		this.name = "Basic_actor_" + (new Date().getTime())
 		// this.W;
 		this.oid = id
 		this.coid = coid
@@ -204,12 +209,7 @@ var Controller = {
 			if (total_time_in_space > 10){
 				//S.meshes.splice(id, 1)
 				//console.log("removing")
-				if(S.three_scene){
-					//console.log('even from');
-					S.three_scene.remove(S.meshes[id])
-					//console.log(S.three_scene)
-				}
-				delete S.meshes[id];
+				S._delete_object(id)
 				delete S.automatic_actors[this.name];
 			}
 			var vel = this.my_mesh.vel.clone();
@@ -228,6 +228,7 @@ var Controller = {
 				var ag = Math.acos(pd.dot(vel)/ vel.length() / pd.length()) // угол между направлением движения и центром объекта
 				if (ag < Math.PI/16)
 				{
+					//console.log('ag');
 					// console.log("HH", i, ag, Math.PI/8);
 				
 					// console.log("id vefore", 	id, );
@@ -237,6 +238,7 @@ var Controller = {
 					if( dist < thres){
 						//console.log("OKE");
 						if( in_thres.indexOf( i ) === -1 ){
+							//console.log('possible');
 						
 							in_thres.push(i) // Add mesh index
 							target = {last_point :mpos.clone(),
@@ -251,72 +253,92 @@ var Controller = {
 						}//else{}
 					}
 					
-				}
-				//else{
-				if(i in _possible_targets){
-					// Угол был острый - стал тупой
-					// console.log("here!",i);
-					// Надо проверить, не пересекает ли отрезок - прошлые координаты - текущие координаты наш меш
-					var direction = mpos.clone().sub( _possible_targets[i].last_point)
-					var ray = new T.Raycaster(_possible_targets[i].last_point, direction.clone().normalize() )
-					var isr = ray.intersectObjects([m])
-					if (isr.length > 0 && isr[0].distance < direction.length() ){
-						//for( var index =0; index<isr.length; index++){
-						//	console.log("HERE", isr[index].distance, direction.length())
-						///}
+				}else{
+					if(i in _possible_targets){
+						//console.log('POS', i)
+						// Угол был острый - стал тупой
+						// console.log("here!",i);
+						// Надо проверить, не пересекает ли отрезок - прошлые координаты - текущие координаты наш меш
+						var direction = mpos.clone().sub( _possible_targets[i].last_point)
+						var ray = new T.Raycaster(_possible_targets[i].last_point, direction.clone().normalize() )
+						if(S.need_update_matrix){
+							m.updateMatrixWorld();
+						}
+						var isr = ray.intersectObjects([m])
+						//if (m.type == 'ship'){
+							
+							// console.log("matrix autoupd", m.matrixWorld.elements)
+							// console.log(mpos);
+							// console.log(ray,isr)
+							
+							//}
+						
+						//console.log( m.type )
+						if (isr.length > 0 && isr[0].distance < direction.length() ){
+							//for( var index =0; index<isr.length; index++){
+							//	console.log("HERE", isr[index].distance, direction.length())
+							///}
 					
-						console.log('hit')
-						// console.log("END", isr[0].point);
-						m.worldToLocal(isr[0].point) // Теперь это плечо удара
-						var impulse = vel.clone().multiplyScalar(self.my_mesh.mass)
-						var axis = new T.Vector3().crossVectors(isr[0].point, impulse)
+							console.log('hit')
+							// console.log("END", isr[0].point);
+							m.worldToLocal(isr[0].point) // Теперь это плечо удара
+							var impulse = vel.clone().multiplyScalar(self.my_mesh.mass)
+							var axis = new T.Vector3().crossVectors(isr[0].point, impulse)
 					
-						var ag = Math.acos(isr[0].point.clone().dot(impulse) / impulse.length() / isr[0].point.length() )
-						// Теперь это вращение надо разбить по осям
-						var mat = new T.Matrix4().makeRotationAxis(axis.normalize(), ag)
-						var eul = new T.Euler()
-						eul.setFromRotationMatrix(mat, "XYZ")
-						// console.log(i, eul)
-						var avel = new T.Vector3();
-						avel.x = eul.x;
-						avel.y = eul.y;
-						avel.z = eul.z;
-						var ck = isr[0].point.length() * Math.sin(ag - Math.PI/2)
+							var ag = Math.acos(isr[0].point.clone().dot(impulse) / impulse.length() / isr[0].point.length() )
+							// Теперь это вращение надо разбить по осям
+							var mat = new T.Matrix4().makeRotationAxis(axis.normalize(), ag)
+							var eul = new T.Euler()
+							eul.setFromRotationMatrix(mat, "XYZ")
+							// console.log(i, eul)
+							var avel = new T.Vector3();
+							avel.x = eul.x;
+							avel.y = eul.y;
+							avel.z = eul.z;
+							var ck = isr[0].point.length() * Math.sin(ag - Math.PI/2)
 					
-						// console.log(this.my_mesh.mass / m.mass * (ck * ck ));
-						avel.multiplyScalar(self.my_mesh.mass/m.mass * Math.abs(ck))
+							// console.log(this.my_mesh.mass / m.mass * (ck * ck ));
+							avel.multiplyScalar(self.my_mesh.mass/m.mass * Math.abs(ck))
 					
-						// Не учитываю массу и плечо... 
-						var mavel = S.meshes[i].avel
-						if (! mavel ){avel = new T.Vector3(0,0,0)}
-						mavel.x += avel.x
-						mavel.y += avel.y
-						mavel.z += avel.z;
-						console.log(mavel.x, mavel.y, mavel.z)
-						S.meshes[i].avel = mavel;
-					
-					
-					
-						add_vel = impulse.multiplyScalar( 1/ m.mass);
-						// console.log(add_vel)
-						// Убрать пока скорость
-						S.meshes[i].vel.add(add_vel);
+							// Не учитываю массу и плечо... 
+							var mavel = S.meshes[i].avel
+							if (! mavel ){mavel = new T.Vector3(0,0,0)}
+							mavel.x += avel.x
+							mavel.y += avel.y
+							mavel.z += avel.z;
+							// console.log(mavel.x, mavel.y, mavel.z)
+							S.meshes[i].avel = mavel;
 					
 					
-						//console.log("END LOCAL", isr[0].point);
-						//console.log('oke, we shoot it:', i)
-						// Now we will just remove object from scene with the bullet
-						//W.scene.remove(W.meshes[i])
 					
-						S.three_scene.remove(S.meshes[id]) // удяляем ядро из сцены
+							add_vel = impulse.multiplyScalar( 1/ m.mass);
+							// console.log(add_vel)
+							// Убрать пока скорость
+							if (S.meshes[i].vel){
+								S.meshes[i].vel.add(add_vel);
+							}
 					
-						//W.meshes.splice(i, 1);
-						delete _possible_targets[i] // ... из возможных целей удаляем этот меш
-						delete S.meshes[ id ]; // ... из мешей
-						delete S.actors[self.name]; // ... Удаляем этого актора - больше не загрузится эта функция
-						// bla.bla = 1
+					
+							//console.log("END LOCAL", isr[0].point);
+							//console.log('oke, we shoot it:', i)
+							// Now we will just remove object from scene with the bullet
+							//W.scene.remove(W.meshes[i])
+							S._delete_object(id)
+							
+							//if(S.three_scene){
+							//	S.three_scene.remove(S.meshes[id]) // удяляем ядро из сцены
+							//}
+							//delete S.meshes[ id ]; // ... из мешей
+							delete S.actors[self.name]; // ... Удаляем этого актора - больше не загрузится эта функция
+					
+							//W.meshes.splice(i, 1);
+							delete _possible_targets[i] // ... из возможных целей удаляем этот меш
+							// bla.bla = 1
+						}else{
+							delete _possible_targets[i];
+						
+						}
 					}
-					//}
 					// console.log( ag, Math.PI/8);
 				
 				}
@@ -341,6 +363,7 @@ var Controller = {
 					// console.log("MY", W.get_current_actor().control.object_guid)
 				//	var C = S.meshes[ W.get_actor(actor).control.object_guid ]
 				//}else{
+				//console.log(actor, action);
 				var C = S.mesh_for(actor)
 				
 					//}

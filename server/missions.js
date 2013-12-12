@@ -35,17 +35,17 @@ Mission.create = function(creator_login, callback){
 			 							"direction":[0,0,1]
 			 							}
 									},
-			 			'engines':{
-			 				'rotation':{
-			 					'x+':100,'x-':100,
-			 					'y+':100,'y-':100,
-			 					'z+':100,'z-':100
-			 				},
-			 				'propulsion':{
-			 					'x+':1,'x-':1,
-			 					'y+':1,'y-':1,
-			 					'z+':1000,'z-':1000
-			 				}
+						 			'engines':{
+						 				'rotation':{
+						 					'x+':1000,'x-':1000,
+						 					'y+':1000,'y-':1000,
+						 					'z+':1000,'z-':1000
+						 				},
+						 				'propulsion':{
+						 					'x+':1,'x-':1,
+						 					'y+':1,'y-':1,
+						 					'z+':5000,'z-':5000
+						 				}
 			 			},
 			 			'mass': 10000,
 						'GUID':u.make_guid()
@@ -71,14 +71,14 @@ Mission.create = function(creator_login, callback){
 									},
 			 			'engines':{
 			 				'rotation':{
-			 					'x+':100,'x-':100,
-			 					'y+':100,'y-':100,
-			 					'z+':100,'z-':100
+			 					'x+':1000,'x-':1000,
+			 					'y+':1000,'y-':1000,
+			 					'z+':1000,'z-':1000
 			 				},
 			 				'propulsion':{
 			 					'x+':1,'x-':1,
 			 					'y+':1,'y-':1,
-			 					'z+':1000,'z-':1000
+			 					'z+':5000,'z-':5000
 			 				}
 			 			},
 			 			'mass': 10000,
@@ -86,7 +86,7 @@ Mission.create = function(creator_login, callback){
 					}
 	// Жестко заданные кораблики - без позиций и скоростей	
 	var pivot= 	function(x,y,z){
-		return {type:'pivot',
+		return {type:'static',
 			
 						 model_3d:'/models/sp.js',
 						 physical:{
@@ -104,10 +104,11 @@ Mission.create = function(creator_login, callback){
 		so[s.GUID] = s
 	})
 	var inc = 0
-	for (var x=-200; x<= 200; x+=50){
-		for (var y=-200; y<= 200; y+=50){
-			for (var z=-200; z<= 200; z+=50){
-				console.log(inc,"x,y,z",x,y,z)
+	var step = 200;
+	for (var x=-200; x<= 200; x+=step){
+		for (var y=-200; y<= 200; y+=step){
+			for (var z=-200; z<= 200; z+=step){
+				//console.log(inc,"x,y,z",x,y,z)
 				inc +=1;
 				var p =pivot(x,y,z)
 				so[p.GUID] = p
@@ -146,7 +147,7 @@ Mission.prepare_scene = function(){
 		
 	})										
 	_.each(this.mission.actors, function(a){
-		console.log(a)
+		//console.log(a)
 		self._scene.join_actor(a);
 	})
 							
@@ -156,10 +157,10 @@ Mission.join_player = function(login){
 	var M = self.mission;
 	var command;
 	// Get first available command
-	console.log("LOGIN", login)
+	// console.log("LOGIN", login)
 	self._mission_logins.push(login);
 	for(var c =0; c< M.commands.length;  c++){
-		console.log("CAm", M._commands_amount[c], M.max_per_command);
+		// console.log("CAm", M._commands_amount[c], M.max_per_command);
 		if (M._commands_amount[c] == M.max_per_command){
 			
 			continue
@@ -176,7 +177,7 @@ Mission.join_player = function(login){
 	if(command){
 		var actor = {command:command, login:login, control: controllable}
 		self.mission.actors.push(actor)
-		console.log("ACTORS", self.mission.actors);
+		// console.log("ACTORS", self.mission.actors);
 		self._scene.join_actor(actor)
 	}
 	

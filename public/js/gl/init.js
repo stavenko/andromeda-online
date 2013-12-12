@@ -10,20 +10,118 @@ window.World.setup_scene = function(scene){
 	   color: 0xff0000,
 	   wireframe: true
 	});
-	var ambientLight = new THREE.AmbientLight(0xFFFFFF);
+	
+	this.sunDirection = new THREE.Vector3(0,1,0);
+	this.sunLightColor = [0.1, 0.7, 0.5];
+	
+	var ambientLight = new THREE.AmbientLight(0x010101);
 	scene.add(ambientLight);
 
-	var light = new THREE.PointLight( 0xFFFFFF );
-	light.position.set( -20, 20, 20 );
+	var light = new THREE.DirectionalLight( 0xFFFFee, 1 );
+	light.color.setHSL.apply(light.color, this.sunLightColor);
+	light.position = this.sunDirection
+
 	scene.add( light );
+	
+	
 	return scene
 
-	// this.load_scene();
-	
-	// this.cur = new THREE.Mesh(this.cg, material);
-	// this.scene.add(this.cur);
 	
 	
+	
+}
+window.World.initSpace  = function(){
+
+	var path = "/textures/space/m01_cube";
+	var format = 'png';
+	var urls = [
+		path + '.px.' + format, path + '.nx.' + format,
+		path + '.py.' + format, path + '.ny.' + format,
+		path + '.pz.' + format, path + '.nz.' + format
+	];
+
+	var textureCube = THREE.ImageUtils.loadTextureCube( urls );
+	var shader = THREE.ShaderLib[ "cube" ];
+	shader.uniforms[ "tCube" ].value = textureCube;
+
+	var material = new THREE.ShaderMaterial( {
+
+		fragmentShader: shader.fragmentShader,
+		vertexShader: shader.vertexShader,
+		uniforms: shader.uniforms,
+		depthWrite: false,
+		side: THREE.BackSide
+
+	} );
+	this._skyboxScene = new THREE.Scene();
+	this.skyBox  = new THREE.Mesh( new THREE.CubeGeometry( 9000, 9000, 9000 ), material );
+	this.skyBoxCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
+	this._skyboxScene.add( this.skyBox );
+}
+window.World.initSun = function(){
+	
+	var flareColor = new THREE.Color( 0xffffff );
+	var sl = _.clone(this.sunLightColor);
+	sl[2] += 0.5
+	flareColor.setHSL.apply(flareColor, sl);
+	
+	var textureFlare0 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
+	var textureFlare2 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare2.png" );
+	var textureFlare3 = THREE.ImageUtils.loadTexture( "/textures/lensflare/lensflare3.png" );
+	
+	var lensFlare = new THREE.LensFlare( textureFlare0, 700, 0.0, THREE.AdditiveBlending, flareColor );
+
+	lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
+	lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
+	lensFlare.add( textureFlare2, 512, 0.0, THREE.AdditiveBlending );
+
+	lensFlare.add( textureFlare3, 60, 0.6, THREE.AdditiveBlending );
+	lensFlare.add( textureFlare3, 70, 0.7, THREE.AdditiveBlending );
+	lensFlare.add( textureFlare3, 120, 0.9, THREE.AdditiveBlending );
+	lensFlare.add( textureFlare3, 70, 1.0, THREE.AdditiveBlending );
+	var lensFlareUpdateCallback = function ( object ) {
+
+		var f, fl = object.lensFlares.length;
+		var flare;
+		var vecX = -object.positionScreen.x * 2;
+		var vecY = -object.positionScreen.y * 2;
+
+
+		for( f = 0; f < fl; f++ ) {
+
+			   flare = object.lensFlares[ f ];
+
+			   flare.x = object.positionScreen.x + vecX * flare.distance;
+			   flare.y = object.positionScreen.y + vecY * flare.distance;
+
+			   flare.rotation = 0;
+
+		}
+
+		object.lensFlares[ 2 ].y += 0.025;
+		object.lensFlares[ 3 ].rotation = object.positionScreen.x * 0.5 + THREE.Math.degToRad( 45 );
+
+	}
+	lensFlare.customUpdateCallback = lensFlareUpdateCallback;
+	lensFlare.position = this.sunDirection.multiplyScalar(200)
+	
+	
+	// this.sunBillboard = new THREE.Sprite(textureFlare0 )
+	this.three_scene.add(lensFlare)
+	this.sunLensFlare = lensFlare;
+}
+window.World.redrawSun = function(){
+	var C = this.scene.mesh_for(this.login);
+	this.sunLensFlare.position = C.position.clone().add(this.sunDirection)
+}
+window.World.redrawSky = function(){
+	var C = this.scene.mesh_for(this.login);
+	// r= C.rotation
+	this.skyBoxCamera.rotation.copy( C.rotation );
+
+	this.renderer.render( this._skyboxScene, this.skyBoxCamera );
+	// renderer.render( scene, camera );
+	// console.log(this.skyBox.position)
 	
 }
 window.World.init = function(auth_hash, client_login){
@@ -43,16 +141,24 @@ window.World.init = function(auth_hash, client_login){
 	
 	//******
 	this.setup_scene(this.three_scene);
+	this.initSun();
+	this.initSpace();
 	
     
-	this.renderer = new THREE.WebGLRenderer();
+	this.renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
 	this.renderer.setSize(this.vp_width, this.vp_height);
-
+	this.renderer.setClearColor(new THREE.Color(0x000000));
+	document.body.appendChild(this.renderer.domElement);
+	
+	this.renderer.gammaInput = true;
+	this.renderer.gammaOutput = true;
+	this.renderer.autoClear = false;
+	this.renderer.physicallyBasedShading = true;
+	
 	this._camera_rot_q = new THREE.Quaternion();
 	
 	
 	
-	document.body.appendChild(this.renderer.domElement);
 	document.addEventListener( 'mousemove', function(e){
 		self.mouse_x = e.x;
 		self.mouse_y = e.y;
@@ -132,6 +238,10 @@ window.World.init_socket = function(){
 		}else{
 			self.scene.actors[data.login] = data;
 		}
+	})
+	this.socket.on('scene_sync', function(al){
+		
+		self.scene.sync(al);
 	})
 
 	
@@ -324,106 +434,10 @@ window.World.go = function(){
 	var _d = false
 	
 	var updatePositions = function(){
-		var time_left = self.clock.getDelta();
-		time_inc += time_left;
+		self.scene.tick()
+		self.redrawSun();
+		self.redrawSky();
 		
-		var actor = self.get_current_actor()
-		var C = self.meshes()[actor.control.object_guid]
-		//console.log(self.scene.automatic_actors);
-		_.each(self.scene.automatic_actors, function(actor){
-			//console.log(actor);
-			actor.run(time_left);
-		})
-		//console.log(time_inc)
-		
-		if((Math.floor(time_inc) % 5 ) ===0){
-			if (!_d){
-				_d = true
-				//console.log("5sek tick")
-				// only two first
-				for(i in self.scene.meshes){
-					var m = self.scene.meshes[i]
-					if (m.has_engines){
-						var v = m.vel;
-						var r = m.rot;
-						
-						//if (v){
-						//	console.log(i, v.x, v.y, v.z)
-						//}
-						if (r){
-							console.log(i, r.x, r.y, r.z)
-						}
-						
-					}
-				}
-				/*
-				for(i in self.scene.actors){
-					var a = self.scene.actors[i]
-					console.log(a.control.object_guid);
-					var m = self.scene.meshes[a.control.object_guid]
-					var v = m.vel;
-					if (v){
-						console.log(i, v.x, v.y, v.z)
-					}
-				}
-				*/
-				
-			}
-			
-		}else{
-			_d = false
-		}
-		
-		_.each(self.meshes(), function(mesh, i){
-			// var mesh = self.meshes[i];
-			if(mesh.has_engines){
-				total_acc = new THREE.Vector3(0,0,0);
-				
-				for (var j = 0; j < mesh.on_engines_propulsion.length; j++){
-				
-					var engine = mesh.on_engines_propulsion[j]
-					var axis = engine[0] == 'x'?new THREE.Vector3(1,0,0):(engine[0] =='y'?new THREE.Vector3(0, 1, 0): new THREE.Vector3(0,0,1))
-					var dir  = engine[1] == '+'?1:-1
-					var acc = mesh.engines.propulsion[engine] / mesh.mass
-					axis.multiplyScalar(acc).multiplyScalar(dir).applyQuaternion(mesh.quaternion);
-					total_acc.add(axis)
-				}
-				if(mesh.vel === undefined)mesh.vel = new THREE.Vector3(0,0,0)
-				mesh.vel = total_acc.clone().multiplyScalar(time_left).add(mesh.vel) 
-				mesh.pos = total_acc.clone().multiplyScalar(time_left * time_left)
-						       .add(mesh.vel.clone().multiplyScalar(time_left))
-							   .add(mesh.pos);
-					   
-				var total_aacc = new THREE.Vector3(0,0,0)
-				// console.log(mesh.on_engines_rotation);
-				for(var j =0; j < mesh.on_engines_rotation.length; j++){
-					// console.log("WTF");
-					var engine = mesh.on_engines_rotation[j]
-					var axis = engine[0] == 'x'?new THREE.Vector3(1,0,0):(engine[0] =='y'?new THREE.Vector3(0, 1, 0): new THREE.Vector3(0,0,1))
-					var dir  = engine[1] == '+'?1:-1
-					var aacc = mesh.engines.rotation[engine] / mesh.mass
-					axis.multiplyScalar(aacc).multiplyScalar(dir)
-					total_aacc.add(axis)
-				}
-				if(mesh.avel === undefined) mesh.avel = new THREE.Vector3(0,0,0)
-				// console.log(mesh.avel)
-				mesh.avel = total_aacc.clone().multiplyScalar(time_left).add(mesh.avel)
-				mesh.rot  = total_aacc.clone().multiplyScalar(time_left * time_left)
-						       .add(mesh.avel.clone().multiplyScalar(time_left))
-				mesh.rotateX(mesh.rot.x)
-				mesh.rotateY(mesh.rot.y)
-				mesh.rotateZ(mesh.rot.z);
-			
-			}else{
-				// console.log(mesh.pos);
-				if (mesh.vel){
-					mesh.pos =mesh.vel.clone().multiplyScalar(time_left).add(mesh.pos);
-				}
-				
-				
-			}
-			mesh.position = mesh.pos;
-		})
 			
 		
 		self.mouse_projection_vec.set( ( self.mouse_x/ self.vp_width ) * 2 - 1, - ( self.mouse_y / self.vp_height ) * 2 + 1, 0.999 );
@@ -432,6 +446,7 @@ window.World.go = function(){
 	    //self.cur.position.copy( self.mouse_projection_vec );
 		
 	}
+	
 	
     var animate = function(){
 		if (self.total_objects_count === self.loaded_objects_count){
