@@ -13,6 +13,59 @@ html
 			link(rel='stylesheet', href='/css/style.css')
 
 		script
+			// var  = '!{missions_text}'
+			// console.log(mjs);
+			// var missions = JSON.parse(mjs)
+			// console.log("PP",missions);
+			$(function(){
+				$('#mission-table tr').click(function(){
+					// this == tr
+					var m_id = $(this).attr('mission_id');
+					// var mis = missions[m_id];
+					$.ajax({url:"/missions/get_mission_state/" + m_id + '/',
+							'dataType':'JSON',
+							success: function(st){
+								if (st.is_ready){
+									$('<a>').text('join').addClass('btn btn-success').click(function(){
+										window.location = "/world/";
+									}).appendTo($('.go_container'));
+									
+								}else{
+									//console.log('NOT ready');
+								}
+							}})
+					
+					$.getJSON("/missions/get_positions/"+m_id + '/',function(json){
+						$('#mission-positions').find('*').remove();
+					
+						$.each(json, function(i,wp){
+							var tr = $('<tr>');
+							console.log(wp);
+							$('<td>').text(wp.command).appendTo(tr);
+							$('<td>').text(wp.ship_type).appendTo(tr);
+							$('<td>').text(wp.workpoint).appendTo(tr);
+							if(!wp.busy){
+								$('<td>').appendTo(tr).append(
+								$('<a>').text('join').addClass('btn btn-success').click(function(){
+									$.ajax({url:"/missions/join/"+m_id + '/',
+											data:{command:wp.command,
+												object_guid:wp.object_guid,
+												workpoint:wp.workpoint },
+											success: function(){
+												window.location.reload();
+											}
+										
+											})
+								})
+								)
+							}
+							
+							
+							tr.appendTo($('#mission-positions'));
+						})
+					})
+				})
+			});
 	body
 		.container
 			
@@ -25,7 +78,7 @@ html
 					
 				.col-md-6.col-xs-6
 					h3 Missions
-					table.table.table-striped
+					table.table.table-striped#mission-table
 						tr
 							th #
 							th Creator
@@ -33,29 +86,15 @@ html
 						-var C = 0;
 						-each mission,key in missions
 							-C = C+1;
-							tr
+							tr(mission_id='#{mission.GUID}')
 								td #{C}
 								td #{mission.creator}
-								td 
-									-if (mission._mission_logins.indexOf(user.username ) !== -1){
-										a.btn.btn-success(href="/world/") Go to my controls
-									-}else{
-										a.btn.btn-primary(href="/missions/join/#{key}/") join
-									-}
-							tr
-						-
-						//-	
-								td 2
-								td Now...
-								td Protection of transport in ASi4
-						//- 
-							tr 
-								td 3 
-								td in 15 minutes
-								td Attack of the doorway to Jigutil's Dangeon
+								td was button here
 				.col-md-6.col-xs-6
+					.go_container
+						
 					h3 Positions in mission
-					table.table.table-striped
+					table.table.table-striped#mission-positions
 						tr
 							th #
 							th Position

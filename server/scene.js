@@ -4,7 +4,12 @@ var THR = require('./three.node.js');
 
 var _     = require('underscore');
 
-var Scene = {description: "Scene routines"}
+var SceneObject = function(){
+	this.description= "Scene routines"
+	this.GUID =  u.make_guid();
+	this._create();
+}
+Scene = {constructor: SceneObject}
 
 if(typeof window === 'undefined'){
 	Scene.THREE = THR // Saveing THREE.js as part of scene - this step could be done on a certain platform
@@ -24,12 +29,10 @@ if(typeof window === 'undefined'){
 
 
 Scene.mesh_for = function(actor){
-	return this.meshes[this.actors[actor].control.object_guid]
+	return this.meshes[actor.control.object_guid]
 }
 Scene.create = function(){
-	this.is_loaded = false
 	this._create();
-	this._d = false
 	//console.log( "CLOCK", this.clock);
 	
 	return this;
@@ -39,35 +42,47 @@ Scene._create = function(){
 	this.clock = new (this.THREE.Clock)();
 	this.time_inc  = 0;
 	this._scene_object_cache = {}
+	this._scene_obj_actors={}
+	this.is_loaded = false
+	this._d = false
+	this._scene ={actors:{}, GUID: this.GUID, objects:{} } 
+	
+	
 	// this.simulation_runs = false
 	// console.log(this.clock);
 	
 }
-Scene.create_from_world = function(globalx, globaly, globalz ){
+Scene.update_from_world = function(globalx, globaly, globalz ){
 	// globalx-y-z - galaxy coords with 1 meter accuracy
 	var closest_scene_with_distance = this.get_closest_scene(globalx, globaly, globalz);
 	// if closest_scene is not null - we must inject object with actors to that scene - it's already_loaded
 	// else - We finding objects for that scene
 				
-	var objects_within_coords = this.get_objects_in(globalx, globaly, globalz)
+	var objects_within_coords = this.get_objects_in(globalx, globaly, globalz) // Загрузка объектов в сцену из глобального мира
+	
+	var objects = {}
+	for ( var i = 0; i < objects_within_coords.length ; i++ ){
+		objects[ objects_within_coords[i].GUID ] =   objects_within_coords[i];
+	}
+	_.extend(this._scene.objects, objects)
+	
+	this._scene.sunDirection = [Math.random(),Math.random(),Math.random()]
+	this._scene.sunLightColor = [Math.random(), 0.8, 0.9] // HSL
+	this._scene.coords =[ globalx, globaly, globalz ]
+	// this._create();
 	
 	// creating scene
 	
-	this._scene = {coords :[ globalx, globaly, globalz ], actors:{}, GUID: u.make_guid(), objects:{} } 
-	this.GUID = this._scene.GUID;
+	// this._scene = {coords :[ globalx, globaly, globalz ], actors:{}, GUID: u.make_guid(), objects:{} } 
+	// this.GUID = this._scene.GUID;
 	
 	// prepare actors - all of them would control object_id = 0, viewports - each for each
 	
 	
 	// Injecting other objects
-	var objects = {}
+	//var objects = {}
 	// objects[for_object.GUID] = for_object;
 	
-	for ( var i = 0; i < objects_within_coords.length ; i++ ){
-		objects[ objects_within_coords[i].GUID ] =   objects_within_coords[i];
-	}
-	_.extend(this._scene.objects, objects)
-	this._create();
 	// console.log(
 	// console.log( "CLOCK", this.clock);
 	
@@ -77,6 +92,10 @@ Scene.create_from_world = function(globalx, globaly, globalz ){
 Scene.get_actors = function(){
 	return this._scene.actors
 }
+Scene.get_objects = function(){
+	return this._scene.objects
+}
+
 Scene.get_closest_scene = function(){
 	return undefined
 }
@@ -85,24 +104,38 @@ Scene.get_objects_in = function(){
 }
 Scene.join_object = function( object ){
 	this._scene.objects[object.GUID] = object
+	this._scene_obj_actors[object.GUID] = []
+	// console.log("PUT OBJ", object.GUID)
 }
 Scene.join_actor = function( actor ){
-	this._scene.actors[actor.login] = actor
+	if (this._scene.actors[actor.login]){
+		this._scene.actors[actor.login].push(actor)
+	}else{
+		this._scene.actors[actor.login] = [actor]
+	}
+	// console.log("GET OBJ",this._scene_obj_actors,  actor.control.object_guid)
+	
+	this._scene_obj_actors[actor.control.object_guid].push(actor)
 	
 	return this
 	
 }
 Scene.set_from_json = function(object){
 	this._scene = object
+	// console.log("set from_json", object);
+	
 	this.GUID = object.GUID
 	
 }
-Scene.controllable = function(login){
-	return this.meshes[this.actors[login].control.object_guid]
-}
+
+// Scene.controllable = function(login){
+	
+//	return this.meshes[this.actors[login].control.object_guid]
+// }
 Scene.load = function(onload, three_scene){
 	// three scene - is a param for adding meshes to
 	var self = this;
+	//console.log('loading');
 	
 	self.meshes = {}
 	self.loader =  new self.THREE.JSONLoader();
@@ -142,6 +175,7 @@ Scene.load = function(onload, three_scene){
 	// console.log(self.actors);
 	// console.log(json);
 	self._model_cache = {}
+	//console.log(this);
 	_.each(json.objects, function( object,ix ){
 		//console.log('looping')
 		self.total_objects_count +=1;
@@ -292,11 +326,13 @@ Scene._delete_object = function(guid){
 	
 }
 Scene._model_loaded = function(ix){
+	//console.log("LLL");
 	if (this.loaded_objects_count == this.total_objects_count){
 		// scene loaded
 		this._loaded = true;
-		if (this._call_back){
-			this._call_back()
+		console.log("OK",  this._call_back);
+		if  (this._call_back){
+			this._call_back(this)
 		}
 		//console.log("DONE");
 	}else{
@@ -455,4 +491,5 @@ Scene.tick = function(){
 		
 	})
 }
-module.exports = Scene
+SceneObject.prototype = Scene
+module.exports = SceneObject

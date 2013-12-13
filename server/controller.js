@@ -2,18 +2,11 @@ var THR = require('./three.node.js');
 var Utils = require("./Utils.js");
 var _     = require('underscore');
 
-var Controller = {
-	T:function(){
-		if(typeof window === 'undefined'){
-			//console.log('this');
-			return THR
+
+var Controller = {description:'controller'}
 	
-		}else{
-			return THREE
-		}
-	},
 	
-	NetworkActor : function(S, socket, onAct){
+Controller.NetworkActor =   function(S, socket, onAct){
 		
 		var map = Controller.ControllersActionMap()
 		var self = this;
@@ -42,8 +35,8 @@ var Controller = {
 		
 		}
 		return this;
-	},
-	LocalInputActor : function(W, socket){
+	};
+Controller.LocalInputActor = function(W, socket){
 		var self = this;
 		self.World = W;
 		var map = Controller.ControllersActionMap()
@@ -103,10 +96,10 @@ var Controller = {
 			}
 			//DONE
 		}
-	},
+	};
 
 
-	CPilotController : function(){
+Controller.CPilotController = function(){
 		this.type='pilot';
 		this.action_types=['rotate', 'move']
 		function get_axis(a){
@@ -173,10 +166,10 @@ var Controller = {
 		}
 		// return this;
 	
-	},
+	};
 
 
-	basicAutoPilotActor:function (S, id, oid){
+Controller.basicAutoPilotActor=function (S, id, oid){
 		this.targets = ["orbit_object", "close_to_object"];
 		this.default_distance = 200
 		this.get_foes = function(){
@@ -185,8 +178,8 @@ var Controller = {
 				if(i != id) foes.push({id:id, obj:W.meshes[i]})
 			}
 		}
-	},
-	 BasicBulletActor:function(S, id, coid){ 
+	};
+Controller.BasicBulletActor=function(S, id, coid){ 
 		// id = is object in the world controllable by this actor
 		// coid  MUST BE an object, who shoot this bullet
 		//var S = W.scene
@@ -352,8 +345,9 @@ var Controller = {
 		}
 	
 	
-	},
-	CTurretController : function(){
+	};
+	
+Controller.CTurretController = function(){
 		this.act = function(S, action, is_down, actor ){
 			if (action.type =='shoot_primary'){
 				// var weapon = C.weapons[0];
@@ -377,9 +371,8 @@ var Controller = {
 				}
 				mpv.multiplyScalar(0.5000);
 				//console.log('TH', Controller.T())
-				var cubeGeometry = new T.CubeGeometry(1,1,1,1,1,1);
-				var wireMaterial = new T.MeshBasicMaterial( { color: 0x00ff00, wireframe:true } );
-				var bullet = new T.Mesh( cubeGeometry, wireMaterial );
+				
+				var bullet = Controller.createShotParticle();
 				bullet.pos = new T.Vector3()
 				bullet.pos = C.position.clone()
 			
@@ -402,8 +395,8 @@ var Controller = {
 		}
 		// return this;
 	
-	},
-	ControllersActionMap: function(){
+	};
+Controller.ControllersActionMap= function(){
 		if (this._ControllersActionMap){
 			return this._ControllersActionMap
 		}else{
@@ -419,7 +412,37 @@ var Controller = {
 			
 		}
 	}
+
+if(typeof window === 'undefined'){
+	Controller.T = function(){
+		return THR
+	};
+	Controller.createShotParticle=function(){
+		var T = this.T();
+		//var cubeGeometry = new T.CubeGeometry(1,1,1,1,1,1);
+		//var map	= T.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
+		//var SpriteMaterial = new T.SpriteMaterial( { map: map, color: 0xffffff, fog: true } );
+		return new T.Object3D();
+	};
+
+}else{
+	Controller.T = function(){
+		return THREE
+	};
+	Controller.createShotParticle=function(){
+		var T = this.T();
+		// var cubeGeometry = new T.CubeGeometry(1,1,1,1,1,1);
+		var map	= T.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
+		var material = new T.SpriteMaterial( { map: map, color: 0xffffff, fog: true } );
+		material.transparent = true;
+		material.blending = THREE.AdditiveBlending;
+		
+		return new T.Sprite(material);
+	};
+	
 }
+
+
 module.exports = Controller
 //var TurretController = new CTurretController()
 //CPilotController.prototype = {constructor:CPilotController}

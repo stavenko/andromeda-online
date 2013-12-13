@@ -158,9 +158,12 @@ var io =  ios.listen(server, {log:false});
 
 server.listen(3002)
 
+
+// Login - Это объект авторизации - привязка аккуанта
+// Actor - Это объект контроля, сверху - привязан к авторизации - снизу - к объектам мира
 var SCENES = {} // guid : scene
 var MISSIONS= {} // guid : mission
-var LOGINS = {} // login : {object, scene} map
+var LOGINS = {} // login : [{object, scene, mission}] map
 var SOCKET_AUTH_MAP = {} // auth_hash: login
 var SOCKET_MAP = {} // login: socket
 // var SCENE_SOCKET_MAP = {} // SCENE_GUID: Socket
@@ -194,28 +197,27 @@ io.on('connection', function(socket){
 		//console.log(data)
 		var login = SOCKET_AUTH_MAP[data.auth];
 		if (login === undefined){
+			//console.log("yep, undef")
 			socket.emit('server_fault', {})
 		}else{
 			var auth_info = LOGINS[login]
-			var scene = SCENES[auth_info.scene]
-			var mission = MISSIONS[auth_info.mission]
-			if (!scene.is_loaded){
-				scene.load();
-			}
-			socket.emit("scene", scene._scene)
+			//var scene = SCENES[auth_info.scene]
+			//var mission = MISSIONS[auth_info.mission]
+			//if (!scene.is_loaded){
+			//	scene.load();
+			//}
+			//console.log(LOGINS[login]);
+			socket.emit("actors", LOGINS[login] ) // Сцену на этом этапе не грузим. Просто выдаем клиентам возможные варианты вьюпортов
 			SOCKET_MAP[login] = socket
-			newActortoSceneBcast(scene, login);
-			var na = Con.NetworkActor(scene, socket, function(){
-				
-				console.log('acted');
-			})
-			Controllers[login] = na
-			
-			
-			
-			
-			
+			//newActortoSceneBcast(scene, login);
+			//var na = Con.NetworkActor(scene, socket, function(){
+			//	
+			//	console.log('acted');
+			//})
+			//Controllers[login] = na
 		}
+
+		
 		var sendToSceneClients = function(action,on_off){
 			// console.log(SOCKET_MAP)
 			if (auth_info){
@@ -248,6 +250,21 @@ io.on('connection', function(socket){
 			applyAction(data, false, login)
 			sendToSceneClients(to_others, false);
 		})
+		socket.on('request_scenes', function(scenes){
+			var scs = {}
+			console.log("requested scenes",scenes)
+			_.each(scenes.scenes, function(guid){
+				var sc = SCENES[guid]
+				if (!sc.is_loaded){
+					sc.load()
+				}
+				scs[guid] = sc 
+				
+			})
+			socket.emit('scenes', scs)
+			console.log('sent');
+			
+		})
 
 	})
 })
@@ -261,19 +278,26 @@ app.get('/webgl-test/', function(req,res){
 
 
 function share_info(req, M, S, user){
-	SCENES[S.GUID] = S
-	//console.log(S.get_actors())
-	actor_info = {object: S.get_actors()[user].control.object_guid,
-				  scene : S.GUID,
-				  actor_auth_hash: user.auth_hash}
 	if (M){
 		MISSIONS[M.GUID] = M
-		actor_info.mission = M.GUID
+		// actor_info.mission = M.GUID
 	}
-
-	LOGINS[user] = actor_info
-	SOCKET_AUTH_MAP[req.session.auth_hashes[user] ] = user
 	
+	if (S){
+		//console.log("OK");
+		SCENES[S.GUID] = S
+		//console.log(S.get_actors())
+		//actor_info = {object: S.get_actors()[user].control.object_guid,
+		//			  scene : S.GUID,
+		//			  actor_auth_hash: user.auth_hash,
+		//		  }
+		//if (M)
+		// actor_info.mission = M.GUID
+		
+
+		LOGINS[user] = S.get_actors()[user]
+		SOCKET_AUTH_MAP[req.session.auth_hashes[user] ] = user
+	}
 }
 
 /*
@@ -298,17 +322,35 @@ app.get('/world/', ensureAuthenticated, function(req,res){
 })
 // Adding and joining missions
 app.get('/missions/create/', ensureAuthenticated, function(req, res){
-	var M = Mission.create(req.user.username)
+	var M = new Mission()
+	M.create(req.user.username)
 	share_info(req,  M, M._scene, req.user.username )
 	// console.log(MISSIONS);
 	res.redirect('/console/');
 })
 app.get('/missions/join/:m_id/', ensureAuthenticated, function(req, res){
 	var M = MISSIONS[req.params.m_id]
-	M.join_player(req.user.username)
+	var query = req.query;
+
+	M.join_player(req.user.username, query.command, query.object_guid, query.workpoint)
+	if(M.ready_to_start){
+		M.prepare_scene();
+	}
 	share_info(req, M, M._scene, req.user.username )
-	
 	res.redirect('/console/');
+})
+app.get('/missions/get_mission_state/:m_id/', ensureAuthenticated, function(req, res){
+	var M = MISSIONS[req.params.m_id]
+	res.end(JSON.stringify({ "is_ready": M.ready_to_start }));
+})
+
+app.get('/missions/get_positions/:m_id/', ensureAuthenticated, function(req, res){
+	var M = MISSIONS[req.params.m_id]
+	M.positions(function(poss){
+		res.end(JSON.stringify(poss));
+		
+	})
+	
 })
 
 app.get('/auth/login/', function(req, res){
@@ -334,6 +376,7 @@ app.get('/auth/logout/', function(req, res){
 
 app.get('/console/', ensureAuthenticated, function(req, res){
 	// MMM = {"aaa":{"bbb":"ccc"}}
+	//console.log("MIS", MISSIONS)
 	res.render('console', {'missions':MISSIONS, 'user': req.user});
 })
 app.get('/', function(req, res){

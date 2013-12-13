@@ -28,8 +28,8 @@ var Core = function(Globals){
 	this.launch = function(){
 		var int_ = 1000/60;
 		var self = this;
-		this._interval_func = setInterval(function(){self.tick() }, int_)
-		this._sync_func = setInterval(function(){self.send_scene_sync() },1000)
+		//this._interval_func = setInterval(function(){self.tick() }, int_)
+		//this._sync_func = setInterval(function(){self.send_scene_sync() },1000)
 	}
 	
 }
