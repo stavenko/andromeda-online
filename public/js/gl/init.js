@@ -19,7 +19,7 @@ window.World.setup_scene = function(scene){
 	this.three_scenes[scene.GUID].add(ambientLight);
 
 	var light = new THREE.DirectionalLight( 0xFFFFee, 1 );
-	console.log("COLOR",scene._scene.sunLightColor);
+	// console.log("COLOR",scene._scene.sunLightColor);
 	light.color.setHSL.apply(light.color, scene._scene.sunLightColor);
 	light.position = sunDirection
 
@@ -72,20 +72,12 @@ window.World.initSun = function(scene){
 
 	}
 	lensFlare.customUpdateCallback = lensFlareUpdateCallback;
-	lensFlare.position = new THREE.Vector3().fromArray(scene._scene.sunDirection).multiplyScalar(200)
+	lensFlare.position = new THREE.Vector3().fromArray(scene._scene.sunDirection).multiplyScalar(500)
 	
 	
 	// this.sunBillboard = new THREE.Sprite(textureFlare0 )
 	this.three_scenes[scene.GUID].add(lensFlare)
 	this.flares[scene.GUID] = lensFlare;
-}
-window.World.redrawSun = function(vp){
-	var m = this.scenes[vp.scene].meshes[vp.object]
-	//console.log(m);
-	var sd = new THREE.Vector3().fromArray(this.scenes[vp.scene]._scene.sunDirection)
-	this.flares[vp.scene].position = m.position.clone().add(sd)
-	//var C = this.scenes[scene.GUID].mesh_for();
-	//this.flares[scene.GUID].position = C.position.clone().add(this.sunDirection)
 }
 window.World.initSpace  = function(vp){
 
@@ -117,19 +109,26 @@ window.World.initSpace  = function(vp){
 	this.skyBoxCamera[vp.scene] = new THREE.PerspectiveCamera(45, vp.geom.w / vp.geom.h, 1, 10000);
 	this.skyboxScenes[vp.scene].add(m);
 }
-window.World.redrawSky = function(vp){
-	var m = this.scenes[vp.scene].meshes[vp.object]
+// Vieport functions
+window.World.make_main = function(scene){
+	var sel = document.getElementById('viewports-select');
+	this._main_viewport = sel.options[sel.selectedIndex].value;
+	this._init_vps()
+}
+window.World.add_icon = function(scene){
+	var sel = document.getElementById('viewports-select');
+	add_vp = sel.options[sel.selectedIndex].value;
+	if(this._additional_vps.length == 3){
+		this._additional_vps[2] == add_vp;
+		
+	}else{
+		this._additional_vps.push(add_vp);
+	}
+	this._init_vps()
 	
-	//// var C = this.scene.mesh_for(this.login);
-	// var r= m.rotation
-	this.skyBoxCamera[vp.scene].rotation.copy( m.rotation );
-
-	this.renderer.setViewport(vp.geom.l, vp.geom.t, vp.geom.w, vp.geom.h);
-	this.renderer.render( this.skyboxScenes[vp.scene], this.skyBoxCamera[vp.scene] );
-	// renderer.render( scene, camera );
-	// console.log(this.skyBox.position)
 	
 }
+
 window.World.init = function(auth_hash, client_login){
 	this.__vpx = 0;
 	this.auth_hash = auth_hash;
@@ -145,12 +144,24 @@ window.World.init = function(auth_hash, client_login){
 	//this.geometry = new THREE.CubeGeometry(200, 200, 200);
 	//this.cg = new THREE.SphereGeometry(2);
 	this.vp_width = document.body.clientWidth;
-	this.vp_height = 500;//document.body.clientHeight;
+	this.vp_height = 400;//document.body.clientHeight;
+	this._main_viewport = 0
+	this._additional_vps = [];
+	var h3 = this.vp_height/3
+	var w4 = this.vp_width/4
+	var w34 = this.vp_width- w4
+	this._additional_vps_geom = [
+		{l:w34, t:h3*2, w:w4, h:h3},
+		{l:w34, t:h3, w:w4, h:h3},
+		{l:w34, t:0, w:w4, h:h3},
+	
+	]
+	this._main_vp_geom = {l:0, t:0, w:this.vp_width, h:this.vp_height};
 	
 	this.skyboxScenes = {};
 	this.skyBoxes = {}; //[scene.guid]  = new THREE.Mesh( new THREE.CubeGeometry( 9000, 9000, 9000 ), material );
 	this.skyBoxCamera = {};//[scene.guid]
-	
+	this.mouse_projection_vec = new THREE.Vector3();
 	
 	var self = this;
 	
@@ -180,7 +191,7 @@ window.World.init = function(auth_hash, client_login){
 	}, false );
 	document.addEventListener('mousedown', function(e){
 		// console.log(e)
-		//self.Inputs.input( 'lmouse', true)
+		self.Inputs.input( 'lmouse', true)
 		
 		// var action = self.actions['lmouse']
 		
@@ -189,7 +200,7 @@ window.World.init = function(auth_hash, client_login){
 	})
 	document.addEventListener('keydown', function(e){
 		var code = e.keyCode;
-		//self.Inputs.input( code, true)
+		self.Inputs.input( code, true)
 		
 		//if(code in self.actions){
 		//	var action = self.actions[code]
@@ -200,7 +211,7 @@ window.World.init = function(auth_hash, client_login){
 	}, false)
 	document.addEventListener('keyup', function(e){
 		var code = e.keyCode;
-		//self.Inputs.input(code, false)
+		self.Inputs.input(code, false)
 		//if(code in self.actions){
 		//	var action = self.actions[code]
 		//	ControllersActionMap[action.type].act(self, action, false)
@@ -224,7 +235,7 @@ window.World.init_socket = function(){
 		
 		self.socket.emit("auth_hash", {auth:self.auth_hash})
 		
-		// self.Inputs = new Controller.LocalInputActor(self, self.socket)
+		// 
 		
 		
 	})
@@ -236,7 +247,7 @@ window.World.init_socket = function(){
 		// Здесь мы получаем всех акторов, которые присущи для этого логина - их может оказаться несколько и для них могут быть разные сцены
 		
 		self.actors = actors // Здесь список всех акторов, которые так или иначе связаны с нашим логином
-		
+		console.log(actors);
 		var scenes = _.map(self.actors, function(actor){
 			return actor.scene
 			
@@ -257,7 +268,8 @@ window.World.init_socket = function(){
 		var _totals = 0
 		var all_loaded = function(){
 			self.go();	
-			// self.network_actor = new Controller.NetworkActor(socket, function(){})
+			console.log("recv scenes", self.scenes)
+			self.network_actor = new Controller.NetworkActor(self.scenes, self.socket, function(){})
 		}
 		var onload = function(scene){
 			// console.log('loaded');
@@ -266,7 +278,7 @@ window.World.init_socket = function(){
 			}
 			_totals +=1
 			self.setup_scene(scene);
-			console.log("WAT",_totals, guids.length)
+			// console.log("WAT",_totals, guids.length)
 			if(_totals == guids.length){
 				all_loaded()
 			}
@@ -275,7 +287,7 @@ window.World.init_socket = function(){
 		}
 		_.each(data, function(scene, guid){
 			console.log('well', onload);
-			self.load_scene(scene._scene , onload)
+			self.load_scene(scene , onload)
 			//console.log('well', scene._scene);
 			
 		})
@@ -291,9 +303,9 @@ window.World.init_socket = function(){
 			self.scene.actors[data.login] = data;
 		}
 	})
-	this.socket.on('scene_sync', function(al){
+	this.socket.on('scene_sync', function(data){
 		
-		self.scene.sync(al);
+		self.scenes[data.scene].sync(data.almanach);
 	})
 
 	
@@ -343,6 +355,7 @@ window.World.bindCamera = function(){
 function rad2deg(r){
 	return r * 360/Math.PI
 }
+// window.World.setupVPCamera(
 window.World.makeCamera = function(vp ){
 	var self = this;
 	//var actor = self.get_current_actor()
@@ -391,6 +404,7 @@ window.World.setupCameras = function(){
 	// Сначала составим список уникальных вьюпортов - сцена-объект-камера
 	self._viewports = {}
 	self._viewport_amount = 0;
+	var is_first = true;
 	
 	_.each(self.actors, function(actor){
 		//console.log(actor)
@@ -400,6 +414,9 @@ window.World.setupCameras = function(){
 		
 		_.each(views, function(view){
 			var vp_hash = actor.scene + actor.control.object_guid + view;
+			if (is_first){
+				self._main_viewport = vp_hash;
+			}
 		
 			if(!(vp_hash in self._viewports)){
 				var vp = {scene:actor.scene, object:actor.control.object_guid, camera: view, actors:[actor]}
@@ -410,9 +427,24 @@ window.World.setupCameras = function(){
 			}
 		})
 	})
+	// self._main_viewport = 0;
+	// console.log("VP",self._viewports[self._main_viewport]);
+	//self._viewports[self._main_viewport]
+	self._init_vps();
+	var sel = document.getElementById('viewports-select');
+	sel.innerHtml = "";
+	_.each(self._viewports, function(vp,k){
+		var opt = document.createElement('option')
+		opt.value = k;
+		opt.appendChild(document.createTextNode(vp.camera))
+		sel.appendChild(opt)
+	})
+	
+
 	// 
 	//console.log("We got ", self._viewport_amount, " viewports");
 	// Теперь надо разместить все вьюпорты на канвасе
+	/*
 	if(self._viewport_amount == 1){
 		var geom = [{t:0,l:0,w:self.vp_width, h:self.vp_height}]
 	}if(self._viewport_amount == 2){
@@ -443,31 +475,89 @@ window.World.setupCameras = function(){
 						{t:hm,l:m, w:m, h:hm}
 						
 			]
-	}
+	}*/
 	
-	var _c = 0;
+	//var _c = 0;
+	/*
 	_.each(self._viewports, function(vp){
 		vp.geom = geom[_c]; _c++;
 		vp.three_camera = self.makeCamera(vp)
 		self.initSpace(vp);
 		
-	})
+	})*/
 	
 	
 }
-window.World.controllable = function(){
+window.World.get_main_viewport = function(){
+	//console.log(this._main_viewport);
+	return this._viewports[this._main_viewport];
+}
+window.World._init_vps = function(){
+	var mvp = this._viewports[this._main_viewport];
+	mvp.geom = {t:0, l:0, w:this.vp_width, h:this.vp_height};
+	mvp.three_camera = this.makeCamera(mvp)
+	this.initSpace(mvp);
 	
-	 return this.mesh_for(this.login);
+	
+	var self = this;
+	self.Inputs = new Controller.LocalInputActor(self, self.socket)
+	
+	_.each(this._additional_vps, function(vp_name,i){
+		var vp = self._viewports[vp_name];
+		vp.geom = self._additional_vps_geom[i]
+		vp.three_camera = self.makeCamera(vp)
+		self.initSpace(vp);
+		
+		
+	})
+	
+}
+window.World.controllable = function(){
+	var mvp = this.get_main_viewport();
+	// console.log(mvp, this.)
+	return this.scenes[mvp.scene].meshes[mvp.object]
 }
 window.World.mesh_for = function(actor){
 	//console.log(">>>",this.meshes()[this.scene.actors[actor].control.object_guid]);
 	return this.meshes()[this.scene.actors[actor].control.object_guid]
 }
-window.World.render=function(vp){
-	this.redrawSky(vp)
+window.World.redrawSun = function(vp){
+	var m = this.scenes[vp.scene].meshes[vp.object]
+	
+	var sd = new THREE.Vector3().fromArray(this.scenes[vp.scene]._scene.sunDirection).multiplyScalar(10); 
+	//console.log(sd, this.scenes[vp.scene]._scene.sunDirection);
+	
+	this.flares[vp.scene].position = m.position.clone().add(sd)
+	// console.log(this.flares[vp.scene].position)
+}
+
+window.World.redrawSky = function(vp){
+	//var m = this.scenes[vp.scene].meshes[vp.object]
+	
+	//// var C = this.scene.mesh_for(this.login);
+	// var r= m.rotation
+	var mp = vp.three_camera.parent.matrix.clone()
+	var m = vp.three_camera.matrix.clone()
+	mp.multiply(m)
+	var mr = new THREE.Matrix4().extractRotation(mp)
+	var rot = new THREE.Euler().setFromRotationMatrix(mr)
+	
+	// console.log(vp.three_camera)
+	this.skyBoxCamera[vp.scene].rotation.copy( rot );
+
+	//this.renderer.setViewport(vp.geom.l, vp.geom.t, vp.geom.w, vp.geom.h);
+	this.renderer.render( this.skyboxScenes[vp.scene], this.skyBoxCamera[vp.scene] );
+	// renderer.render( scene, camera );
+	// console.log(this.skyBox.position)
+	
+}
+
+window.World.render=function(vp,geom){
 	this.redrawSun(vp)
-	this.renderer.setViewport(vp.geom.l, vp.geom.t, vp.geom.w, vp.geom.h)
+	// console.log(vp)
+	this.renderer.setViewport(geom.l, geom.t, geom.w, geom.h)
 	//console.log("BLBLB",this.three_scenes,vp.scene);
+	this.redrawSky(vp)
 	this.renderer.render( this.three_scenes[vp.scene], vp.three_camera );
 	
     //self.renderer.render(self.three_scene, self.camera);
@@ -486,7 +576,7 @@ window.World.go = function(){
 	
 	var updatePositions = function(){
 		_.each(self.scenes, function(s){
-			// s.tick()
+			s.tick()
 		})
 		// self.scene.tick()
 		// self.redrawSun();
@@ -494,10 +584,6 @@ window.World.go = function(){
 		
 			
 		
-		//self.mouse_projection_vec.set( ( self.mouse_x/ self.vp_width ) * 2 - 1, - ( self.mouse_y / self.vp_height ) * 2 + 1, 0.999 );
-		
-	    //self.p.unprojectVector( self.mouse_projection_vec, self.camera );
-	    //self.cur.position.copy( self.mouse_projection_vec );
 		
 	}
 	
@@ -506,8 +592,18 @@ window.World.go = function(){
 		if (self.total_objects_count === self.loaded_objects_count){
 			updatePositions();
 			//console.log(self._viewports)
-			_.each(self._viewports, function(vp){
-				self.render(vp)
+			var mvp = self.get_main_viewport();
+			var geom = self._main_vp_geom
+			self.render(mvp, geom);
+			self.mouse_projection_vec.set( ( self.mouse_x/ geom.w ) * 2 - 1, - ( self.mouse_y / geom.h ) * 2 + 1, 0.999 );
+		
+		    self.p.unprojectVector( self.mouse_projection_vec, mvp.three_camera );
+		    // self.cur.position.copy( self.mouse_projection_vec );
+			
+			
+			_.each(self._additional_vps, function(vp_name, i){
+				var vp = self._viewports[vp_name];
+				self.render(vp, self._additional_vps_geom[i])
 			})
 		}
 		requestAnimationFrame(animate)

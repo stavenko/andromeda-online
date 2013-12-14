@@ -66,7 +66,7 @@ Scene.update_from_world = function(globalx, globaly, globalz ){
 	}
 	_.extend(this._scene.objects, objects)
 	
-	this._scene.sunDirection = [Math.random(),Math.random(),Math.random()]
+	this._scene.sunDirection = [0,1,0]
 	this._scene.sunLightColor = [Math.random(), 0.8, 0.9] // HSL
 	this._scene.coords =[ globalx, globaly, globalz ]
 	// this._create();
@@ -177,7 +177,7 @@ Scene.load = function(onload, three_scene){
 	self._model_cache = {}
 	//console.log(this);
 	_.each(json.objects, function( object,ix ){
-		//console.log('looping')
+		console.log('loading looping')
 		self.total_objects_count +=1;
 		
 		if (! self.ajax_load_models){
@@ -188,7 +188,7 @@ Scene.load = function(onload, three_scene){
 		
 		var rf = function(){
 			var with_geom_and_mat = function(geom, mat){
-				// console.log(geom.faces.length)
+				console.log("with_g & mat")
 				var m = new self.THREE.Matrix4()
 				m.identity()
 			
@@ -329,7 +329,7 @@ Scene._model_loaded = function(ix){
 	//console.log("LLL");
 	if (this.loaded_objects_count == this.total_objects_count){
 		// scene loaded
-		this._loaded = true;
+		this.is_loaded = true;
 		console.log("OK",  this._call_back);
 		if  (this._call_back){
 			this._call_back(this)

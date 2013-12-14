@@ -6,31 +6,37 @@ var _     = require('underscore');
 var Controller = {description:'controller'}
 	
 	
-Controller.NetworkActor =   function(S, socket, onAct){
+Controller.NetworkActor =   function(scenes, socket, onAct){
 		
 		var map = Controller.ControllersActionMap()
 		var self = this;
+		
 		socket.on('player_controls_on', function(data){
-			// console.log('ok recv', data)
-			var actor_login = data.login
+			var actor = data.actor;
 			var action = data.action;
-			self.act(S, action, true, actor_login)
+			var S = scenes[actor.scene];
+			console.log("PPLAY CONTOL", actor);
+			self.act(S, action, true, actor)
 		
 		})
 	
 		socket.on('player_controls_off', function(data){
 			// console.log('ok recv', data)
-			var actor_login = data.login
+			var actor = data.actor
 			var action = data.action;
-			self.act(S, action, false, actor_login)
+			
+			var S = scenes[actor.scene];
+			self.act(S, action, false, actor)
 		
 		})
 		this.run = function(){
 			// no need to bother - event style
 		}
-		this.act=function(placeholder, action, is_on, actor){
+		this.act=function(S, action, is_on, actor){
 			//var C = W.meshes[ W.actors[actor].control.object_guid ]
 			// console.log(action)
+			console.log("SCENES",scenes, actor.scene);
+		
 			var _a = map[action.type].act(S, action, is_on, actor, onAct);
 		
 		}
@@ -41,6 +47,7 @@ Controller.LocalInputActor = function(W, socket){
 		self.World = W;
 		var map = Controller.ControllersActionMap()
 		var actor = W.login;
+		
 		
 		//self.actor_login = actor_login
 		self._default_actions={
@@ -65,6 +72,7 @@ Controller.LocalInputActor = function(W, socket){
 			'lmouse':{'type': 'shoot_primary', '_turret_direction': function(t,k){
 				delete t[k]
 				// console.log("w")
+				console.log(W.controllable());
 				t[k.substr(1)] = W.mouse_projection_vec.clone().sub(W.controllable().position.clone() )
 			}},
 		}
@@ -73,6 +81,7 @@ Controller.LocalInputActor = function(W, socket){
 		this.input = function(keycode, up_or_down, modifiers){
 			// 1. Send to server action
 			var action = _.clone(self.actions[keycode]);
+			
 			// console.log(action);
 			if (action){
 				_.each(action, function(item, k){
@@ -82,17 +91,33 @@ Controller.LocalInputActor = function(W, socket){
 					}
 				})
 				//console.log(action);
-				if (up_or_down){
-					socket.emit('control_on', action);
-				}else{
-					socket.emit('control_off', action);
-			
-				}
 				// DONE
 				// 2. Act it locally
 				var onAct = function(){ console.log('this is keyboard controller - no need in onAct here') }
 				local_controller = map[action.type]
-				local_controller.act(self.World.scene, action, up_or_down, actor, onAct);
+				var actors = W.get_main_viewport().actors
+				
+				_.each(actors, function(actor){
+					var S = W.scenes[actor.scene];
+					var obj = S.get_objects()[actor.control.object_guid];
+					var wp = obj.workpoints[actor.control.workpoint];
+					if (wp.type == local_controller.type){
+						local_controller.act(self.World.scenes[actor.scene], action, up_or_down, actor, onAct);
+						// console.log(action);
+						
+						if (up_or_down){
+							socket.emit('control_on', {action:action, actor:actor});
+						}else{
+							socket.emit('control_off', {action:action, actor:actor});
+			
+						}
+						
+					}
+					//console.log(wp);
+					
+				})
+				
+				// local_controller.act(self.World.scene, action, up_or_down, actor, onAct);
 			}
 			//DONE
 		}
@@ -348,6 +373,7 @@ Controller.BasicBulletActor=function(S, id, coid){
 	};
 	
 Controller.CTurretController = function(){
+	this.type = 'turret';
 		this.act = function(S, action, is_down, actor ){
 			if (action.type =='shoot_primary'){
 				// var weapon = C.weapons[0];
@@ -358,10 +384,10 @@ Controller.CTurretController = function(){
 				//	var C = S.meshes[ W.get_actor(actor).control.object_guid ]
 				//}else{
 				//console.log(actor, action);
-				var C = S.mesh_for(actor)
+				var C = S.meshes[actor.control.object_guid]
 				
 					//}
-				if (action.turret_direction instanceof T .Vector3){
+				if (action.turret_direction instanceof T.Vector3){
 					var mpv = action.turret_direction
 				
 				}else{

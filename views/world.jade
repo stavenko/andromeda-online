@@ -10,6 +10,8 @@ html
 		//- script(type="text/javascript", src="/js/gl/controller.js")
 		//- script(type="text/javascript", src="/js/gl/sprite_utils.js")
 		script(type="text/javascript", src="/js/gl/main.js")
+		link(rel='stylesheet', href='/css/bootstrap.min.css')
+		
 		
 		//- script(type="text/javascript", src="/js/gl/utils.js")
 		
@@ -20,6 +22,15 @@ html
 				margin:0px;
 				padding:0px;
 			}
+			.viewport-chooser{
+				position:fixed;
+				width:100%;
+				height:30px;
+				bottom:0px;
+				left:0px;
+				background-color:white;
+				
+			}
 			
 		script
 			function starter(){
@@ -27,8 +38,16 @@ html
 				var login = "#{ user.username }"
 				// console.log(hash, login)
 				var W = World.init(hash, login);
+				document.getElementById("make-main").onclick = function() {
+					W.make_main()
+				};
+				document.getElementById("add-icon").onclick = function() {
+					W.add_icon()
+				};
 			}
 		
 	body(onload="starter()")
-		
-		
+		.viewport-chooser
+			select#viewports-select
+			a#make-main.btn.btn-success.btn-small Set Main
+			a#add-icon.btn.btn-success.btn-small Add as icon

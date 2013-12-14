@@ -22,7 +22,7 @@ Mission.prototype = {
 		this._total_actors = 0;
 		this._total_logins = 0;
 		var p1 = [-110, 100, 40];
-		var p2 = [140, -110, 70];
+		var p2 = [500, 200, -50];
 		var c = 0.2
 		var p1 = _.map(p1,function(v){return v*c});
 		var p2 = _.map(p2,function(v){return v*c});;
@@ -214,27 +214,30 @@ Mission.prototype = {
 	},
 	prepare_scene : function(){
 	
-		console.log(Scene);
-		this._scene = new Scene();
-		
-		//create_from_world(this.mission.coords[0],
-		//										this.mission.coords[1],
-		//										this.mission.coords[2] );
-		var self = this;
-		_.each(this.mission.shared_objects, function(obj){
-			self._scene.join_object(obj)
-		
-		})										
-		_.each(this.mission.actors, function(as, login){ // Миссия до этого времени не имела сцены - надо дать её каждому актору здесь
-			//console.log(a)
-			_.each(as, function(a){ // По логину находится массив акторов
-				a.scene = self._scene.GUID
-				self._scene.join_actor(a);
+		// console.log(Scene);
+		if(! this._scene_loaded){
+			console.log("DO PREP SCENE")
+			this._scene = new Scene();
+			//create_from_world(this.mission.coords[0],
+			//										this.mission.coords[1],
+			//										this.mission.coords[2] );
+			var self = this;
+			_.each(this.mission.shared_objects, function(obj){
+				self._scene.join_object(obj)
+	
+			})										
+			_.each(this.mission.actors, function(as, login){ // Миссия до этого времени не имела сцены - надо дать её каждому актору здесь
+				//console.log(a)
+				_.each(as, function(a){ // По логину находится массив акторов
+					a.scene = self._scene.GUID
+					self._scene.join_actor(a);
+				})
 			})
-		})
-		this._scene.update_from_world(this.mission.coords[0],
-												this.mission.coords[1],
-												this.mission.coords[2] )
+			this._scene.update_from_world(this.mission.coords[0],
+													this.mission.coords[1],
+													this.mission.coords[2] )
+			this._scene_loaded= true;
+		}
 		
 							
 	},
