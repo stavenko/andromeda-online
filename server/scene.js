@@ -4,10 +4,13 @@ var THR = require('./three.node.js');
 
 var _     = require('underscore');
 
-var SceneObject = function(){
+var SceneObject = function(x,y,z){
 	this.description= "Scene routines"
 	this.GUID =  u.make_guid();
 	this._create();
+	this.gx = x
+	this.gy = y
+	this.gz = z
 }
 Scene = {constructor: SceneObject}
 
@@ -45,20 +48,20 @@ Scene._create = function(){
 	this._scene_obj_actors={}
 	this.is_loaded = false
 	this._d = false
-	this._scene ={actors:{}, GUID: this.GUID, objects:{} } 
+	this._scene ={actors:{}, GUID: this.GUID, objects:{}, coords:[this.gx, this.gy, this.gz]  } 
 	
 	
 	// this.simulation_runs = false
 	// console.log(this.clock);
 	
 }
-Scene.update_from_world = function(globalx, globaly, globalz ){
+Scene.update_from_world = function(){
 	// globalx-y-z - galaxy coords with 1 meter accuracy
-	var closest_scene_with_distance = this.get_closest_scene(globalx, globaly, globalz);
+	var closest_scene_with_distance = this.get_closest_scene(this.gx, this.gy, this.gz);
 	// if closest_scene is not null - we must inject object with actors to that scene - it's already_loaded
 	// else - We finding objects for that scene
 				
-	var objects_within_coords = this.get_objects_in(globalx, globaly, globalz) // Загрузка объектов в сцену из глобального мира
+	var objects_within_coords = this.get_objects_in(this.gx, this.gy, this.gz); // Загрузка объектов в сцену из глобального мира
 	
 	var objects = {}
 	for ( var i = 0; i < objects_within_coords.length ; i++ ){
@@ -68,7 +71,7 @@ Scene.update_from_world = function(globalx, globaly, globalz ){
 	
 	this._scene.sunDirection = [0,1,0]
 	this._scene.sunLightColor = [Math.random(), 0.8, 0.9] // HSL
-	this._scene.coords =[ globalx, globaly, globalz ]
+	this._scene.coords =[ this.gx, this.gy, this.gz ]
 	// this._create();
 	
 	// creating scene
@@ -95,7 +98,9 @@ Scene.get_actors = function(){
 Scene.get_objects = function(){
 	return this._scene.objects
 }
-
+Scene.get_json = function(){
+	return this._scene
+}
 Scene.get_closest_scene = function(){
 	return undefined
 }
@@ -108,11 +113,11 @@ Scene.join_object = function( object ){
 	// console.log("PUT OBJ", object.GUID)
 }
 Scene.join_actor = function( actor ){
-	if (this._scene.actors[actor.login]){
-		this._scene.actors[actor.login].push(actor)
-	}else{
-		this._scene.actors[actor.login] = [actor]
-	}
+	//if (this._scene.actors[actor.GUID]){
+	//	this._scene.actors[actor.GUID].push(actor)
+		//}else{
+		this._scene.actors[actor.GUID] = actor
+	
 	// console.log("GET OBJ",this._scene_obj_actors,  actor.control.object_guid)
 	
 	this._scene_obj_actors[actor.control.object_guid].push(actor)
@@ -122,9 +127,13 @@ Scene.join_actor = function( actor ){
 }
 Scene.set_from_json = function(object){
 	this._scene = object
-	// console.log("set from_json", object);
 	
 	this.GUID = object.GUID
+	this.gx = object.coords[0]
+	this.gy = object.coords[1]
+	this.gz = object.coords[2]
+	this.update_from_world( )
+	
 	
 }
 
@@ -146,15 +155,16 @@ Scene.load = function(onload, three_scene){
 		self.three_scene = three_scene
 	}
 	
-	function put_on(type, name){
+	function put_on(type, name, ts){
 		var es = this["on_engines_" + type]
+		obj = {name:name, ts:ts}
 		// console.log(es)
-		if ( es.indexOf(name) === -1){
-			es.push(name)	
+		if ( es.indexOf( name ) === -1){
+			es.push( name )	
 		}
 		// console.log(es)
 	}
-	function put_off(type, name){
+	function put_off(type, name,ts){
 		var es = this["on_engines_" + type]
 		var ix = es.indexOf(name)
 		if (  ix !== -1 ){
@@ -177,7 +187,6 @@ Scene.load = function(onload, three_scene){
 	self._model_cache = {}
 	//console.log(this);
 	_.each(json.objects, function( object,ix ){
-		console.log('loading looping')
 		self.total_objects_count +=1;
 		
 		if (! self.ajax_load_models){
@@ -188,14 +197,23 @@ Scene.load = function(onload, three_scene){
 		
 		var rf = function(){
 			var with_geom_and_mat = function(geom, mat){
-				console.log("with_g & mat")
 				var m = new self.THREE.Matrix4()
 				m.identity()
 			
 		
 				var mesh = new self.THREE.Mesh( geom, mat );
+				mesh.total_powers = [];
+				mesh.total_torques = [];
+						// console.log(i, mesh.total_torques, mesh.total_powers)
 				mesh.type=object.type
 				var object_rotated = false
+				// Setting defaults 
+				mesh.avel = new self.THREE.Vector3(0,0,0)
+				mesh.aacc = new self.THREE.Vector3(0,0,0)
+				mesh.vel = new self.THREE.Vector3(0,0,0)
+				mesh.acc = new self.THREE.Vector3(0,0,0)
+				
+				
 				if ( object.physical ){
 					for(i in object.physical){
 						
@@ -211,6 +229,7 @@ Scene.load = function(onload, three_scene){
 							//p.rotateX(2* Math.PI);
 							mesh.lookAt(p.negate())
 							// mesh.rotateX(2*Math.PI)
+							mesh.rot = new self.THREE.Vector3(mesh.rotation.x, mesh.rotation.y, mesh.rotation.z);
 							object_rotated = true;
 						}
 					}
@@ -218,10 +237,6 @@ Scene.load = function(onload, three_scene){
 					var pi2 = Math.PI * 2;
 					mesh.pos = new self.THREE.Vector3(Math.random() * 200, Math.random() * 200, Math.random() * 200);
 					mesh.rot = new self.THREE.Vector3(Math.random() * pi2, Math.random() * pi2, Math.random() * pi2);
-					mesh.avel = new self.THREE.Vector3(0,0,0)
-					mesh.aacc = new self.THREE.Vector3(0,0,0)
-					mesh.vel = new self.THREE.Vector3(0,0,0)
-					mesh.acc = new self.THREE.Vector3(0,0,0)
 					
 				}
 				mesh.position = mesh.pos;
@@ -241,6 +256,9 @@ Scene.load = function(onload, three_scene){
 				mesh.put_off = put_off;
 				mesh.put_on  = put_on;
 				mesh.mass = object.mass;
+				mesh.angular_impulse = mesh.avel.clone().multiplyScalar(mesh.mass)
+				mesh.impulse = mesh.vel.clone().multiplyScalar(mesh.mass)
+				
 		
 				if (self.do_prepare_rendering){
 					if (object.type !=='static'){
@@ -285,7 +303,6 @@ Scene._ajax_getter=function(name, cb) {
 }
 Scene._fs_getter=function(name, cb){
 	var self = this;
-	console.log(name);
 	fs.readFile(name, function(err,data){
 		//console.log("start loading");
 		if(err) throw err;
@@ -330,7 +347,6 @@ Scene._model_loaded = function(ix){
 	if (this.loaded_objects_count == this.total_objects_count){
 		// scene loaded
 		this.is_loaded = true;
-		console.log("OK",  this._call_back);
 		if  (this._call_back){
 			this._call_back(this)
 		}
@@ -376,9 +392,14 @@ Scene.get_almanach = function(){
 }
 Scene.tick = function(){
 	var self = this;
+	// console.log('.');
 	//var time_inc = 0;
 	var time_left = self.clock.getDelta();
 	self.time_inc += time_left;
+	if(self.last_ts === undefined){
+		self.last_ts = new Date().getTime();
+	}
+	
 	//console.log(self.time_inc);
 	
 	// var actor = self.get_current_actor()
@@ -399,42 +420,128 @@ Scene.tick = function(){
 				var m = self.meshes[i]
 				if (m.type == 'ship'){
 					var v = m.vel;
-					var p = m.pos;
+					var p = m.impulse;
+					var x = m.position;
 					
 					var r = m.rot;
 					
 					if (v){
-						console.log(i, v.x, v.y, v.z)
-						console.log(i, p.x, p.y, p.z)
+						// console.log('v',i, v.x, v.y, v.z)
+						// console.log('p',i, p.x, p.y, p.z)
+						// console.log('x',i, x.x, x.y, x.z)
 						
 					}
-					//if (r){
-					//	console.log(i, r.x, r.y, r.z)
-					//}
 					
 				}
 			}
-			/*
-			for(i in self.scene.actors){
-				var a = self.scene.actors[i]
-				console.log(a.control.object_guid);
-				var m = self.scene.meshes[a.control.object_guid]
-				var v = m.vel;
-				if (v){
-					console.log(i, v.x, v.y, v.z)
-				}
-			}
-			*/
-			
 		}
 		
 	}else{
 		self._d = false
 	}
-	
+	var get_impulses = function(FA, last_ts, now){ 
+		var ps = []
+		if (FA.length == 0) return []
+		if(FA.length > 1){ // В списке есть силы, которые уже перестали действовать 
+			var _length = FA.length;
+			for(var i = 0; i < FA.length;i++){
+				var is_last = i === (_length-1)
+				if(!is_last){ 
+					var acts_untill = FA[i+1].ts
+				}else{
+					var acts_untill = now;
+				}
+				var acts_since = FA[i].ts
+				if(acts_since < last_ts){acts_since = last_ts }
+				var time = (acts_untill - acts_since)/1000;
+				var F = FA[i].vec.clone();
+				ps.push( {i:F.multiplyScalar( time ), t:time} )
+			}
+			console.log(ps);
+			FA.splice(0, FA.length - 1);
+			//console.log("TWO", ps);
+		}
+		else{ // одна сила в списке - действует до сих пор
+			var F = FA[0].vec.clone()
+			var acts_since = FA[0].ts
+			
+			//console.log(now - last_ts);
+			if(acts_since < last_ts){ acts_since = last_ts }
+			var time = (now - acts_since)/1000;
+			// console.log(time, now - acts_since );
+			if (F.length() === 0){
+				FA.splice(0,1);
+			}
+			ps.push({i:F.multiplyScalar( time ), t:time});
+			// console.log("ONE", ps[0].i.z,ps[0].t);
+			
+		
+		}
+		
+		
+		return ps
+		
+	}
+	var now = new Date().getTime();
 	_.each(self.meshes, function(mesh, i){
 		if (mesh.type == 'static') return;
+		
+		var ps = [];
+		var um = 1 / mesh.mass;
+		var umt = time_left * um
+		
+		// var FA = self.total_torques
+		// И в конце-концов оставляем последний таймстеп
+		// console.log(i, mesh.total_torques, mesh.total_powers)
+		var rots = mesh.angular_impulse.clone().multiplyScalar(umt)
+		var poses = mesh.impulse.clone().multiplyScalar(umt)
+		
+		if( mesh.has_engines) {
+			var TI = get_impulses(mesh.total_torques, self.last_ts, now) // Импульсы вращения
+			//mesh.total_torques = [ mesh.total_torques[mesh.total_torques.length] ]
+			var PI = get_impulses(mesh.total_powers, self.last_ts, now) // Импульсы поступательного
+			_.each(TI, function(imp){
+			
+				// Получаем дополнительные интегралы - суммируем 
+				rots.add(imp.i.clone().multiplyScalar( um*imp.t ))// Интегрируем изменения углов по импульсам
+				mesh.angular_impulse.add(imp.i)
+			})
+		
+			_.each(PI, function(imp){
+				var v = imp.i.clone();
+				v.applyQuaternion(mesh.quaternion);
+				poses.add( v.clone().multiplyScalar(um*imp.t) ) // Интегрируем изменения координат по импульсам
+				mesh.impulse.add(v)
+			})
+			
+		}
+		
+		//mesh.total_powers = [ mesh.total_powers[mesh.total_powers.length] ]
+		
+		//console.log(mesh);
+		//if(PI.length >0){
+		//	vsdfsadf.sdfsdf.sdfsdfsdf = 1
+		//}
+		// console.log("F", PI);
+		//var rots = new self.THREE.Vector3(0,0,0)
+		//var poses = new self.THREE.Vector3(0,0,0)
+		//console.log("PI", PI, mesh.total_powers);
+		// console.log("IMP", mesh.impulse, poses, mesh.pos )
+		// mesh.avel = mesh.angular_impulse.clone().multiplyScalar(um);
+		mesh.vel = mesh.impulse.clone().multiplyScalar(um);
+		
+		//mesh.rot.add(rots)
+		mesh.rotateX(rots.x)
+		mesh.rotateY(rots.y)
+		mesh.rotateZ(rots.z);
+		
+		//console.log(mesh.guid, "POSES to ADD", poses)
+		// mesh.pos.add(poses);
+		mesh.position.add(poses);
+		
+		
 		// var mesh = self.meshes[i];
+		/*
 		if(mesh.has_engines){
 			total_acc = new self.THREE.Vector3(0,0,0);
 			
@@ -481,15 +588,17 @@ Scene.tick = function(){
 			
 			
 		}
-		mesh.position = mesh.pos;
+		*/ 
 		var _this_cache={}
-		_.each(['position', 'rotation', 'vel', 'avel','acc', 'aacc'], function(v){
+		_.each(['position', 'rotation', 'impulse', 'angular_impulse'], function(v){
 			var vec = mesh[v];
 			if( vec ) _this_cache[v] = vec.toArray();
 		})
 		self._scene_object_cache[i] = _this_cache;
 		
 	})
+	self.last_ts = now
+	
 }
 SceneObject.prototype = Scene
 module.exports = SceneObject

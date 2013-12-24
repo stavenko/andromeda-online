@@ -138,6 +138,7 @@ window.World.init = function(auth_hash, client_login){
 	// this.camera.position.z = 250;
 	this.p = new THREE.Projector();
 	this.three_scenes = {}
+	this.scenes = {};
 	this.flares = {}
 	//  = new THREE.Scene();
 	this.clock = new THREE.Clock();
@@ -164,12 +165,6 @@ window.World.init = function(auth_hash, client_login){
 	this.mouse_projection_vec = new THREE.Vector3();
 	
 	var self = this;
-	
-	//******
-	//this.setup_scene(this.three_scene);
-	//this.initSun();
-	//this.initSpace();
-	
     
 	this.renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
 	this.renderer.setSize(this.vp_width, this.vp_height);
@@ -189,6 +184,12 @@ window.World.init = function(auth_hash, client_login){
 		self.mouse_x = e.x;
 		self.mouse_y = e.y;
 	}, false );
+	document.addEventListener('mouseup', function(e){
+		// console.log(e)
+		self.Inputs.input( 'lmouse', false)
+		
+	})
+	
 	document.addEventListener('mousedown', function(e){
 		// console.log(e)
 		self.Inputs.input( 'lmouse', true)
@@ -240,21 +241,21 @@ window.World.init_socket = function(){
 		
 	})
 	this.socket.on('server_fault', function(){
-		window.location = "/console/"
+		// window.location = "/console/"
 		// console.log("AAA");
 	})
-	this.socket.on('actors', function(actors){
+	this.socket.on('actors', function(data){
 		// Здесь мы получаем всех акторов, которые присущи для этого логина - их может оказаться несколько и для них могут быть разные сцены
-		
+		var actors = data.actors;
 		self.actors = actors // Здесь список всех акторов, которые так или иначе связаны с нашим логином
-		console.log(actors);
+		console.log('actors', actors);
 		var scenes = _.map(self.actors, function(actor){
 			return actor.scene
 			
 		})
 		// Запрашиваем загрузку всех сцен для этого актора - по идентификаторам сцен
 		
-		//console.log("Req scenes", _.uniq(scenes))
+		console.log("Req scenes", _.uniq(scenes))
 		self.socket.emit("request_scenes", {scenes:_.uniq(scenes)})
 		
 		// console.log("Recv Actors",actors)
@@ -263,13 +264,13 @@ window.World.init_socket = function(){
 	})
 	
 	this.socket.on('scenes', function(data){
-		//console.log(data);
-		var guids = _.keys(data)
+		//console.log('scenes', data.scenes);
+		var guids = _.keys(data.scenes)
 		var _totals = 0
 		var all_loaded = function(){
 			self.go();	
-			console.log("recv scenes", self.scenes)
-			self.network_actor = new Controller.NetworkActor(self.scenes, self.socket, function(){})
+			// console.log("recv scenes", self.scenes)
+			self.network_actor = new Controller.NetworkActor( function(){}, self)
 		}
 		var onload = function(scene){
 			// console.log('loaded');
@@ -285,8 +286,8 @@ window.World.init_socket = function(){
 			// 
 			// 
 		}
-		_.each(data, function(scene, guid){
-			console.log('well', onload);
+		_.each(data.scenes, function(scene, guid){
+			// console.log('well', scene);
 			self.load_scene(scene , onload)
 			//console.log('well', scene._scene);
 			
@@ -294,7 +295,7 @@ window.World.init_socket = function(){
 		
 	})
 	this.socket.on('join_actor', function(data){
-		// console.log('joining actor', data);
+		console.log('joining actor', data);
 		// console.log(self.actors)
 		// Актор может джойнить уже существующий в сцене - надо переделывать вьюпорты
 		if (data.login in self.scene.actors){
@@ -307,6 +308,25 @@ window.World.init_socket = function(){
 		
 		self.scenes[data.scene].sync(data.almanach);
 	})
+	this.socket.on('player_controls_on', function(data){
+		var actor = data.actor;
+		var action = data.action;
+		var S = self.scenes[actor.scene];
+		// console.log("PPLAY CONTOL", actor);
+		self.network_actor.act(S, action, true, actor)
+	
+	})
+
+	this.socket.on('player_controls_off', function(data){
+		// console.log('ok recv', data)
+		var actor = data.actor
+		var action = data.action;
+		
+		var S = self.scenes[actor.scene];
+		self.network_actor.act(S, action, false, actor)
+	
+	})
+	
 
 	
 }
@@ -317,7 +337,7 @@ window.World.set_actions = function(){
 window.World.load_scene = function (scene_js, onload){
 	// console.log('well-well', scene._scene);
 	
-	this.scenes = {}
+	// this.scenes = {}
 	
 	var scene = new Scene()
 	
@@ -439,51 +459,7 @@ window.World.setupCameras = function(){
 		opt.appendChild(document.createTextNode(vp.camera))
 		sel.appendChild(opt)
 	})
-	
 
-	// 
-	//console.log("We got ", self._viewport_amount, " viewports");
-	// Теперь надо разместить все вьюпорты на канвасе
-	/*
-	if(self._viewport_amount == 1){
-		var geom = [{t:0,l:0,w:self.vp_width, h:self.vp_height}]
-	}if(self._viewport_amount == 2){
-		var m = self.vp_width/2
-		var geom = [
-					{t:0,l:0, w:m, h:self.vp_height},
-					
-					{t:0,l:m, w:m, h:self.vp_height}
-		]
-	}
-	if(self._viewport_amount == 3){
-			var m = self.vp_width/2
-			var hm = self.vp_height/2
-			var geom = [
-						{t:0,l:0, w:m, h:self.vp_height},
-						{t:0,l:m, w:m, h:hm},
-						{t:hm,l:m, w:m, h:hm}
-						
-			]
-	}
-	if(self._viewport_amount == 4){
-			var m = self.vp_width/2
-			var hm = self.vp_height/2
-			var geom = [
-						{t:0,l:0, w:m, h:hm},
-						{t:0,l:m, w:m, h:hm},
-						{t:hm,l:0, w:m, h:hm},
-						{t:hm,l:m, w:m, h:hm}
-						
-			]
-	}*/
-	
-	//var _c = 0;
-	/*
-	_.each(self._viewports, function(vp){
-		vp.geom = geom[_c]; _c++;
-		vp.three_camera = self.makeCamera(vp)
-		self.initSpace(vp);
-		
 	})*/
 	
 	
@@ -530,7 +506,22 @@ window.World.redrawSun = function(vp){
 	this.flares[vp.scene].position = m.position.clone().add(sd)
 	// console.log(this.flares[vp.scene].position)
 }
-
+window.World.syncTime = function(){
+	this._sync_timestamp = new Date().getTime();
+	this.socket.emit("clock_request")
+	var self = this;
+	if(! this._sync_message_setup ){
+		this.socket.on("clock_response", function(data){
+			var recv_ts = new Date().getTime();
+			var ping = recv_ts - self._sync_timestamp
+			var lat = ping / 2
+			self._time_diff = data.ts - self._sync_timestamp + lat
+			// console.log(data.ts , ping, lat, self._time_diff)
+		})
+		this._sync_message_setup = true
+		
+	}
+}
 window.World.redrawSky = function(vp){
 	//var m = this.scenes[vp.scene].meshes[vp.object]
 	
@@ -573,18 +564,13 @@ window.World.go = function(){
 	// var _3d_scene = self.setup_scene(self.scene._3scene)
 	var _d = false
 	self.setupCameras();
+	self.syncTime()
+	var _time_interv = setInterval(function(){self.syncTime()}, 3000);
 	
 	var updatePositions = function(){
 		_.each(self.scenes, function(s){
 			s.tick()
 		})
-		// self.scene.tick()
-		// self.redrawSun();
-		// self.redrawSky();
-		
-			
-		
-		
 	}
 	
 	
@@ -594,6 +580,7 @@ window.World.go = function(){
 			//console.log(self._viewports)
 			var mvp = self.get_main_viewport();
 			var geom = self._main_vp_geom
+			// console.log("RENDER");
 			self.render(mvp, geom);
 			self.mouse_projection_vec.set( ( self.mouse_x/ geom.w ) * 2 - 1, - ( self.mouse_y / geom.h ) * 2 + 1, 0.999 );
 		

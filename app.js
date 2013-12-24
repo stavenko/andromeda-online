@@ -13,9 +13,11 @@ var app = require('express')()
   
   , Mission = require("./server/missions.js")
   , Sc  = require("./server/scene.js")
-  , Con = require("./server/controller.js")
-  , Core = require('./server/core.js')
+  , Core = require('./server/core.js').Core
+  //, Simulation = require('./server/core.js').Simulation
   , browserify_express = require('browserify-express')
+  //, Worker = require('webworker-threads').Worker
+  , fork = require('child_process').fork
   , path = require('path');
   
   
@@ -159,72 +161,130 @@ var io =  ios.listen(server, {log:false});
 server.listen(3002)
 
 
-// Login - Это объект авторизации - привязка аккуанта
-// Actor - Это объект контроля, сверху - привязан к авторизации - снизу - к объектам мира
-var SCENES = {} // guid : scene
-var MISSIONS= {} // guid : mission
+
+
+
+
+
+//var SCENES = {} // guid : scene
+//var MISSIONS= {} // guid : mission
 // var LOGINS = {} // login : [{object, scene, mission}] map
-var ACTORS = {} // login: actor map (actor - is a repr of object, that controls some aspect of a object of some scene)
-var SOCKET_AUTH_MAP = {} // auth_hash: login  - This is for authencitation purpose
-var SOCKET_MAP = {} // login: socket
+//var LOGINS = {}// login_id: [{s:scene_guid}|{a:actor_guid}]
+//var ACTORS = {} // login: actor map (actor - is a repr of object, that controls some aspect of a object of some scene)
 // var SCENE_SOCKET_MAP = {} // SCENE_GUID: Socket
-var Controllers = {} // login: NetworkController
+var Scenes = {} 
+var Sockets = {} // login_guid: web-socket
+var ConsoleSockets = {} // login_guid: web-socket
+var SocketAuthMap = {} // auth_hash: login  - This is for authencitation purpose
+
 
 var Globals = {
-	Scenes:SCENES,
-	Missions:MISSIONS,
-	Actors:ACTORS,
-	Sockets:SOCKET_MAP
+//	Scenes:SCENES,
+//	Missions:MISSIONS,
+//	Actors:ACTORS,
+//	Sockets:SOCKET_MAP
 }
 
 
-new Core(Globals).launch();
+// new Core(Globals).launch();
+
+
+//simulator.on('message', function(){
+	// console.log(arguments);
+	//})
+	
+simulator = fork('./server/worker.js'); 
+
+simulator.send({'hi':'there'});
+
+/*
+var worker = new Worker(function(){
+	console.log("ok");
+	self.importScripts("./server/utils.js")
+	console.log("L")
+	//console.log('GOO', ">>" + typeof Simulation );
+	
+})
+worker.postMessage({"let's":"GO"})
+*/
 
 io.on('connection', function(socket){
 	socket.emit('connected',{})
 	
 	var newActortoSceneBcast = function(Scene, actor){
 		var new_actor = Scene.actors[actor]
-		//console.log(new_actor)
 		_.each(SOCKET_MAP, function(s,k){
-			//console.log("LOOP", k , _(Scene.get_actors()).keys());
 			if (_(Scene.get_actors()).keys().indexOf(k) != -1){
-				//console.log("emit>")
 				s.emit("join_actor", new_actor)
 			}
 			
 		})
 	}
-	
-	socket.on("auth_hash", function(data){
+	// КОНСОЛЬ УПРАВЛЕНИЯ
+	socket.on("auth_hash_console", function(data){
 		//console.log(data)
-		var login = SOCKET_AUTH_MAP[data.auth];
-		
+		var user_id = SocketAuthMap[data.auth];
+	
 		// console.log("AUTH_INFO", SOCKET_AUTH_MAP, data);
-		if (login === undefined){
+		if (user_id === undefined){
 			console.log("yep, undef")
 			socket.emit('server_fault', {})
 		}else{
-			//var auth_info = LOGINS[login]
-			//var scene = SCENES[auth_info.scene]
-			//var mission = MISSIONS[auth_info.mission]
-			//if (!scene.is_loaded){
-			//	scene.load();
-			//}
-			//console.log("This is logins", LOGINS[login]);
-			var acts = []
-			_.each(ACTORS[login], function(as, scguid){
-				// console.log(as, scguid);
-				_.each(as, function(a){
-					acts.push(a);
-					
-				})
-			})
+			ConsoleSockets[user_id] = socket // one socket per login | several actors per socket
+			simulator.send({type:'user-connected', user_id: user_id} )
 			
-			socket.emit("actors", acts ) // Сцену на этом этапе не грузим. Просто выдаем клиентам возможные варианты вьюпортов
-			SOCKET_MAP[login] = socket // one socket per login | several actors per socket
+		}
+		
+		socket.on('create-mission', function(){
+			simulator.send({type:'create-mission', mission_type:1, user_id:user_id })
+			// res.redirect('/console/');
+			
+		})
+		socket.on('share-position', function(msg){
+			simulator.send({type:'share-position',  user_id:user_id, position:msg.position, share_type:msg.share_type, MGUID:msg.MGUID})
+			// res.redirect('/console/');
+			
+		})
+		
+		socket.on('get-mission-positions', function(msg){
+			msg.type='get-mission-positions';
+			msg.user_id = user_id;
+			simulator.send(msg);
+		})
+		
+		socket.on('join-position', function(msg){
+			msg.type = 'join-position';
+			msg.user_id = user_id;
+			simulator.send(msg);
+		})
+		
+		socket.on('start-mission', function(msg){
+			msg.type = 'start-mission';
+			msg.user_id = user_id;
+			simulator.send(msg);
+		})
+		
+	})
+	
+	
+	
+	// СИМУЛЯЦИЯ
+	socket.on("auth_hash", function(data){
+		//console.log(data)
+		var user_id = SocketAuthMap[data.auth];
+		
+		// console.log("AUTH_INFO", SOCKET_AUTH_MAP, data);
+		if (user_id === undefined){
+			console.log("yep, undef")
+			socket.emit('server_fault', {})
+		}else{
+			// var actors = Actors[user_id]
+			
+			// socket.emit("actors", actors ) // Сцену на этом этапе не грузим. Просто выдаем клиентам возможные варианты вьюпортов
+			Sockets[user_id] = socket // one socket per login | several actors per socket
+			simulator.send({type:'request-actors', user_id: user_id} )
+			
 			//	
-			//	console.log('acted');
 		}
 
 		
@@ -232,14 +292,12 @@ io.on('connection', function(socket){
 			// console.log(SOCKET_MAP)
 			//console.log("AU", auth_info);
 			//if (auth_info)
-			var S = SCENES[action.actor.scene]
-			// TODO Убрать лишние отправки по дублирущим акторам одного логина: они и так ему прилетят
-			
-			_.each(S.get_actors(), function(a,alogin){
+			var S = Scenes[action.actor.scene]
+			console.log("SCENE", S);
+			_.each(S.actors, function(a,aguid){
 				// console.log("AA",a);
-				if (alogin !== login){
-					// console.log("sending to", alogin, SOCKET_MAP)
-					var socket = SOCKET_MAP[alogin]
+				if (a.user_id !== user_id){
+					var socket = Sockets[user_id]
 					if(on_off)socket.emit('player_controls_on', action)
 					else socket.emit("player_controls_off", action)
 				}
@@ -248,138 +306,134 @@ io.on('connection', function(socket){
 
 			
 		}
-		var applyAction = function(action_, on_off, login){
-			var action = action_.action;
-			var actor = action_.actor
-			var na = Controllers[login]
+		var applyAction = function(action_, on_off){
+			simulator.send({type:'action', user_id: user_id, action:action_, on_off:on_off})
+			//var action = action_.action;
+			//var actor = action_.actor
+			//var na = Controllers[login]
 			// console.log("acting", Controllers)
 			
-			na.act(SCENES[actor.scene], action, on_off, actor)
+			//na.act(SCENES[actor.scene], action, on_off, actor)
 		}
 		
 		socket.on('control_on', function(data){
 			// to_others = {login:login, action:data}
-			applyAction(data, true, login)
+			applyAction(data, true)
 			sendToSceneClients(data, true);
 			
 		})
 		socket.on('control_off', function(data){
 			//to_others = {login:login, action:data}
-			applyAction(data, false, login)
+			applyAction(data, false)
 			sendToSceneClients(data, false);
 		})
-		// socket.on
+		socket.on("clock_request", function(){
+			var ts = new Date().getTime();
+			socket.emit('clock_response', {"ts":ts})
+		})
 		socket.on('request_scenes', function(scenes){
-			var scs = {}
-			console.log("requested scenes",scenes)
-			_.each(scenes.scenes, function(guid){
+			// var scs = {}
+			console.log( {user_id:user_id, scenes:scenes});
+			simulator.send( {type:'request-scenes',user_id:user_id, scenes:scenes.scenes})
+			//_.each(scenes.scenes, function(guid){
+				// Надо собрать json-ы всех имеющихся сцен
 				
-				var sc = SCENES[guid] // Акторы уже здесь
-				// console.log("SCENE MUSt be not loaded", SCENES, guid)
-				if (!sc.is_loaded){
-					// console.log('load it');
-					
-					sc.load()
-					
-					// share_info(null, null, sc, login)
-				}
-				// console.log("ok");
-				scs[guid] = sc._scene 
-				//newActortoSceneBcast(scene, login);
-				var na = Con.NetworkActor(SCENES, socket, function(){
-					//console.log('wwweeee')
+				//var sc = SCENES[guid] // Акторы уже здесь
+				//if (!sc.is_loaded){
+				//	sc.load()
+				//}
+				//scs[guid] = sc._scene 
+				//var na = Con.NetworkActor(SCENES, socket, function(){
 				
-				})			
-				Controllers[login] = na
+					//})			
+				// Controllers[login] = na
 				
-			})
+				//})
 
-			socket.emit('scenes', scs)
-			//console.log('sent');
+			// socket.emit('scenes', scs)
 			
 		})
 
 	})
 })
 
+// var Actors = {} // login_guid: [actor_guids]
+// 
+// var Controllers = {} // login: NetworkController
 
+simulator.on('message', function(msg){
+	// console.log("MSGG", msg);
+	
+	if ( msg.type === 'scene_sync' ){
+		var scene_json = Scenes[msg.scene];
+		if (scene_json === undefined){
+			return;  // Незачен синхронизировать сцену для того, кто еще не подключился 
+		}
+		_.each(Scenes[msg.scene].actors, function(a){
+			var sock = Sockets[a.user_id];
+			sock.emit(msg.type, {scene:msg.scene, almanach:msg.almanach });
+		})
+		return ;
+	}
+	if(msg.recv === 'world'){
+		var con_sock = Sockets[msg.user_id];
+	}else{
+		var con_sock = ConsoleSockets[msg.user_id]
+	}
+	// console.log("BS", msg);
+	con_sock.emit(msg.type, msg);
+	if( msg.type ==='scenes'){ // Сцены какого-то игрока
+		// Кэшируем сцены напрямую - для того чтобы можно было прямо здесь отдавать всем желающим контролы других игроков - еще до того, 
+		// как они полетят в симуляцию
+		_.each(msg.scenes, function(scene, guid){
+			Scenes[guid] = scene;
+		});
+		
+	}
 
+	/*
+	switch(msg.type){
+	case "player-missions":
+		con_sock.emit("player-missions", msg)
+		break
+	case "mission-positions":
+		con_sock.emit("mission-positions", msg)
+		break
+	case "user-positions":
+		con_sock.emit('user-positions', msg)
+		break
+	case "user-notify":
+		con_sock.emit('user-notify', msg);
+		break;
+	case "actors":
+		con_sock.emit('actors', msg);
+		break;
+	
+	}*/
+		
+	
+})
 
 app.get('/webgl-test/', function(req,res){
 	res.render('webgl-test', {   })
 })
 
 
-function share_info(req, M, S, user){
-	if (M){
-		MISSIONS[M.GUID] = M
-		// actor_info.mission = M.GUID
-	}
-	SOCKET_AUTH_MAP[req.session.auth_hashes[user] ] = user
-	
-	// console.log("sharing", S)
-	if (S){
-		//console.log("OK");
-		SCENES[S.GUID] = S
-		// LOGINS[user] = S.get_actors()[user]
 
-	}
-}
-
-/*
-app.get('/scene/:mission_id/', function(req, res){
-	//console.log(req.params.name, SCENES)
-	var M = Missions[req.param.mission_id]
-	M._scen
-	if (Missions[req.param.mission_id]){
-		//console.log("cache hit")
-		res.end(JSON.stringify(MsSCENES[req.params.id]))
-	}else{
-		var S = Sc.create();
-		S.load();
-		var js = S.get()
-		SCENES[req.params.name] = js
-		res.end(JSON.stringify(js));
-	}
-})*/
 app.get('/world/', ensureAuthenticated, function(req,res){
 	// console.log(req.session.auth_hashes);
-	res.render('world',{ 'user': req.user, auth_hash: req.session.auth_hashes[req.user.username]})
+	res.render('world',{ 'user': req.user, auth_hash: req.session.auth_hashes[req.user.id]})
 })
 // Adding and joining missions
-app.get('/missions/create/', ensureAuthenticated, function(req, res){
-	var M = new Mission()
-	M.create(req.user.username)
-	share_info(req,  M, M._scene, req.user.username )
-	// console.log(MISSIONS);
-	res.redirect('/console/');
-})
+// app.get('/missions/create/', ensureAuthenticated, function(req, res){
+//	simulator.send({type:'create_mission', mission_type:1, instantiator_id:req.user.id })
+// 	res.redirect('/console/');
+// })
 app.get('/missions/join/:m_id/', ensureAuthenticated, function(req, res){
-	var M = MISSIONS[req.params.m_id]
 	var query = req.query;
-
-	M.join_player(req.user.username, query.command, query.object_guid, query.workpoint)
-	if(M.ready_to_start){
-		
-		M.prepare_scene();
-		SCENES[M._scene.GUID] = M._scene;
-		console.log("WWWWWAT", SCENES);
-		
-		// Здесь надо запихнуть всех акторов этого логина в массив ACTORS
-	}
-	if(M._scene_loaded){
-		_.each(M._scene.get_actors(), function(arr, login){
-			if(ACTORS[ login ] === undefined){
-				ACTORS[ login ]  = {}
-			}
-			
-			ACTORS[login][M._scene.GUID] = M._scene.get_actors()[login]
-			
-		})
-		console.log("ACTORS ARRAY", ACTORS)
-	}
 	
-	// share_info(req, M, M._scene, req.user.username )
+	simulator.send({type:'join_to_mission', guid:req.params.m_id, user:req.user.id, command:query.command, object:query.object_guid, workpoint: query.workpoint})
+
 	res.redirect('/console/');
 })
 app.get('/missions/get_mission_state/:m_id/', ensureAuthenticated, function(req, res){
@@ -408,8 +462,9 @@ app.post('/auth/login/',  passport.authenticate('local', { failureRedirect: '/au
 		if (req.session.auth_hashes === undefined){
 			req.session.auth_hashes = {}; // Правильно будет хранить эти хэши в базе данных. Но пока так
 		}
-		req.session.auth_hashes[req.user.username] = req.user.auth_hash
-		SOCKET_AUTH_MAP[req.session.auth_hashes[user] ] = user
+		var user = req.user
+		req.session.auth_hashes[req.user.id] = req.user.auth_hash
+		SocketAuthMap[req.session.auth_hashes[user.id] ] = user.id
 	
 		res.redirect('/console/');
 	});
@@ -421,19 +476,17 @@ app.get('/auth/logout/', function(req, res){
 });
 
 app.get('/console/', ensureAuthenticated, function(req, res){
-	// MMM = {"aaa":{"bbb":"ccc"}}
-	//console.log("MIS", MISSIONS)
-	var login = req.user.username
-	SOCKET_AUTH_MAP[req.session.auth_hashes[login] ] = login
-	
-	res.render('console', {'missions':MISSIONS, 'user': req.user});
+	var user = req.user
+	SocketAuthMap[req.session.auth_hashes[user.id] ] = user.id // Грязный хак - обновляем состояние аутентификации из сессии
+	res.render('console', { 'user': req.user, auth_hash: req.session.auth_hashes[req.user.id]});
 })
 app.get('/', function(req, res){
-	// MMM = {"aaa":{"bbb":"ccc"}}
-	res.render('index', {'missions':MISSIONS, 'user': req.user});
+	res.render('index', {'missions':{}, 'user': req.user});
 })
 
 
+
+/*
 
 app.get('/back-call/', function(req,res){
 	var phone = req.query.phone
@@ -506,5 +559,5 @@ app.post('/order/', function(req, res){
 		res.end('ok')
 	})
 })
-
+*/
 

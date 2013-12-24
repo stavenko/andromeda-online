@@ -6,37 +6,28 @@ var _     = require('underscore');
 var Controller = {description:'controller'}
 	
 	
-Controller.NetworkActor =   function(scenes, socket, onAct){
+Controller.NetworkActor =   function(onAct, W){
 		
 		var map = Controller.ControllersActionMap()
 		var self = this;
 		
-		socket.on('player_controls_on', function(data){
-			var actor = data.actor;
-			var action = data.action;
-			var S = scenes[actor.scene];
-			console.log("PPLAY CONTOL", actor);
-			self.act(S, action, true, actor)
-		
-		})
-	
-		socket.on('player_controls_off', function(data){
-			// console.log('ok recv', data)
-			var actor = data.actor
-			var action = data.action;
-			
-			var S = scenes[actor.scene];
-			self.act(S, action, false, actor)
-		
-		})
 		this.run = function(){
 			// no need to bother - event style
 		}
 		this.act=function(S, action, is_on, actor){
 			//var C = W.meshes[ W.actors[actor].control.object_guid ]
 			// console.log(action)
-			console.log("SCENES",scenes, actor.scene);
-		
+			// console.log("SCENES",scenes, actor.scene);
+			// console.log("my time", new Date().getTime()/1000)
+			// console.log("server time", action.timestamp/1000 )
+			// console.log("my time - servtime", new Date().getTime()/1000 - action.timestamp/1000 )
+			if (W !== undefined){
+				console.log(W, W._time_diff);
+				action.timestamp -= W._time_diff
+			}
+			// console.log("my time - servtime [fixed]", new Date().getTime()/1000 - action.timestamp/1000 )
+			
+			// console.log(  )
 			var _a = map[action.type].act(S, action, is_on, actor, onAct);
 		
 		}
@@ -72,15 +63,38 @@ Controller.LocalInputActor = function(W, socket){
 			'lmouse':{'type': 'shoot_primary', '_turret_direction': function(t,k){
 				delete t[k]
 				// console.log("w")
-				console.log(W.controllable());
+				// console.log(W.controllable());
 				t[k.substr(1)] = W.mouse_projection_vec.clone().sub(W.controllable().position.clone() )
 			}},
 		}
 	
 		self.actions = self._default_actions;
+		self._keycodes_in_action = {}
 		this.input = function(keycode, up_or_down, modifiers){
 			// 1. Send to server action
+			if(_.has(self._keycodes_in_action, keycode)){
+				var state = self._keycodes_in_action[keycode]
+				// console.log(state, up_or_down)
+				if(state === up_or_down){// Состояние не изменилось - ничего не делаем
+					return 
+				}else{
+					self._keycodes_in_action[keycode] = up_or_down
+				}
+				
+			}else{
+				self._keycodes_in_action[keycode] = up_or_down
+			}
+			
+			
+			var ts = new Date().getTime()
 			var action = _.clone(self.actions[keycode]);
+			action.timestamp = ts 
+			
+			console.log("my diff", W._time_diff)
+			
+			// console.log("my time", new Date().getTime()/1000)
+			// console.log("server time", action.timestamp/1000 )
+			// console.log("my time - servtime", new Date().getTime()/1000 - action.timestamp/1000 )
 			
 			// console.log(action);
 			if (action){
@@ -93,7 +107,7 @@ Controller.LocalInputActor = function(W, socket){
 				//console.log(action);
 				// DONE
 				// 2. Act it locally
-				var onAct = function(){ console.log('this is keyboard controller - no need in onAct here') }
+				var onAct = function(){ /*console.log('this is keyboard controller - no need in onAct here') */}
 				local_controller = map[action.type]
 				var actors = W.get_main_viewport().actors
 				
@@ -104,11 +118,13 @@ Controller.LocalInputActor = function(W, socket){
 					if (wp.type == local_controller.type){
 						local_controller.act(self.World.scenes[actor.scene], action, up_or_down, actor, onAct);
 						// console.log(action);
+						var a_clone = _.clone(action)
 						
+						a_clone.timestamp += W._time_diff;
 						if (up_or_down){
-							socket.emit('control_on', {action:action, actor:actor});
+							socket.emit('control_on', {action:a_clone, actor:actor});
 						}else{
-							socket.emit('control_off', {action:action, actor:actor});
+							socket.emit('control_off', {action:a_clone, actor:actor});
 			
 						}
 						
@@ -152,42 +168,69 @@ Controller.CPilotController = function(){
 			var C = S.mesh_for(actor)
 			var T = Controller.T();
 			
-				//}
-
-	
-
+			var ets = {rotate:'rotation', move:'propulsion'}
+			var et = ets[action.type]
+			var AX= action.axis;
+			if(! is_down){
+				var vec = new T.Vector3(0,0,0)
+			}else{
+				var a = action.dir == '+'? 1 : -1;
+				
+				var vec = AX == 'x'?new T.Vector3(a,0,0):(AX =='y'?new T.Vector3(0, a, 0): new T.Vector3(0,0,a))
+				// Теперь его надо умножить на мощность двигателя и получить силу
+				var power = C.engines[et][action.axis + action.dir];
+				vec.multiplyScalar(power)
+			}
+			var n = action.axis+action.dir
+			if(!C.powers){
+				C.powers = {}
+			}
+			if(!C.powers[et]){
+				C.powers[et] = {}
+			}
+			C.powers[et][n] = vec.clone()
+			
+			
+			if (et == "rotation"){
+				var tot = new T.Vector3(0,0,0)
+				_.each(C.powers.rotation, function(v,ename){
+					tot.add(v)
+				
+				})
+				C.total_torques.push({ts:action.timestamp, vec:tot} )
+			}
+			if (et =='propulsion'){
+				var tot = new T.Vector3(0,0,0)
+				_.each(C.powers.propulsion, function(vec,ename){
+					tot.add(vec)
+				})
+			
+				C.total_powers.push( {ts:action.timestamp, vec:tot} )
+			}
+			onAct(C.GUID)
+			// Получили единичный вектор тяги 
+			/*
 	
 			if (action.type == 'rotate'){
-				var a = action.dir == '+'?1:-1;
-		
 				if (is_down){
-					C.put_on("rotation", action.axis+action.dir)
+					C.put_on("rotation", vec, action.timestamp)
 				}else{
-					C.put_off("rotation", action.axis+action.dir)
+					C.put_off("rotation", vec, action.timestamp)
 				}
 			}
 			if (action.type == 'move'){
 		
 				var a = action.dir == '+'?1:-1;
 		
-				var m = new Controller.T().Matrix4()
+				// var m = new Controller.T().Matrix4()
 				if (is_down){
-					C.put_on("propulsion", action.axis + action.dir)
+					C.put_on("propulsion", vec, action.timestamp)
 				}else{
-					C.put_off("propulsion", action.axis + action.dir)
+					C.put_off("propulsion", vec, action.timestamp)
 				}
-			}
-	
-			//if (action.type == 'rotatec'){
-			//	var a = action.dir == '+'?1:-1;
-			//	var ag = a * 0.1;
-			//	var axis = get_axis(action.axis);
-			//	var _q = new T.Quaternion();
-			//	_q.setFromAxisAngle( axis, ag );
-			//	W.camera.quaternion.multiply( _q );
-			//	W.setCamera();
-			//}
-			onAct(C.GUID)
+			}*/
+
+			
 		}
 		// return this;
 	
@@ -243,6 +286,7 @@ Controller.BasicBulletActor=function(S, id, coid){
 				// var m = W.meshes[i];
 				var mp =  m.position.clone();
 				var pd = mp.sub( mpos )
+				// console.log( vel, pd )
 				var ag = Math.acos(pd.dot(vel)/ vel.length() / pd.length()) // угол между направлением движения и центром объекта
 				if (ag < Math.PI/16)
 				{
@@ -297,10 +341,10 @@ Controller.BasicBulletActor=function(S, id, coid){
 							//	console.log("HERE", isr[index].distance, direction.length())
 							///}
 					
-							console.log('hit')
+							console.log('HIT')
 							// console.log("END", isr[0].point);
 							m.worldToLocal(isr[0].point) // Теперь это плечо удара
-							var impulse = vel.clone().multiplyScalar(self.my_mesh.mass)
+							var impulse = self.my_mesh.impulse;  //vel.clone().multiplyScalar(self.my_mesh.mass)
 							var axis = new T.Vector3().crossVectors(isr[0].point, impulse)
 					
 							var ag = Math.acos(isr[0].point.clone().dot(impulse) / impulse.length() / isr[0].point.length() )
@@ -329,12 +373,14 @@ Controller.BasicBulletActor=function(S, id, coid){
 					
 					
 					
-							add_vel = impulse.multiplyScalar( 1/ m.mass);
+							// add_vel = impulse.multiplyScalar( 1/ m.mass);
 							// console.log(add_vel)
 							// Убрать пока скорость
-							if (S.meshes[i].vel){
-								S.meshes[i].vel.add(add_vel);
-							}
+							//if (S.meshes[i].vel){
+								console.log(S.meshes[i].impulse)
+							S.meshes[i].impulse.add( impulse );
+							console.log(S.meshes[i].impulse)
+								// }
 					
 					
 							//console.log("END LOCAL", isr[0].point);
@@ -375,7 +421,10 @@ Controller.BasicBulletActor=function(S, id, coid){
 Controller.CTurretController = function(){
 	this.type = 'turret';
 		this.act = function(S, action, is_down, actor ){
+			
 			if (action.type =='shoot_primary'){
+				if(! is_down) return;
+				// console.log('>>>');
 				// var weapon = C.weapons[0];
 				//console.log("shot by", actor)
 				var T = Controller.T();
@@ -404,8 +453,10 @@ Controller.CTurretController = function(){
 			
 				bullet.has_engines = false;
 				bullet.is_not_collidable = true;
-				bullet.vel = mpv//.multiplyScalar(0.10);
+				bullet.vel = new T.Vector3(0,0,0); // mpv//.multiplyScalar(0.10);
 				bullet.mass = 1;
+				bullet.impulse = mpv;
+				bullet.angular_impulse = new T.Vector3(0,0,0);
 				if ( typeof window !== 'undefined'){
 					S.three_scene.add( bullet );
 				}
@@ -445,6 +496,7 @@ if(typeof window === 'undefined'){
 	};
 	Controller.createShotParticle=function(){
 		var T = this.T();
+		// console.log('P');
 		//var cubeGeometry = new T.CubeGeometry(1,1,1,1,1,1);
 		//var map	= T.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
 		//var SpriteMaterial = new T.SpriteMaterial( { map: map, color: 0xffffff, fog: true } );
@@ -457,13 +509,17 @@ if(typeof window === 'undefined'){
 	};
 	Controller.createShotParticle=function(){
 		var T = this.T();
+		// console.log("particle")
 		// var cubeGeometry = new T.CubeGeometry(1,1,1,1,1,1);
 		var map	= T.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
 		var material = new T.SpriteMaterial( { map: map, color: 0xffffff, fog: true } );
 		material.transparent = true;
 		material.blending = THREE.AdditiveBlending;
 		
-		return new T.Sprite(material);
+		var a = new T.Sprite(material);
+		a.static = false;
+		a.has_engines = false;
+		return a
 	};
 	
 }

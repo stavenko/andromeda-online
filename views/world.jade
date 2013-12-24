@@ -35,9 +35,9 @@ html
 		script
 			function starter(){
 				var hash = "#{auth_hash}";
-				var login = "#{ user.username }"
+				var user_id = "#{ user.id }"
 				// console.log(hash, login)
-				var W = World.init(hash, login);
+				var W = World.init(hash, user_id);
 				document.getElementById("make-main").onclick = function() {
 					W.make_main()
 				};

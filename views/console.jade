@@ -5,6 +5,10 @@ html
 		script(type="text/javascript", src="/js/jquery-1.10.2.min.js")
 		script(type="text/javascript", src="/js/bootstrap.min.js")
 		script(type="text/javascript", src="/js/jstz.min.js")
+		script(src="/socket.io/socket.io.js")
+		script(src="/js/gl/console.js")
+		script(type="text/javascript", src="/js/underscore-min.js")
+		
 		
 		block css
 			link(rel='stylesheet', href='/css/bootstrap.min.css')
@@ -13,104 +17,60 @@ html
 			link(rel='stylesheet', href='/css/style.css')
 
 		script
-			// var  = '!{missions_text}'
-			// console.log(mjs);
-			// var missions = JSON.parse(mjs)
-			// console.log("PP",missions);
 			$(function(){
-				$('#mission-table tr').click(function(){
-					// this == tr
-					var m_id = $(this).attr('mission_id');
-					// var mis = missions[m_id];
-					$.ajax({url:"/missions/get_mission_state/" + m_id + '/',
-							'dataType':'JSON',
-							success: function(st){
-								if (st.is_ready){
-									$('<a>').text('join').addClass('btn btn-success').click(function(){
-										window.location = "/world/";
-									}).appendTo($('.go_container'));
-									
-								}else{
-									//console.log('NOT ready');
-								}
-							}})
-					
-					$.getJSON("/missions/get_positions/"+m_id + '/',function(json){
-						$('#mission-positions').find('*').remove();
-					
-						$.each(json, function(i,wp){
-							var tr = $('<tr>');
-							console.log(wp);
-							$('<td>').text(wp.command).appendTo(tr);
-							$('<td>').text(wp.ship_type).appendTo(tr);
-							$('<td>').text(wp.workpoint).appendTo(tr);
-							if(!wp.busy){
-								$('<td>').appendTo(tr).append(
-								$('<a>').text('join').addClass('btn btn-success').click(function(){
-									$.ajax({url:"/missions/join/"+m_id + '/',
-											data:{command:wp.command,
-												object_guid:wp.object_guid,
-												workpoint:wp.workpoint },
-											success: function(){
-												window.location.reload();
-											}
-										
-											})
-								})
-								)
-							}
-							
-							
-							tr.appendTo($('#mission-positions'));
-						})
-					})
-				})
-			});
+				var C = new Cons("#{auth_hash}")
+				C.init();
+			})
 	body
-		.container
-			
-			h1 RPG login
-			h2 Player console
-			a.btn.btn-primary(href="/auth/logout/") Выйти
+		.contaner
 			.row
-				.col-md-12.col-xs-12
-					h3 Assets
+				.col-md-2.col-md-offset-10
+					.dropdown
+					a#dLabel(data-toggle="dropdown",role='button',href="#") 
+						|#{ user.username }
+						span.caret
+					ul.dropdown-menu(role="menu" aria-labelledby="dLabel")
+						li 
+							a(href='/logout/') Выход
+		.container
+			ul.nav.nav-tabs
+				li
+					a(href="#positions",data-toggle="tab") Доступные позиции
+				li
+					a(href="#my-missions",data-toggle="tab") Мои миссии
+				li
+					a(href="#my-assets",data-toggle="tab") Мои активы
+				li
+					a(href="#settings",data-toggle="tab") Настройки
+	
+
+			div.tab-content
+				div#positions.tab-pane.active 
+					h3 Здесь у нас список доступных позиций для управления
+					.row
+						.col-md-6
+							b Доступные позиции
+							#player-position-list
+						.col-md-6
+							b Занятые позиции
+							#owned-position-list
+							
+				div.tab-pane#my-missions
+					h3 Здесь будем создавать и редактировать миссии
+					.row
+						.col-md-6
+							b Список моих миссий
+							#my-mission-list
+						.col-md-6
+							b Список позиций на миссию
+
+							#mission-position-list
+							
+					a.btn.btn-primary#create-mission create!
 					
-				.col-md-6.col-xs-6
-					h3 Missions
-					table.table.table-striped#mission-table
-						tr
-							th #
-							th Creator
-							th Name
-						-var C = 0;
-						-each mission,key in missions
-							-C = C+1;
-							tr(mission_id='#{mission.GUID}')
-								td #{C}
-								td #{mission.creator}
-								td was button here
-				.col-md-6.col-xs-6
-					.go_container
-						
-					h3 Positions in mission
-					table.table.table-striped#mission-positions
-						tr
-							th #
-							th Position
-							th Prereq
-							th Description
-						tr
-							td 1
-							td Pilot
-							td Own ship
-							td Coords will arrive
-						tr
-							td 2
-							td Gun Man
-							td small projectile turret lvl 2
-							td --
-					a.btn.btn-primary(href='/missions/create/') create!
+				div.tab-pane#my-assets Здесь будет список активов, разбросанных по галактике
+				div.tab-pane#settings Настройки для меня
+			
 								
 		
 			
