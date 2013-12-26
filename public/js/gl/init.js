@@ -540,7 +540,7 @@ window.World.syncTime = function(){
 			self._time_diff = data.ts - self._sync_timestamp + lat
 			self.average_ping_instability = avg_ping_instab;
 			
-			// console.log(self.pings, avg_ping, self.pings_instability, avg_ping_instab)
+			console.log(self.pings, avg_ping, self.pings_instability, avg_ping_instab)
 		})
 		this._sync_message_setup = true
 		
