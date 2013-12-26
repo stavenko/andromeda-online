@@ -1,5 +1,5 @@
-var Scene = require('./scene.js')
-var u = require('./utils.js')
+var Scene = require('./scene')
+var u = require('./utils')
 var _     = require('underscore');
 
 

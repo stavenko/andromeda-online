@@ -1,6 +1,6 @@
 var fs    = require('fs');
-var u = require('./utils.js');
-var THR = require('./three.node.js');
+var u = require('./utils');
+var THR = require('./three.node');
 
 var _     = require('underscore');
 
