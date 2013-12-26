@@ -1,7 +1,7 @@
 var _     = require('underscore')
-	, Scene = require('./scene.js')
-	, Mission = require('./missions.js')
-	, Controller = require("./controller.js");
+	, Scene = require('./scene')
+	, Mission = require('./missions')
+	, Controller = require("./controller");
 
 
 var Core = function(Globals){

@@ -1,7 +1,7 @@
 var _     = require('underscore');
 
 
-var Simulation = new require('./core.js').Simulation
+var Simulation = new require('./core').Simulation
 
 var sender = function(message){
 	// console.log("some send mes", message);

@@ -11,9 +11,9 @@ var app = require('express')()
   , server = require('http').Server(app)
   , ios = require('socket.io') // (server)
   
-  , Mission = require("./server/missions.js")
-  , Sc  = require("./server/scene.js")
-  , Core = require('./server/core.js').Core
+  //, Mission = require("./server/missions.js")
+  //, Sc  = require("./server/scene.js")
+  //, Core = require('./server/core.js').Core
   //, Simulation = require('./server/core.js').Simulation
   , browserify_express = require('browserify-express')
   //, Worker = require('webworker-threads').Worker
