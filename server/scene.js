@@ -46,6 +46,7 @@ Scene._create = function(){
 	this.time_inc  = 0;
 	this._scene_object_cache = {}
 	this._scene_obj_actors={}
+	this._target_aq = 1; // seconds to get to sync target
 	this.is_loaded = false
 	this._d = false
 	this._scene ={actors:{}, GUID: this.GUID, objects:{}, coords:[this.gx, this.gy, this.gz]  } 
@@ -145,6 +146,9 @@ Scene.load = function(onload, three_scene){
 	// three scene - is a param for adding meshes to
 	var self = this;
 	//console.log('loading');
+	// DEBUG THINGS
+	self.total = new self.THREE.Vector3();
+	self.total_t=0;
 	
 	self.meshes = {}
 	self.loader =  new self.THREE.JSONLoader();
@@ -200,8 +204,11 @@ Scene.load = function(onload, three_scene){
 				var m = new self.THREE.Matrix4()
 				m.identity()
 			
-		
+				// var turret = object.turrets[objects.workpoints[actor.control.workpoint].turret] 
+				
+				
 				var mesh = new self.THREE.Mesh( geom, mat );
+				mesh.json = object
 				mesh.total_powers = [];
 				mesh.total_torques = [];
 						// console.log(i, mesh.total_torques, mesh.total_powers)
@@ -219,7 +226,12 @@ Scene.load = function(onload, three_scene){
 						
 						var _is = 'to' in object.physical[i]
 						if (!_is){
-							var v = new self.THREE.Vector3()
+							if(i !='rotation'){
+								var v = new self.THREE.Vector3()
+								
+							}else{
+								var v = new self.THREE.Euler()
+							}
 							v.set.apply(v, object.physical[i])
 							mesh[i] = v
 						
@@ -242,7 +254,7 @@ Scene.load = function(onload, three_scene){
 				mesh.position = mesh.pos;
 				if (! object_rotated &&  'rot' in mesh){
 					
-					var uel = new THREE.Euler(mesh.rot.x, mesh.rot.y, mesh.rot.z);
+					var uel = new self.THREE.Euler(mesh.rot.x, mesh.rot.y, mesh.rot.z);
 					mesh.rotation = uel;
 				}
 				// console.log(mesh.position)
@@ -270,11 +282,23 @@ Scene.load = function(onload, three_scene){
 					three_scene.add( mesh );
 					
 				}
+				
+				//var turrets = {}
+				//_.each(object.workpoints, function( wp ){
+				//	turret = object.turrets[ wp.turret ] 
+				//	var turret_pos = new self.THREE.Vector3();
+				//	turret_pos.fromArray(turret.position)
+				//	turrets[ wp.turret ] = turret_pos;
+				//	mesh.add(
+					
+					//})
+				
 			
 				self.meshes[ object.GUID ] = mesh;
 				self.loaded_objects_count +=1;
 				self._model_loaded( ix )
 			}
+			
 			
 			if(self.ajax_load_models){
 				self._get_model(object.model_3d,self._ajax_getter, with_geom_and_mat)
@@ -357,19 +381,25 @@ Scene._model_loaded = function(ix){
 }
 Scene.sync = function(sync){
 	var self = this;
+	//self.targets = {};
+	
 	_.each(sync, function(object, guid){
 		if (!(guid in self.meshes)) return;
+		self.meshes[guid].ph_targets = {}
+	
 		_.each(object, function(vec, name){
-			if (name =='rotation'){
-				var v = new self.THREE.Euler()
-				
-			}else{
-				var v = new self.THREE.Vector3()
-				
-			}
+			var v = new self.THREE.Vector3()
 			v.fromArray(vec)
 			
-			self.meshes[guid][name] = v
+			//if(['position', 'rotation'].indexOf(name ) === -1){
+				//console.log('name', name);
+			console.log("SYNC========================================");
+			var target = {vec: v,
+						  started:false}
+			self.meshes[guid].ph_targets[name] = target
+			self.need_sync = true;
+				
+				//}
 			
 			
 			
@@ -392,10 +422,17 @@ Scene.get_almanach = function(){
 }
 Scene.tick = function(){
 	var self = this;
+	if(self.tick_num){
+		self.tick_num+=1;
+	}else{
+		self.tick_num = 0;
+	}
 	// console.log('.');
 	//var time_inc = 0;
 	var time_left = self.clock.getDelta();
 	self.time_inc += time_left;
+	
+	
 	if(self.last_ts === undefined){
 		self.last_ts = new Date().getTime();
 	}
@@ -457,19 +494,24 @@ Scene.tick = function(){
 				var F = FA[i].vec.clone();
 				ps.push( {i:F.multiplyScalar( time ), t:time} )
 			}
-			console.log(ps);
-			FA.splice(0, FA.length - 1);
+			//console.log(ps);
+			FA.splice(0, FA.length - 1); // удаляем все силы кроме последней
 			//console.log("TWO", ps);
 		}
-		else{ // одна сила в списке - действует до сих пор
+		else{ // одна сила в списке - действует до сих пор, или начнет действовать скоро
 			var F = FA[0].vec.clone()
 			var acts_since = FA[0].ts
 			
 			//console.log(now - last_ts);
 			if(acts_since < last_ts){ acts_since = last_ts }
+			if(acts_since >= now) {
+				// ничего пока не делаем - возвращаем пустые импульсы 
+				console.log('in future');
+				return ps;
+			}
 			var time = (now - acts_since)/1000;
 			// console.log(time, now - acts_since );
-			if (F.length() === 0){
+			if (F.length() === 0){ // Удаляем силу, если она равна нулю
 				FA.splice(0,1);
 			}
 			ps.push({i:F.multiplyScalar( time ), t:time});
@@ -500,7 +542,20 @@ Scene.tick = function(){
 			var TI = get_impulses(mesh.total_torques, self.last_ts, now) // Импульсы вращения
 			//mesh.total_torques = [ mesh.total_torques[mesh.total_torques.length] ]
 			var PI = get_impulses(mesh.total_powers, self.last_ts, now) // Импульсы поступательного
+			//var total_t = 0
+			if(TI.length > 0){
+				//_.each(TI, function(i, inum){
+				//	console.log("responses #"+inum, i.i, i.t, self.total.length(), self.total_t);
+					
+				//	self.total.add(i.i.clone())
+				//	self.total_t += i.t;
+				//})
+
+				
+				
+			}
 			_.each(TI, function(imp){
+
 			
 				// Получаем дополнительные интегралы - суммируем 
 				rots.add(imp.i.clone().multiplyScalar( um*imp.t ))// Интегрируем изменения углов по импульсам
@@ -516,79 +571,119 @@ Scene.tick = function(){
 			
 		}
 		
-		//mesh.total_powers = [ mesh.total_powers[mesh.total_powers.length] ]
-		
-		//console.log(mesh);
-		//if(PI.length >0){
-		//	vsdfsadf.sdfsdf.sdfsdfsdf = 1
-		//}
-		// console.log("F", PI);
-		//var rots = new self.THREE.Vector3(0,0,0)
-		//var poses = new self.THREE.Vector3(0,0,0)
-		//console.log("PI", PI, mesh.total_powers);
-		// console.log("IMP", mesh.impulse, poses, mesh.pos )
-		// mesh.avel = mesh.angular_impulse.clone().multiplyScalar(um);
 		mesh.vel = mesh.impulse.clone().multiplyScalar(um);
 		
-		//mesh.rot.add(rots)
 		mesh.rotateX(rots.x)
 		mesh.rotateY(rots.y)
 		mesh.rotateZ(rots.z);
 		
-		//console.log(mesh.guid, "POSES to ADD", poses)
-		// mesh.pos.add(poses);
 		mesh.position.add(poses);
 		
+		/// Здесь мы будем достигать поставленных целей до тех импульсов, и координат, который нам нужны, для этого сначала
+		//  Попробуем на кошках - угловых моментах
+		if(self.need_sync && (mesh.ph_targets !== undefined)){
+			// console.log(mesh.ph_targets)
+			_.each(mesh.ph_targets, function(target, name){
+				if(target.started){
+					var dv = target.v.clone().multiplyScalar(time_left)
+					target.total_time += time_left
+					target.diff_length -= dv.length();
+					//target.diff.sub(dv);
+					if(name==='rotation'){
+						//console.log("time and diff", target.total_time,target.diff_length, target.diff.toArray(), dv.toArray());
+					}
+					if(name === 'rotation'){
+						var _r = new self.THREE.Vector3().fromArray(mesh.rotation.toArray()).sub(dv).toArray();
+						mesh.rotation = new self.THREE.Euler().fromArray(_r);
+					}else{
+						mesh[name].sub(dv)
+					}
+					if(target.diff_length <= 0.001){
+						// console.log("sync_stop");
+						
+						delete mesh.ph_targets[name];
+					}
+					
+					
+					
+				}else{
+					var afrom = mesh[name].toArray()
+					var from = new self.THREE.Vector3().fromArray(afrom)
+					target.diff = from.sub(target.vec.clone())
+					target.v = target.diff.clone().multiplyScalar(1/self._target_aq)
+					if(name === 'rotation'){
+						console.log("start new sync ", name, afrom, target.vec.toArray(), target.diff.toArray(), target.v.toArray());
+					}
+					
+					target.started = true;
+					target.total_time = 0;
+					target.diff_length = target.diff.length()
+				}
+			})
+			/*
+			
+			if('rotation' in mesh.ph_targets){
+				
+				var to = mesh.rotation.toArray()
+				var from = mesh.ph_targets.rotation.toArray()
+				var tov = new self.THREE.Vector3().fromArray(to)
+				var R = new self.THREE.Vector3().fromArray(from).sub(tov);
+				if(R.length() < 0.01){
+					mesh.rotation = mesh.ph_targets.rotation
+					console.log('ROT too small');
+					delete mesh.ph_targets['rotation']
+				}
+				else{
+					//if(self.cur_tick === undefined){self.cur_tick = self.tick_num;}
+					console.log("ROT target", mesh.ph_targets.rotation);
+					console.log("ROT diff", R);
+					console.log('ROT lill big', R.length(), mesh.rotation);
+					R.multiplyScalar(1/ self._target_aq * time_left);
+					console.log(">>", R.x, R.y, R.z);
+					mesh.rotateX( R.x)
+					mesh.rotateY( R.y)
+					mesh.rotateZ( R.z)
+					console.log(">>", mesh.rotation);
+					
+					// console.log(R.length());
+					
+				}
+				
+				
+			}
+			if('position' in mesh.ph_targets){
+				var PD = mesh.position.clone().sub(mesh.ph_targets.position.clone())
+				if(PD.length() < 0.01){
+					console.log('POS too small');
+					mesh.position = mesh.ph_targets.position
+					delete mesh.ph_targets['position']
+					
+				}else{
+					console.log('POS lill big', PD.length());
+					
+					PD.multiplyScalar(1/ self._target_aq);
+					PD.multiplyScalar(time_left)
+					mesh.position.add(PD)
+				}
+			}
+			if('angular_impulse' in mesh.ph_targets){
+				var ang_mom_diff = mesh.angular_impulse.clone().sub(mesh.ph_targets.angular_impulse.clone())
+				var amdV = ang_mom_diff.multiplyScalar(1/ self._target_aq);
+				var dm = amdV.multiplyScalar( time_left );
+				mesh.angular_impulse.add(dm)
+			}
+			if('impulse' in mesh.ph_targets){
+				var ID = mesh.impulse.clone().sub(mesh.ph_targets.impulse.clone())
+				ID.multiplyScalar(1/ self._target_aq);
+				ID.multiplyScalar( time_left );
+				mesh.impulse.add(dm)
+			}
+			*/
+			
+			// console.log(ang_mom_diff, ang_rot_diff );
 		
-		// var mesh = self.meshes[i];
-		/*
-		if(mesh.has_engines){
-			total_acc = new self.THREE.Vector3(0,0,0);
-			
-			for (var j = 0; j < mesh.on_engines_propulsion.length; j++){
-			
-				var engine = mesh.on_engines_propulsion[j]
-				var axis = engine[0] == 'x'?new self.THREE.Vector3(1,0,0):(engine[0] =='y'?new self.THREE.Vector3(0, 1, 0): new self.THREE.Vector3(0,0,1))
-				var dir  = engine[1] == '+'?1:-1
-				var acc = mesh.engines.propulsion[engine] / mesh.mass
-				axis.multiplyScalar(acc).multiplyScalar(dir).applyQuaternion(mesh.quaternion);
-				total_acc.add(axis)
-			}
-			if(mesh.vel === undefined)mesh.vel = new self.THREE.Vector3(0,0,0)
-			mesh.vel = total_acc.clone().multiplyScalar(time_left).add(mesh.vel) 
-			mesh.pos = total_acc.clone().multiplyScalar(time_left * time_left)
-					       .add(mesh.vel.clone().multiplyScalar(time_left))
-						   .add(mesh.pos);
-				   
-			var total_aacc = new self.THREE.Vector3(0,0,0)
-			// console.log(mesh.on_engines_rotation);
-			for(var j =0; j < mesh.on_engines_rotation.length; j++){
-				// console.log("WTF");
-				var engine = mesh.on_engines_rotation[j]
-				var axis = engine[0] == 'x'?new self.THREE.Vector3(1,0,0):(engine[0] =='y'?new self.THREE.Vector3(0, 1, 0): new self.THREE.Vector3(0,0,1))
-				var dir  = engine[1] == '+'?1:-1
-				var aacc = mesh.engines.rotation[engine] / mesh.mass
-				axis.multiplyScalar(aacc).multiplyScalar(dir)
-				total_aacc.add(axis)
-			}
-			if(mesh.avel === undefined) mesh.avel = new self.THREE.Vector3(0,0,0)
-			// console.log(mesh.avel)
-			mesh.avel = total_aacc.clone().multiplyScalar(time_left).add(mesh.avel)
-			mesh.rot  = total_aacc.clone().multiplyScalar(time_left * time_left)
-					       .add(mesh.avel.clone().multiplyScalar(time_left))
-			mesh.rotateX(mesh.rot.x)
-			mesh.rotateY(mesh.rot.y)
-			mesh.rotateZ(mesh.rot.z);
-		
-		}else{
-			// console.log(mesh.pos);
-			if (mesh.vel){
-				mesh.pos =mesh.vel.clone().multiplyScalar(time_left).add(mesh.pos);
-			}
-			
-			
 		}
-		*/ 
+		
 		var _this_cache={}
 		_.each(['position', 'rotation', 'impulse', 'angular_impulse'], function(v){
 			var vec = mesh[v];

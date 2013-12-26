@@ -28,6 +28,7 @@ Cons.prototype = {
 		this.socket.emit("join-position",{MGUID:MGUID, position:pos} )
 	},
 	_assign_self: function(MGUID, pos){
+		console.log("ass", MGUID, pos)
 		this.socket.emit("join-position",{MGUID:MGUID, position:pos} )
 	},
 	
@@ -54,7 +55,7 @@ Cons.prototype = {
 		tr.append($('<th>').text("Команда")); 
 		tr.append($('<th>')); 
 		
-		_.each(positions, function(pos, i){
+		_.each(positions, function(pos){
 			var tr = $('<tr>');
 			T.append(tr);
 			tr.append($('<td>').text(pos.object_type + ' - '+ pos.object_subtype )); 
@@ -63,12 +64,12 @@ Cons.prototype = {
 			tr.append($('<td>').text(pos.command))
 			if(!pos.busy){
 				var join = $('<a>').text('Занять').addClass('btn btn-success').click(function(){
-					self._join_position(pos.MGUID, i);
+					self._join_position(pos.MGUID, pos.id);
 				})
 				tr.append($('<td>').append(join))
 			}else{
 				var release = $('<a>').text('Освободить').addClass('btn btn-success').click(function(){
-					self._release_position(pos.MGUID, i);
+					self._release_position(pos.MGUID, pos.id);
 				})
 				tr.append($('<td>').append(release))
 				
@@ -115,10 +116,10 @@ Cons.prototype = {
 						.append($('<a id="dLabel" role="button" data-toggle="dropdown" data-target="#" href="/page.html">')
 							.html(actor_state + ' <span class="caret"></span>') )
 						.append($(' <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">')
-							.append($('<li>').append($("<a>").text("Скопировать инвайт").click(function(){self._copy_position_invite(pos.MGUID, i )}) ))
-							.append($('<li>').append($("<a>").text("Сделать публичным").click(function(){self._share_position(pos.MGUID,i,'public') }) )  )
-							.append($('<li>').append($("<a>").text("Назначить...").click(function(){self._assign_player(pos.MGUID,i) }) )  )
-							.append($('<li>').append($("<a>").text("Назначить мне!").click(function(){self._assign_self(pos.MGUID,i) }) )  )
+							.append($('<li>').append($("<a>").text("Скопировать инвайт").click(function(){self._copy_position_invite(pos.MGUID, pos.id )}) ))
+							.append($('<li>').append($("<a>").text("Сделать публичным").click(function(){self._share_position(pos.MGUID,pos.id,'public') }) )  )
+							.append($('<li>').append($("<a>").text("Назначить...").click(function(){self._assign_player(pos.MGUID,pos.id) }) )  )
+							.append($('<li>').append($("<a>").text("Назначить мне!").click(function(){self._assign_self(pos.MGUID,pos.id) }) )  )
 						)
 							
 			tr.append($('<td>').append(opts))

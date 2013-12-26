@@ -293,11 +293,15 @@ io.on('connection', function(socket){
 			//console.log("AU", auth_info);
 			//if (auth_info)
 			var S = Scenes[action.actor.scene]
-			console.log("SCENE", S);
+			console.log("SENDING", S === undefined);
+			// console.log("SCENE", S);
+			if (S === undefined){return;}
 			_.each(S.actors, function(a,aguid){
-				// console.log("AA",a);
-				if (a.user_id !== user_id){
-					var socket = Sockets[user_id]
+				console.log("AA", a.user_id !== user_id, a.user_id != user_id);
+				if (a.user_id != user_id){
+					console.log("AB", a.user_id,  user_id);
+					var socket = Sockets[a.user_id]
+					if(socket === undefined) return;
 					if(on_off)socket.emit('player_controls_on', action)
 					else socket.emit("player_controls_off", action)
 				}
@@ -363,18 +367,25 @@ io.on('connection', function(socket){
 
 simulator.on('message', function(msg){
 	// console.log("MSGG", msg);
-	
+	//console.log('mmm', msg.type)
 	if ( msg.type === 'scene_sync' ){
+		//console.log("scene_sync", msg);
 		var scene_json = Scenes[msg.scene];
 		if (scene_json === undefined){
+			//console.log("no scene");
 			return;  // Незачен синхронизировать сцену для того, кто еще не подключился 
 		}
 		_.each(Scenes[msg.scene].actors, function(a){
 			var sock = Sockets[a.user_id];
-			sock.emit(msg.type, {scene:msg.scene, almanach:msg.almanach });
+			if(sock) sock.emit(msg.type, {scene:msg.scene, almanach:msg.almanach });
 		})
 		return ;
 	}
+	/// Сообщения ниже ни до кого не доберутся если они без пользователя
+	if (msg.user_id === undefined){
+		return;
+	}
+	
 	if(msg.recv === 'world'){
 		var con_sock = Sockets[msg.user_id];
 	}else{

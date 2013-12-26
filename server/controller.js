@@ -22,7 +22,7 @@ Controller.NetworkActor =   function(onAct, W){
 			// console.log("server time", action.timestamp/1000 )
 			// console.log("my time - servtime", new Date().getTime()/1000 - action.timestamp/1000 )
 			if (W !== undefined){
-				console.log(W, W._time_diff);
+				// console.log(W, W._time_diff);
 				action.timestamp -= W._time_diff
 			}
 			// console.log("my time - servtime [fixed]", new Date().getTime()/1000 - action.timestamp/1000 )
@@ -64,7 +64,20 @@ Controller.LocalInputActor = function(W, socket){
 				delete t[k]
 				// console.log("w")
 				// console.log(W.controllable());
-				t[k.substr(1)] = W.mouse_projection_vec.clone().sub(W.controllable().position.clone() )
+				//var T = Controller.T();
+				
+				//var C = W.controllable();
+				//var Cc = W.get_main_viewport().camera
+				//var camera_position_vector = new T.Vector3()
+				//console.log(C.json);
+				//var camera =  C.json.cameras[Cc]
+				//console.log(camera);
+				//camera_position_vector.fromArray(camera.position);
+				//camera_position_vector.applyEuler( C.rotation.clone() )
+				//camera_position_vector.add(C.position.clone());
+				//console.log("camera pos in W", camera_position_vector);
+				
+				t[k.substr(1)] = W.mouse_projection_vec.clone() //.sub(camera_position_vector)
 			}},
 		}
 	
@@ -88,9 +101,12 @@ Controller.LocalInputActor = function(W, socket){
 			
 			var ts = new Date().getTime()
 			var action = _.clone(self.actions[keycode]);
-			action.timestamp = ts 
+			action.timestamp = ts
+			action.timestamp += W.average_ping_instability // Нестабильность пинга - чем пинг больше - тем меньше нестабильность
+			// На маленьких значения не превышает значения пинга
+			 
 			
-			console.log("my diff", W._time_diff)
+			// console.log("my diff", W._time_diff)
 			
 			// console.log("my time", new Date().getTime()/1000)
 			// console.log("server time", action.timestamp/1000 )
@@ -116,9 +132,9 @@ Controller.LocalInputActor = function(W, socket){
 					var obj = S.get_objects()[actor.control.object_guid];
 					var wp = obj.workpoints[actor.control.workpoint];
 					if (wp.type == local_controller.type){
+						var a_clone = _.clone(action)
 						local_controller.act(self.World.scenes[actor.scene], action, up_or_down, actor, onAct);
 						// console.log(action);
-						var a_clone = _.clone(action)
 						
 						a_clone.timestamp += W._time_diff;
 						if (up_or_down){
@@ -165,6 +181,7 @@ Controller.CPilotController = function(){
 				//console.log("MY", W.actors[W.login].control.object_guid)
 			//	var C = S.controllable()
 			//}else{
+			if(S === undefined ) return;
 			var C = S.mesh_for(actor)
 			var T = Controller.T();
 			
@@ -341,7 +358,7 @@ Controller.BasicBulletActor=function(S, id, coid){
 							//	console.log("HERE", isr[index].distance, direction.length())
 							///}
 					
-							console.log('HIT')
+							// console.log('HIT')
 							// console.log("END", isr[0].point);
 							m.worldToLocal(isr[0].point) // Теперь это плечо удара
 							var impulse = self.my_mesh.impulse;  //vel.clone().multiplyScalar(self.my_mesh.mass)
@@ -377,9 +394,9 @@ Controller.BasicBulletActor=function(S, id, coid){
 							// console.log(add_vel)
 							// Убрать пока скорость
 							//if (S.meshes[i].vel){
-								console.log(S.meshes[i].impulse)
+								// console.log(S.meshes[i].impulse)
 							S.meshes[i].impulse.add( impulse );
-							console.log(S.meshes[i].impulse)
+							// console.log(S.meshes[i].impulse)
 								// }
 					
 					
@@ -421,7 +438,7 @@ Controller.BasicBulletActor=function(S, id, coid){
 Controller.CTurretController = function(){
 	this.type = 'turret';
 		this.act = function(S, action, is_down, actor ){
-			
+			if (S === undefined){return;}
 			if (action.type =='shoot_primary'){
 				if(! is_down) return;
 				// console.log('>>>');
@@ -434,6 +451,11 @@ Controller.CTurretController = function(){
 				//}else{
 				//console.log(actor, action);
 				var C = S.meshes[actor.control.object_guid]
+				var object = C.json
+				var wp = object.workpoints[actor.control.workpoint];
+				var turret = object.turrets[ wp.turret ] 
+				// console.log(turret, C.json.turrets, C.json.workpoints, actor)
+				
 				
 					//}
 				if (action.turret_direction instanceof T.Vector3){
@@ -444,17 +466,28 @@ Controller.CTurretController = function(){
 												action.turret_direction.y,
 												action.turret_direction.z)
 				}
-				mpv.multiplyScalar(0.5000);
+				console.log(mpv)
 				//console.log('TH', Controller.T())
+				// var front_vector = C.
+				var turret_position_vector = new T.Vector3()
+				turret_position_vector.fromArray(turret.position );
+				// turret_position_vector.multiplyScalar(1);
+				turret_position_vector.applyEuler( C.rotation.clone() )
 				
 				var bullet = Controller.createShotParticle();
-				bullet.pos = new T.Vector3()
-				bullet.pos = C.position.clone()
+				bullet.position = C.position.clone()
+				bullet.position.add(  turret_position_vector.clone() )
+				// console.log("BULLET POS IN W", C.position, C.pos,  bullet.position)
+				
 			
 				bullet.has_engines = false;
 				bullet.is_not_collidable = true;
 				bullet.vel = new T.Vector3(0,0,0); // mpv//.multiplyScalar(0.10);
+				
 				bullet.mass = 1;
+				
+				mpv.sub(bullet.position.clone()).normalize().multiplyScalar(120.00);
+				
 				bullet.impulse = mpv;
 				bullet.angular_impulse = new T.Vector3(0,0,0);
 				if ( typeof window !== 'undefined'){
@@ -516,7 +549,8 @@ if(typeof window === 'undefined'){
 		material.transparent = true;
 		material.blending = THREE.AdditiveBlending;
 		
-		var a = new T.Sprite(material);
+		// var a = new T.Sprite(material);
+		var a = new T.Mesh(new T.SphereGeometry(2));
 		a.static = false;
 		a.has_engines = false;
 		return a

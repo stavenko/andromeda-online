@@ -16,10 +16,10 @@ var create_mission_json = function(  ){
 	
 	var def_ship1 = {type:'ship',
 					 "ship_type":"Default",
-						 model_3d:'/models/eco.js',
+						 model_3d:'/models/StarCruiser.js',
 						 physical:{
 							 pos:p1,
-							 rot:{to: p2},
+							 rot:{to:p2},
 						 },
 					 
 						 "cameras":{
@@ -80,10 +80,10 @@ var create_mission_json = function(  ){
 	var def_ship2 = {type:'ship',
  					 "ship_type":"Default",
 	
-						 model_3d:'/models/eco.js',
+						 model_3d:'/models/StarCruiser.js',
 						 physical:{
 							 pos:p2,
-							 rot:{to: p1},
+							 rot:{to:p1},
 						 
 						 },
 			 			"cameras":{
@@ -263,8 +263,9 @@ Mission.prototype = {
 		var self = this;
 		var actors = []
 		_.each(this._users, function(positions_of_user, user_id){
-			_.each(positions_of_user, function(position, pos_id){
-				actors.push(self._make_actor(pos_id, user_id));
+			_.each(positions_of_user, function(position){
+				
+				actors.push(self._make_actor(position, user_id));
 				
 			})
 		})
@@ -274,7 +275,7 @@ Mission.prototype = {
 		var pos = this._positions[pos_id]
 		var new_actor_guid = u.make_guid()
 		var controllable = {object_guid:pos.object_guid, workpoint:pos.workpoint} // viewport:'front', controls:['Pilot', 'Turret']} 
-		
+		console.log(this._positions, pos_id, user_id, pos);
 		return {command:pos.command, user_id: user_id, control: controllable, GUID:  new_actor_guid}
 		
 	},
@@ -375,6 +376,8 @@ Mission.prototype = {
 									 'MGUID' : self.GUID
 								 
 								 }
+								 place.id = counter;
+								 counter += 1;
 	 					
 								 
 						self._positions.push(place)

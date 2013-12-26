@@ -143,7 +143,9 @@ window.World.init = function(auth_hash, client_login){
 	//  = new THREE.Scene();
 	this.clock = new THREE.Clock();
 	//this.geometry = new THREE.CubeGeometry(200, 200, 200);
-	//this.cg = new THREE.SphereGeometry(2);
+	var sg = new THREE.SphereGeometry(5);
+	// var wires = new THREE.MeshBasicMaterial({wireframe:true})
+	this.cur = new THREE.Mesh(sg) // , wires);
 	this.vp_width = document.body.clientWidth;
 	this.vp_height = 400;//document.body.clientHeight;
 	this._main_viewport = 0
@@ -165,6 +167,12 @@ window.World.init = function(auth_hash, client_login){
 	this.mouse_projection_vec = new THREE.Vector3();
 	
 	var self = this;
+	
+	//******
+	//this.setup_scene(this.three_scene);
+	//this.initSun();
+	//this.initSpace();
+	
     
 	this.renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
 	this.renderer.setSize(this.vp_width, this.vp_height);
@@ -184,13 +192,17 @@ window.World.init = function(auth_hash, client_login){
 		self.mouse_x = e.x;
 		self.mouse_y = e.y;
 	}, false );
-	document.addEventListener('mouseup', function(e){
+	this.renderer.domElement.addEventListener('mouseup', function(e){
 		// console.log(e)
 		self.Inputs.input( 'lmouse', false)
 		
+		// var action = self.actions['lmouse']
+		
+		//ControllersActionMap[action.type].act(self, action, true)
+		// Controller(self, action, true);
 	})
 	
-	document.addEventListener('mousedown', function(e){
+	this.renderer.domElement.addEventListener('mousedown', function(e){
 		// console.log(e)
 		self.Inputs.input( 'lmouse', true)
 		
@@ -306,13 +318,14 @@ window.World.init_socket = function(){
 	})
 	this.socket.on('scene_sync', function(data){
 		
+		// console.log(data.almanach);
 		self.scenes[data.scene].sync(data.almanach);
 	})
 	this.socket.on('player_controls_on', function(data){
 		var actor = data.actor;
 		var action = data.action;
 		var S = self.scenes[actor.scene];
-		// console.log("PPLAY CONTOL", actor);
+		console.log("PPLAY CONTOL", actor);
 		self.network_actor.act(S, action, true, actor)
 	
 	})
@@ -391,7 +404,7 @@ window.World.makeCamera = function(vp ){
 	var mesh = self.scenes[scene].meshes[object_id]
 	var object = self.scenes[scene].get_objects()[object_id]
 	
-	var camera = new THREE.PerspectiveCamera(45, vp.geom.w / vp.geom.h, 1, 10000);
+	var camera = new THREE.PerspectiveCamera(45, vp.geom.w / vp.geom.h, 1, 1000);
 	
 	var vp_pos    	 = new THREE.Vector3();
 	var vp_rot  	 = new THREE.Vector3();
@@ -459,8 +472,6 @@ window.World.setupCameras = function(){
 		opt.appendChild(document.createTextNode(vp.camera))
 		sel.appendChild(opt)
 	})
-
-	})*/
 	
 	
 }
@@ -472,11 +483,13 @@ window.World._init_vps = function(){
 	var mvp = this._viewports[this._main_viewport];
 	mvp.geom = {t:0, l:0, w:this.vp_width, h:this.vp_height};
 	mvp.three_camera = this.makeCamera(mvp)
+	this.three_scenes[mvp.scene].add(this.cur);
 	this.initSpace(mvp);
 	
 	
 	var self = this;
 	self.Inputs = new Controller.LocalInputActor(self, self.socket)
+	// self._contrallable = self.controllable();
 	
 	_.each(this._additional_vps, function(vp_name,i){
 		var vp = self._viewports[vp_name];
@@ -490,7 +503,7 @@ window.World._init_vps = function(){
 }
 window.World.controllable = function(){
 	var mvp = this.get_main_viewport();
-	// console.log(mvp, this.)
+	// console.log("MMM", mvp)
 	return this.scenes[mvp.scene].meshes[mvp.object]
 }
 window.World.mesh_for = function(actor){
@@ -514,9 +527,20 @@ window.World.syncTime = function(){
 		this.socket.on("clock_response", function(data){
 			var recv_ts = new Date().getTime();
 			var ping = recv_ts - self._sync_timestamp
-			var lat = ping / 2
+			
+			self.pings.push(ping)
+			
+			if (self.pings.length >5){self.pings.splice(0,1)};
+			var avg_ping = _.reduce(self.pings, function(a,b){return a+b},0)/ self.pings.length;
+			self.pings_instability.push(Math.abs(avg_ping - ping))
+			if (self.pings_instability.length >5){self.pings_instability.splice(0,1)};
+			var avg_ping_instab = _.reduce(self.pings_instability, function(a,b){return a>=b?a:b},0)
+			
+			var lat = avg_ping / 2
 			self._time_diff = data.ts - self._sync_timestamp + lat
-			// console.log(data.ts , ping, lat, self._time_diff)
+			self.average_ping_instability = avg_ping_instab;
+			
+			// console.log(self.pings, avg_ping, self.pings_instability, avg_ping_instab)
 		})
 		this._sync_message_setup = true
 		
@@ -564,6 +588,10 @@ window.World.go = function(){
 	// var _3d_scene = self.setup_scene(self.scene._3scene)
 	var _d = false
 	self.setupCameras();
+	self.pings = [];
+	self.pings_instability = [];
+	
+	
 	self.syncTime()
 	var _time_interv = setInterval(function(){self.syncTime()}, 3000);
 	
@@ -582,10 +610,12 @@ window.World.go = function(){
 			var geom = self._main_vp_geom
 			// console.log("RENDER");
 			self.render(mvp, geom);
-			self.mouse_projection_vec.set( ( self.mouse_x/ geom.w ) * 2 - 1, - ( self.mouse_y / geom.h ) * 2 + 1, 0.999 );
+			self.mouse_projection_vec.set( ( self.mouse_x/ geom.w ) * 2 - 1, - ( self.mouse_y / geom.h ) * 2 + 1, 0.99 );
 		
 		    self.p.unprojectVector( self.mouse_projection_vec, mvp.three_camera );
-		    // self.cur.position.copy( self.mouse_projection_vec );
+			
+		    self.cur.position.copy( self.mouse_projection_vec );
+			//console.log(self.mouse_projection_vec);
 			
 			
 			_.each(self._additional_vps, function(vp_name, i){

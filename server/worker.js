@@ -4,6 +4,7 @@ var _     = require('underscore');
 var Simulation = new require('./core.js').Simulation
 
 var sender = function(message){
+	// console.log("some send mes", message);
 	process.send(message)
 }
 var Sim = new Simulation(sender)
@@ -82,12 +83,17 @@ process.on('message', function(msg){
 		break;
 	case 'start-mission':
 		Sim.startMission(msg);
-		_.each(Sim.getMission(msg.MGUID)._users, function(unneeded, user_id){
-			user_notify(user_id, "mission-started", {MGUID:msg.MGUID});
-		})
+		var mission = Sim.getMission(msg.MGUID);
+		if (mission !== undefined){
+			_.each(Sim.getMission(msg.MGUID)._users, function(unneeded, user_id){
+				user_notify(user_id, "mission-started", {MGUID:msg.MGUID});
+			
+			})
+		}
 		break;
 	case 'request-actors':
 		var as = Sim.getUserActors(msg.user_id);
+		console.log("requested actors", as);
 		process.send({'actors':as, user_id:msg.user_id, type:"actors", recv:'world' })
 		break;
 	

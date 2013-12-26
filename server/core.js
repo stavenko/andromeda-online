@@ -83,7 +83,11 @@ Simulation.prototype = {
 	},
 	getMissionPositions:function(guid){
 		// console.log(this._missions, guid);
-		return this._missions[guid].positions();
+		if(guid in this._missions){
+			return this._missions[guid].positions();
+		}else{
+			return []
+		}
 	},
 	sharePosition: function(msg){
 		// console.log(msg);
@@ -124,6 +128,7 @@ Simulation.prototype = {
 		}
 	},
 	getUserActors: function(user_id){
+		console.log(this._user_actors);
 		return this._user_actors[user_id]
 	},
 	getScenes:function(scene_guids){
@@ -155,24 +160,25 @@ Simulation.prototype = {
 	
 	joinPosition:function(msg){
 		//console.log(msg);
-		console.log('join');
-		this._missions[msg.MGUID].join_player(msg.user_id, msg.position)
-		this._updateActors();
+		//console.log('join', msg);
+		if (this._missions[msg.MGUID]){
+			this._missions[msg.MGUID].join_player(msg.user_id, msg.position)
+			this._updateActors();
+		}
 		
 	},
 	startMission:function(msg){
-		var mis = this._missions[msg.MGUID]
-		mis.prepare_scene();
-		mis.is_started = true;
-		console.log('start_mis');
-		mis._scene.load();
-		this._scenes[mis._scene.GUID] = mis._scene;
-		this._updateActors();
+		if(msg.MGUID in this._missions){ 
+			var mis = this._missions[msg.MGUID]
+			mis.prepare_scene();
+			mis.is_started = true;
+			console.log('start_mis');
+			mis._scene.load();
+			this._scenes[mis._scene.GUID] = mis._scene;
+			this._updateActors();
+		}
 		
-		// console.log('injected');
 		
-		
-		// this.inject_scene(mis.getScene().get())
 	},
 	
 	
@@ -237,7 +243,7 @@ Simulation.prototype = {
 		console.log("SIM started");
 		this.network_actor = Controller.NetworkActor(function(){ console.log("don't do anything" )})
 		this._interval_func = setInterval(function(){self.tick() }, int_)
-		this._sync_func = setInterval(function(){self.send_scene_sync() },1000)
+		this._sync_func = setInterval(function(){self.send_scene_sync() },3000)
 		
 	}
 }
