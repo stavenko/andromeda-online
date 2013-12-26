@@ -1,5 +1,5 @@
-var THR = require('./three.node.js');
-var Utils = require("./Utils.js");
+var THR = require('./three.node');
+var Utils = require("./Utils");
 var _     = require('underscore');
 
 
