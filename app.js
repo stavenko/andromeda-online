@@ -1,4 +1,5 @@
 var app = require('express')()
+  , config= require('./config')
   , _     = require('underscore')
   , crypto = require('crypto')
   , express= require('express')
@@ -129,7 +130,11 @@ app.configure(function(){
     
 	app.use(express.cookieParser());
 	app.use(express.bodyParser());
-    app.use(express.session({ secret: 'keyboard cat', store: new RedisStore }));
+    app.use(express.session({ secret: 'keyboard cat', store: new RedisStore({
+        port: config.redisPort,
+        host: config.redisHost,
+        db: config.redisDatabase,
+        pass: config.redisPassword}) }));
 	
 	app.use(flash());
     app.use(passport.initialize());
