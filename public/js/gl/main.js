@@ -7,7 +7,7 @@ Controller = require('./controller.js')
 
 
 
-},{"./controller.js":6,"./missions.js":4,"./scene.js":2,"./sprite_utils.js":5,"./utils.js":3}],3:[function(require,module,exports){
+},{"./controller.js":6,"./missions.js":3,"./scene.js":2,"./sprite_utils.js":5,"./utils.js":4}],4:[function(require,module,exports){
 var Utils = {
 	
 	make_guid :function(){
@@ -37712,7 +37712,7 @@ Scene.tick = function(){
 }
 SceneObject.prototype = Scene
 module.exports = SceneObject
-},{"./three.node":8,"./utils":3,"fs":7,"underscore":9}],4:[function(require,module,exports){
+},{"./three.node":8,"./utils":4,"fs":7,"underscore":9}],3:[function(require,module,exports){
 var Scene = require('./scene')
 var u = require('./utils')
 var _     = require('underscore');
@@ -38112,7 +38112,7 @@ Mission.prototype = {
 }
 //console.log(Mission);
 module.exports = Mission
-},{"./scene":2,"./utils":3,"underscore":9}],6:[function(require,module,exports){
+},{"./scene":2,"./utils":4,"underscore":9}],6:[function(require,module,exports){
 var THR = require('./three.node');
 var Utils = require("./utils");
 var _     = require('underscore');
@@ -38681,7 +38681,7 @@ module.exports = Controller
 
 //console.log(TurretController.act, PilotController.act)
 
-},{"./three.node":8,"./utils":3,"underscore":9}],9:[function(require,module,exports){
+},{"./three.node":8,"./utils":4,"underscore":9}],9:[function(require,module,exports){
 //     Underscore.js 1.5.2
 //     http://underscorejs.org
 //     (c) 2009-2013 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors

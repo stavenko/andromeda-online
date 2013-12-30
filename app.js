@@ -162,7 +162,7 @@ app.configure(function(){
 
 var io =  ios.listen(server, {log:false});
 
-var port = process.env.PORT || 3002;
+var port = process.env.HTTP_RC_OS_PORT || 3002;
 server.listen(port)
 
 
