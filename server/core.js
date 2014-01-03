@@ -122,7 +122,9 @@ Simulation.prototype = {
 	},
 	getUserMissions:function(user_id){
 		if (this._user_missions[user_id] !== undefined) {
-			return this._user_missions[user_id]
+			
+			console.log(this._user_missions[user_id]);
+			return _.map(this._user_missions[user_id], function(m){ if('mission' in m){var mm =m.mission;mm.GUID = m.GUID; return mm}else{ return m }})
 		}else{
 			return []
 		}
