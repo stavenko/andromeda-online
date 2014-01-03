@@ -164,6 +164,7 @@ Cons.prototype = {
 		})
 		
 		self.socket.on('player-missions', function(msg){
+			console.log('missions', msg);
 			self._my_missions = msg.missions;
 			self._redraw_missions();
 			
