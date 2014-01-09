@@ -391,7 +391,7 @@ Scene.sync = function(sync){
 		if (!(guid in self.meshes)) return;
 		self.meshes[guid].ph_targets = {}
 		console.log("SYNC========================================");
-		var delta = (new Date().getTime()) - object.ts - self.W._time_diff;
+		var delta = (new Date().getTime()) - object.ts + self.W._time_diff;
 		console.log("time",  object.ts, delta);
 	
 		_.each(object._cache, function(vec, name){
