@@ -319,7 +319,9 @@ window.World.init_socket = function(){
 	this.socket.on('scene_sync', function(data){
 		
 		// console.log(data.almanach);
-		self.scenes[data.scene].sync(data.almanach);
+		if(self.scenes !== undefined){
+			self.scenes[data.scene].sync(data.almanach);
+		}
 	})
 	this.socket.on('player_controls_on', function(data){
 		var actor = data.actor;
