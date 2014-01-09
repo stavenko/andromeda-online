@@ -643,11 +643,11 @@ Scene.tick = function(){
 						if(from !== undefined){
 							target.diff = from.clone().sub(target.vec.clone())
 							target.v = target.diff.clone().multiplyScalar(1/self._target_aq)
-							if(name === 'rotation' || name === 'angular_impulse'){
-								// var cur_diff = cur.clone().sub(target.vec.clone());
-								// console.log("start new sync ", name, target.vec.toArray());
-								// console.log("FROM, DIFF",  target.diff.toArray() );
-								// console.log("CUR,DIFF",  cur_diff.toArray() );
+							if(name === 'rotation' ){
+								var cur_diff = cur.clone().sub(target.vec.clone());
+								console.log("start new sync ", name, target.vec.toArray());
+								console.log("FROM, DIFF",  target.diff.toArray() );
+								console.log("CUR,DIFF",  cur_diff.toArray() );
 							}
 					
 							target.started = true;
