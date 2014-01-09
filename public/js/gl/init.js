@@ -319,7 +319,7 @@ window.World.init_socket = function(){
 	this.socket.on('scene_sync', function(data){
 		
 		// console.log(data.almanach);
-		if(self.scenes !== undefined){
+		if(self.scenes[data.scene] !== undefined){
 			self.scenes[data.scene].sync(data.almanach);
 		}
 	})
@@ -543,9 +543,9 @@ window.World.syncTime = function(){
 			
 			var lat = avg_ping / 2
 			self._time_diff = data.ts - self._sync_timestamp - lat
-			if(self._time_diff < 0){
-				self._time_diff = 0;
-			}
+			//if(self._time_diff < 0){
+			//	self._time_diff = 0;
+			//}
 			self.average_ping_instability = avg_ping_instab;
 			self.max_ping = _.max(self.pings)
 			

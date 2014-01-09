@@ -147,7 +147,7 @@ app.configure(function(){
         watch: __dirname + '/server/',
         mount: '/appjs/main.js',
         verbose: true,
-        //minify: true,
+        minify: true,
         bundle_opts: { debug: true }, // enable inline sourcemap on js files 
         write_file: __dirname + '/public/js/gl/main.js'
     });
