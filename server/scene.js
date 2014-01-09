@@ -590,10 +590,10 @@ Scene.tick = function(){
 		
 		/// Здесь мы будем достигать поставленных целей до тех импульсов, и координат, который нам нужны, для этого сначала
 		//  Попробуем на кошках - угловых моментах
-		console.log("SYN", self.need_sync, (mesh.ph_targets !== undefined));
+		//console.log("SYN", self.need_sync, (mesh.ph_targets !== undefined));
 		if(self.need_sync && (mesh.ph_targets !== undefined)){
 			// console.log(mesh.ph_targets)
-			console.log("S");
+			//console.log("S");
 			_.each(mesh.ph_targets, function(target, name){
 				if(target.started){
 					var dv = target.v.clone().multiplyScalar(time_left)
