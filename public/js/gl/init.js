@@ -360,7 +360,7 @@ window.World.load_scene = function (scene_js, onload){
 	this.scenes[scene.GUID] = scene;
 	this.three_scenes[scene.GUID] = new THREE.Scene();
 	// console.log("WWW", onload);
-	scene.load(onload, this.three_scenes[scene.GUID] )
+	scene.load(onload, this.three_scenes[scene.GUID], this )
 	
 	// 
 	//console.log("loading this scene", scene.GUID);
@@ -519,6 +519,9 @@ window.World.redrawSun = function(vp){
 	this.flares[vp.scene].position = m.position.clone().add(sd)
 	// console.log(this.flares[vp.scene].position)
 }
+window.World.getServerTS = function(){
+	
+};
 window.World.syncTime = function(){
 	this._sync_timestamp = new Date().getTime();
 	this.socket.emit("clock_request")
@@ -537,10 +540,15 @@ window.World.syncTime = function(){
 			var avg_ping_instab = _.reduce(self.pings_instability, function(a,b){return a>=b?a:b},0)
 			
 			var lat = avg_ping / 2
-			self._time_diff = data.ts - self._sync_timestamp + lat
+			self._time_diff = data.ts - self._sync_timestamp - lat
+			if(self._time_diff < 0){
+				self._time_diff = 0;
+			}
 			self.average_ping_instability = avg_ping_instab;
+			self.max_ping = _.max(self.pings)
 			
-			console.log(self.pings, avg_ping, self.pings_instability, avg_ping_instab)
+			// console.log("T", avg_ping,self.pings,self._time_diff)
+			console.log("TIMES", self._time_diff, data.ts - self._sync_timestamp, lat)
 		})
 		this._sync_message_setup = true
 		

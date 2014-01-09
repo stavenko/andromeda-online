@@ -245,7 +245,7 @@ Simulation.prototype = {
 		console.log("SIM started");
 		this.network_actor = Controller.NetworkActor(function(){ console.log("don't do anything" )})
 		this._interval_func = setInterval(function(){self.tick() }, int_)
-		this._sync_func = setInterval(function(){self.send_scene_sync() },3000)
+		this._sync_func = setInterval(function(){self.send_scene_sync() },1000)
 		
 	}
 }

@@ -102,7 +102,8 @@ Controller.LocalInputActor = function(W, socket){
 			var ts = new Date().getTime()
 			var action = _.clone(self.actions[keycode]);
 			action.timestamp = ts
-			action.timestamp += W.average_ping_instability // Нестабильность пинга - чем пинг больше - тем меньше нестабильность
+			
+			//action.timestamp += (W.average_ping_instability * 1.5) // Нестабильность пинга - чем пинг больше - тем меньше нестабильность
 			// На маленьких значения не превышает значения пинга
 			 
 			

@@ -121,6 +121,7 @@ app.configure(function(){
 	app.set('view engine', 'jade')
 	app.use(express.favicon(path.join(__dirname, 'public/img/favicon.ico')));
 	app.use(express.logger('dev'))
+	app.use(express.compress());
 	app.use(stylus.middleware(
 		{ 	src: __dirname + '/public'
 			, compile: compile

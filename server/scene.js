@@ -19,12 +19,15 @@ if(typeof window === 'undefined'){
 	Scene.do_prepare_rendering = false
 	Scene.ajax_load_models = false
 	Scene.need_update_matrix = true
+	Scene.save_meshes_past = false
 	
 }else{
 	Scene.THREE = THREE
 	Scene.do_prepare_rendering = true
 	Scene.ajax_load_models = true
 	Scene.need_update_matrix = false
+	Scene.save_meshes_past = true
+	
 	
 }
 
@@ -46,7 +49,7 @@ Scene._create = function(){
 	this.time_inc  = 0;
 	this._scene_object_cache = {}
 	this._scene_obj_actors={}
-	this._target_aq = 1; // seconds to get to sync target
+	this._target_aq = 0.5; // seconds to get to sync target
 	this.is_loaded = false
 	this._d = false
 	this._scene ={actors:{}, GUID: this.GUID, objects:{}, coords:[this.gx, this.gy, this.gz]  } 
@@ -142,7 +145,7 @@ Scene.set_from_json = function(object){
 	
 //	return this.meshes[this.actors[login].control.object_guid]
 // }
-Scene.load = function(onload, three_scene){
+Scene.load = function(onload, three_scene, W){
 	// three scene - is a param for adding meshes to
 	var self = this;
 	//console.log('loading');
@@ -157,6 +160,7 @@ Scene.load = function(onload, three_scene){
 	
 	if(typeof window !== 'undefined'){
 		self.three_scene = three_scene
+		self.W = W;
 	}
 	
 	function put_on(type, name, ts){
@@ -386,16 +390,19 @@ Scene.sync = function(sync){
 	_.each(sync, function(object, guid){
 		if (!(guid in self.meshes)) return;
 		self.meshes[guid].ph_targets = {}
+		console.log("SYNC========================================");
+		var delta = (new Date().getTime()) - object.ts;
+		console.log("time",  object.ts, delta);
 	
-		_.each(object, function(vec, name){
+		_.each(object._cache, function(vec, name){
 			var v = new self.THREE.Vector3()
 			v.fromArray(vec)
 			
 			//if(['position', 'rotation'].indexOf(name ) === -1){
-				//console.log('name', name);
-			console.log("SYNC========================================");
+			console.log('name', name);
 			var target = {vec: v,
-						  started:false}
+						  started:false,
+					  	  ts:object.ts}
 			self.meshes[guid].ph_targets[name] = target
 			self.need_sync = true;
 				
@@ -503,7 +510,7 @@ Scene.tick = function(){
 			var acts_since = FA[0].ts
 			
 			//console.log(now - last_ts);
-			if(acts_since < last_ts){ acts_since = last_ts }
+			// if(acts_since < last_ts){ acts_since = last_ts }
 			if(acts_since >= now) {
 				// ничего пока не делаем - возвращаем пустые импульсы 
 				console.log('in future');
@@ -513,6 +520,8 @@ Scene.tick = function(){
 			// console.log(time, now - acts_since );
 			if (F.length() === 0){ // Удаляем силу, если она равна нулю
 				FA.splice(0,1);
+			}else{
+				FA[0].ts = now // Если сила в далеком прошлом - её все равно надо отработать, а потом ставим время её реакции - сейчас
 			}
 			ps.push({i:F.multiplyScalar( time ), t:time});
 			// console.log("ONE", ps[0].i.z,ps[0].t);
@@ -607,17 +616,48 @@ Scene.tick = function(){
 					
 					
 				}else{
-					var afrom = mesh[name].toArray()
-					var from = new self.THREE.Vector3().fromArray(afrom)
-					target.diff = from.sub(target.vec.clone())
-					target.v = target.diff.clone().multiplyScalar(1/self._target_aq)
-					if(name === 'rotation'){
-						console.log("start new sync ", name, afrom, target.vec.toArray(), target.diff.toArray(), target.v.toArray());
-					}
 					
-					target.started = true;
-					target.total_time = 0;
-					target.diff_length = target.diff.length()
+					var acur = mesh[name].toArray()
+					if(acur){
+						var cur = new self.THREE.Vector3().fromArray(acur)
+					}else{
+						var cur = new self.THREE.Vector3()
+						
+					}
+					// var time_threshold = W.max_ping * 1.5)
+					if (mesh.past_states !== undefined){
+						for(var ts in mesh.past_states[name]){
+							var v = mesh.past_states[name][ts]
+							if (ts< target.ts){
+								//console.log('less')
+								delete mesh.past_states[name][ts]
+							}else{
+								var from = new self.THREE.Vector3().fromArray(v)
+								var afrom = v;
+								// console.log('NOW', now, from )
+								// console.log("GOT", ts, target.vec)
+								
+								break
+							}
+						}
+						if(from !== undefined){
+							target.diff = from.clone().sub(target.vec.clone())
+							target.v = target.diff.clone().multiplyScalar(1/self._target_aq)
+							if(name === 'rotation' || name === 'angular_impulse'){
+								var cur_diff = cur.clone().sub(target.vec.clone());
+								//console.log("start new sync ", name, target.vec.toArray());
+								//console.log("FROM, DIFF",  target.diff.toArray() );
+								//console.log("CUR,DIFF",  cur_diff.toArray() );
+							}
+					
+							target.started = true;
+							target.total_time = 0;
+							target.diff_length = target.diff.length()
+							
+						}
+					
+						
+					}
 				}
 			})
 			/*
@@ -688,8 +728,18 @@ Scene.tick = function(){
 		_.each(['position', 'rotation', 'impulse', 'angular_impulse'], function(v){
 			var vec = mesh[v];
 			if( vec ) _this_cache[v] = vec.toArray();
+			if( self.save_meshes_past ){
+				if (mesh.past_states === undefined){
+					mesh.past_states = {}
+				}
+				if (mesh.past_states[v] === undefined){
+					mesh.past_states[v] = {}
+				}
+				
+				mesh.past_states[v][now]  = vec.clone().toArray();
+			}
 		})
-		self._scene_object_cache[i] = _this_cache;
+		self._scene_object_cache[i] = {_cache:_this_cache, ts : new Date().getTime()};
 		
 	})
 	self.last_ts = now
