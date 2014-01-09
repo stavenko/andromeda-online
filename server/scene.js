@@ -592,6 +592,7 @@ Scene.tick = function(){
 		//  Попробуем на кошках - угловых моментах
 		if(self.need_sync && (mesh.ph_targets !== undefined)){
 			// console.log(mesh.ph_targets)
+			console.log("S");
 			_.each(mesh.ph_targets, function(target, name){
 				if(target.started){
 					var dv = target.v.clone().multiplyScalar(time_left)
@@ -616,6 +617,7 @@ Scene.tick = function(){
 					
 					
 				}else{
+					console.log("starting new sync");
 					
 					var acur = mesh[name].toArray()
 					if(acur){
@@ -659,6 +661,8 @@ Scene.tick = function(){
 						}
 					
 						
+					}else{
+						console.log("no past states");
 					}
 				}
 			})
