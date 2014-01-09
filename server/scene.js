@@ -635,7 +635,7 @@ Scene.tick = function(){
 								var from = new self.THREE.Vector3().fromArray(v)
 								var afrom = v;
 								// console.log('NOW', now, from )
-								// console.log("GOT", ts, target.vec)
+								console.log("GOT", ts, target.vec)
 								
 								break
 							}
@@ -654,6 +654,8 @@ Scene.tick = function(){
 							target.total_time = 0;
 							target.diff_length = target.diff.length()
 							
+						}else{
+							console.log('from is undefined')
 						}
 					
 						
