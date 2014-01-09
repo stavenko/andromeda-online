@@ -391,7 +391,7 @@ Scene.sync = function(sync){
 		if (!(guid in self.meshes)) return;
 		self.meshes[guid].ph_targets = {}
 		console.log("SYNC========================================");
-		var delta = (new Date().getTime()) - object.ts;
+		var delta = (new Date().getTime()) - object.ts - W._time_diff;
 		console.log("time",  object.ts, delta);
 	
 		_.each(object._cache, function(vec, name){
@@ -402,7 +402,7 @@ Scene.sync = function(sync){
 			console.log('name', name);
 			var target = {vec: v,
 						  started:false,
-					  	  ts:object.ts}
+					  	  ts: object.ts }
 			self.meshes[guid].ph_targets[name] = target
 			self.need_sync = true;
 				
@@ -644,10 +644,10 @@ Scene.tick = function(){
 							target.diff = from.clone().sub(target.vec.clone())
 							target.v = target.diff.clone().multiplyScalar(1/self._target_aq)
 							if(name === 'rotation' || name === 'angular_impulse'){
-								var cur_diff = cur.clone().sub(target.vec.clone());
-								//console.log("start new sync ", name, target.vec.toArray());
-								//console.log("FROM, DIFF",  target.diff.toArray() );
-								//console.log("CUR,DIFF",  cur_diff.toArray() );
+								// var cur_diff = cur.clone().sub(target.vec.clone());
+								// console.log("start new sync ", name, target.vec.toArray());
+								// console.log("FROM, DIFF",  target.diff.toArray() );
+								// console.log("CUR,DIFF",  cur_diff.toArray() );
 							}
 					
 							target.started = true;
