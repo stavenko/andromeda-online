@@ -638,7 +638,7 @@ Scene.tick = function(){
 								var from = new self.THREE.Vector3().fromArray(v)
 								var afrom = v;
 								// console.log('NOW', now, from )
-								console.log("GOT", ts, target.vec)
+								console.log("GOT", ts, target.ts, target.vec.toArray())
 								
 								break
 							}
@@ -649,8 +649,8 @@ Scene.tick = function(){
 							if(name === 'rotation' ){
 								var cur_diff = cur.clone().sub(target.vec.clone());
 								console.log("start new sync ", name, target.vec.toArray());
-								console.log("FROM, DIFF",  target.diff.toArray() );
-								console.log("CUR,DIFF",  cur_diff.toArray() );
+								console.log("FROM, DIFF", afrom, target.diff.toArray() );
+								console.log("CUR,DIFF", cur, cur_diff.toArray() );
 							}
 					
 							target.started = true;
