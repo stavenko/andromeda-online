@@ -607,7 +607,7 @@ Scene.tick = function(){
 						var _r = new self.THREE.Vector3().fromArray(mesh.rotation.toArray()).sub(dv).toArray();
 						//mesh.rotation = new self.THREE.Euler().fromArray(_r);
 					}else{
-						//mesh[name].sub(dv)
+						mesh[name].sub(dv)
 					}
 					if(target.diff_length <= 0.001){
 						// console.log("sync_stop");
