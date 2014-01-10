@@ -605,9 +605,9 @@ Scene.tick = function(){
 					}
 					if(name === 'rotation'){
 						var _r = new self.THREE.Vector3().fromArray(mesh.rotation.toArray()).sub(dv).toArray();
-						mesh.rotation = new self.THREE.Euler().fromArray(_r);
+						//mesh.rotation = new self.THREE.Euler().fromArray(_r);
 					}else{
-						mesh[name].sub(dv)
+						//mesh[name].sub(dv)
 					}
 					if(target.diff_length <= 0.001){
 						// console.log("sync_stop");
@@ -637,9 +637,9 @@ Scene.tick = function(){
 							}else{
 								var from = new self.THREE.Vector3().fromArray(v)
 								var afrom = v;
-								console.log('NOW', now, from )
-								console.log("GOT", ts, target.ts, target.vec.toArray())
-								console.log('PS', mesh.past_states)
+								// console.log('NOW', now, from )
+								// console.log("GOT", ts, target.ts, target.vec.toArray())
+								// console.log('PS', mesh.past_states)
 								
 								break
 							}
@@ -651,7 +651,7 @@ Scene.tick = function(){
 								var cur_diff = cur.clone().sub(target.vec.clone());
 								console.log("start new sync ", name, target.vec.toArray());
 								console.log("FROM, DIFF", afrom, target.diff.toArray() );
-								console.log("CUR,DIFF", cur, cur_diff.toArray() );
+								//console.log("CUR,DIFF", cur, cur_diff.toArray() );
 							}
 					
 							target.started = true;
