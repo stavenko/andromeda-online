@@ -245,6 +245,7 @@ window.World.init_socket = function(){
 	var self = this;
 	this.socket.on('connected', function(d){
 		//console.log(">>")
+		self.syncTime()
 		
 		self.socket.emit("auth_hash", {auth:self.auth_hash})
 		
@@ -555,6 +556,10 @@ window.World.syncTime = function(){
 		this._sync_message_setup = true
 		
 	}
+	var to = 60 / (avg_ping/1000)
+	var instab_per  =  avg_ping_instab / avg_ping;
+	console.log(to, avg_ping, instab_per)
+	setTimeout(function(){self.syncTime()}, to);
 }
 window.World.redrawSky = function(vp){
 	//var m = this.scenes[vp.scene].meshes[vp.object]
@@ -602,8 +607,8 @@ window.World.go = function(){
 	self.pings_instability = [];
 	
 	
-	self.syncTime()
-	var _time_interv = setInterval(function(){self.syncTime()}, 3000);
+	
+	// var _time_interv = 
 	
 	var updatePositions = function(){
 		_.each(self.scenes, function(s){
