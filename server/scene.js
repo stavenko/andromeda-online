@@ -637,8 +637,9 @@ Scene.tick = function(){
 							}else{
 								var from = new self.THREE.Vector3().fromArray(v)
 								var afrom = v;
-								// console.log('NOW', now, from )
+								console.log('NOW', now, from )
 								console.log("GOT", ts, target.ts, target.vec.toArray())
+								console.log('PS', mesh.past_states)
 								
 								break
 							}
