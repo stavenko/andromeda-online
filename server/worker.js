@@ -80,7 +80,9 @@ process.on('message', function(msg){
 		Sim.joinPosition(msg);
 		send_user_positions();
 		user_notify(Sim.getMission(msg.MGUID).creator, "player-joined-position", {MGUID:msg.MGUID})
+		
 		break;
+		
 	case 'start-mission':
 		Sim.startMission(msg);
 		var mission = Sim.getMission(msg.MGUID);
@@ -93,7 +95,7 @@ process.on('message', function(msg){
 		break;
 	case 'request-actors':
 		var as = Sim.getUserActors(msg.user_id);
-		console.log("requested actors", as);
+		//console.log("requested actors", as);
 		process.send({'actors':as, user_id:msg.user_id, type:"actors", recv:'world' })
 		break;
 	
@@ -101,8 +103,23 @@ process.on('message', function(msg){
 		var as = Sim.getScenes(msg.scenes);
 		process.send({'scenes':as, user_id:msg.user_id, type:"scenes", recv:'world' })
 		break;
-	case 'action':
-		Sim.action(msg.action, msg.on_off )
+		// case 'action':
+		// Sim.action(msg.action, msg.on_off )
+		// break;
+	case 'actor-joined':
+		//console.log("waj", msg);
+		Sim.joinActor(msg.message.s, msg.message.a, function(to_actors, actor){
+			process.send({type:'actor-joined', to_actors:to_actors, actor:actor})
+			
+		})
+		break;
+		
+	case 'client-actions':
+		// console.log(msg.data);
+		Sim.performAction(msg.data, function(action, to_actors){
+			process.send({type:"player-inputs", action:action, to_actors:to_actors})
+			// callback with server returned action - need for sending it back to clients
+		});
 		break;
 		
 	}
@@ -110,4 +127,4 @@ process.on('message', function(msg){
 
 	
 })
-console.log("W");
+//console.log("W");

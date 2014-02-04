@@ -1,6 +1,7 @@
 var _     = require('underscore')
 	, Scene = require('./scene')
 	, Mission = require('./missions')
+	, ProtoBuf = require("protobufjs")
 	, Controller = require("./controller");
 
 
@@ -48,6 +49,7 @@ var Simulation = function(sender){
 	this._public_positions = [];
 	this._org_positions = {};
 	this._friends_positions={};
+	this.protoBuilder = ProtoBuf.loadProtoFile("./public/js/gl/client_message.proto" )
 	
 	this._scenes = {}; // by guid
 	this._actors = {}; // by guid
@@ -193,6 +195,15 @@ Simulation.prototype = {
 		//console.log("loaded", sc);
 		this._scenes[scene_json.GUID] = sc;
 	},
+	joinActor:function(to_scene, actor, callback){
+		if(actor.GUID in this._scenes[to_scene].actors){
+			
+		}else{
+			this._scenes[to_scene].joinActor(actor)
+		}
+		var to_actors = this._scenes[to_scene].actors
+		callback(to_actors, actor);
+	},
 	inject_actor : function(scene_guid, actor_json){
 		this._scenes[scene_guid].join_actor(actor_json);
 		
@@ -215,6 +226,30 @@ Simulation.prototype = {
 		var actor = action.actor;
 		var S = this._scenes[actor.scene];
 		this.network_actor.act(S, act, on_off, actor);
+	},
+	performAction:function(actions_data, callback){
+		var self = this;
+		
+		// No checks for now
+		if(self._scenes[actions_data.s] !== undefined){
+			self._scenes[actions_data.s].addNetworkMessage(actions_data.a)
+			var actors = self._scenes[actions_data.s].get_actors()
+			// actions_data.to_actors = actors;
+		
+			callback(actions_data, actors);
+		}
+		/*
+		_.each(actions_data.actions, function(messages, scene_guid){
+			// console.log("to sc", messages, scene_guid);
+			if(scene_guid in self._scenes && messages){
+				
+				actions = self.protoBuilder.build('Actions')
+				message = actions.decode64(messages)
+				console.log(message);
+				
+				self._scenes[scene_guid].addNetworkMessages(message.inputs);
+			}
+		}) */
 	},
 	
 	tick : function(){

@@ -273,7 +273,7 @@ Mission.prototype = {
 	},
 	_make_actor: function(pos_id, user_id){
 		var pos = this._positions[pos_id]
-		var new_actor_guid = u.make_guid()
+		var new_actor_guid = u.make_short_guid()
 		var controllable = {object_guid:pos.object_guid, workpoint:pos.workpoint} // viewport:'front', controls:['Pilot', 'Turret']} 
 		console.log(this._positions, pos_id, user_id, pos);
 		return {command:pos.command, user_id: user_id, control: controllable, GUID:  new_actor_guid}

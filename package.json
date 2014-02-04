@@ -14,7 +14,8 @@
 	"passport-local":"0.1.6",
 	"connect-redis":"1.4.6",
 	"browserify-express" :"0.1.2",
-	"webworker-threads": "*"
+	"webworker-threads": "*",
+	"protobufjs":"*"
 	
 	
   },

@@ -147,7 +147,7 @@ app.configure(function(){
         watch: __dirname + '/server/',
         mount: '/appjs/main.js',
         verbose: true,
-        minify: true,
+        minify: false,
         bundle_opts: { debug: true }, // enable inline sourcemap on js files 
         write_file: __dirname + '/public/js/gl/main.js'
     });
@@ -326,6 +326,13 @@ io.on('connection', function(socket){
 			//na.act(SCENES[actor.scene], action, on_off, actor)
 		}
 		
+		socket.on('user_actions', function(message){
+			/// var scene = message.scene;
+			/// var action = message.action;
+			simulator.send({type:'client-actions',data:message, user_id:user_id})
+			
+		})
+		/*
 		socket.on('control_on', function(data){
 			// to_others = {login:login, action:data}
 			applyAction(data, true)
@@ -337,9 +344,16 @@ io.on('connection', function(socket){
 			applyAction(data, false)
 			sendToSceneClients(data, false);
 		})
-		socket.on("clock_request", function(){
+		*/
+		socket.on("sync_request", function(data){
 			var ts = new Date().getTime();
 			socket.emit('clock_response', {"ts":ts})
+			// console.log("here some control data", data);
+			// simulator.send({type:'client-actions',data:data, user_id:user_id})
+		})
+		socket.on('actor-joined', function(message){
+			console.log("actor-joined");
+			simulator.send({type:'actor-joined',user_id:user_id, message:message})
 		})
 		socket.on('request_scenes', function(scenes){
 			// var scs = {}
@@ -387,7 +401,33 @@ simulator.on('message', function(msg){
 		})
 		return ;
 	}
+	if(msg.type === "player-inputs"){
+		_.each(msg.to_actors, function(ac){
+			if (ac.GUID !== msg.action.a.actor){
+				var socket = Sockets[ac.user_id]
+				//console.log(msg)
+				socket.emit('player-inputs', msg.action );
+				
+			}
+			
+		})
+	}
+	if(msg.type === "actor-joined"){
+		console.log("AC_J", msg)
+		_.each(msg.to_actors, function(ac){
+			if (ac.GUID !== msg.actor.GUID){
+				var socket = Sockets[ac.user_id]
+				//console.log(msg)
+				socket.emit('actor-joined', msg.actor );
+				
+			}
+			
+		})
+	}
+	
 	/// Сообщения ниже ни до кого не доберутся если они без пользователя
+	
+	
 	if (msg.user_id === undefined){
 		return;
 	}

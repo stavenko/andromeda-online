@@ -150,6 +150,9 @@ window.World.init = function(auth_hash, client_login){
 	this.vp_height = 400;//document.body.clientHeight;
 	this._main_viewport = 0
 	this._additional_vps = [];
+	var ProtoBuf = dcodeIO.ProtoBuf;
+	this.protobufBuilder = ProtoBuf.loadProtoFile( "/js/gl/client_message.proto" );
+	//this._main_viewport_actors = [];
 	var h3 = this.vp_height/3
 	var w4 = this.vp_width/4
 	var w34 = this.vp_width- w4
@@ -167,6 +170,10 @@ window.World.init = function(auth_hash, client_login){
 	this.mouse_projection_vec = new THREE.Vector3();
 	
 	var self = this;
+	self.pings = [];
+	self.pings_instability = [];
+	self._time_diffs = [];
+	
 	
 	//******
 	//this.setup_scene(this.three_scene);
@@ -245,7 +252,6 @@ window.World.init_socket = function(){
 	var self = this;
 	this.socket.on('connected', function(d){
 		//console.log(">>")
-		self.syncTime()
 		
 		self.socket.emit("auth_hash", {auth:self.auth_hash})
 		
@@ -262,13 +268,15 @@ window.World.init_socket = function(){
 		var actors = data.actors;
 		self.actors = actors // Здесь список всех акторов, которые так или иначе связаны с нашим логином
 		console.log('actors', actors);
+		self.syncTime()
+		
 		var scenes = _.map(self.actors, function(actor){
 			return actor.scene
 			
 		})
 		// Запрашиваем загрузку всех сцен для этого актора - по идентификаторам сцен
 		
-		console.log("Req scenes", _.uniq(scenes))
+		// console.log("Req scenes", _.uniq(scenes))
 		self.socket.emit("request_scenes", {scenes:_.uniq(scenes)})
 		
 		// console.log("Recv Actors",actors)
@@ -292,6 +300,15 @@ window.World.init_socket = function(){
 			}
 			_totals +=1
 			self.setup_scene(scene);
+			_.each(self.actors, function(a){
+				if (a.GUID in scene.actors){
+					self.socket.emit("actor-joined",{a:a, s:scene.GUID} )
+					//console.log("this actor is for me", a.GUID, scene.GUID)
+				}
+				
+			})
+			// self.socket.emit("player-joined", {scene:scene.GUID, })
+			
 			// console.log("WAT",_totals, guids.length)
 			if(_totals == guids.length){
 				all_loaded()
@@ -307,14 +324,14 @@ window.World.init_socket = function(){
 		})
 		
 	})
-	this.socket.on('join_actor', function(data){
-		console.log('joining actor', data);
+	this.socket.on('actor-joined', function(data){
+		// console.log('joining actor', data);
 		// console.log(self.actors)
 		// Актор может джойнить уже существующий в сцене - надо переделывать вьюпорты
-		if (data.login in self.scene.actors){
+		if (data.GUID in self.scenes[data.scene].actors){
 			//console.log("actor already exist, first comer?")
 		}else{
-			self.scene.actors[data.login] = data;
+			self.scenes[data.scene].join_actor(data);
 		}
 	})
 	this.socket.on('scene_sync', function(data){
@@ -324,11 +341,16 @@ window.World.init_socket = function(){
 			self.scenes[data.scene].sync(data.almanach);
 		}
 	})
+	this.socket.on('player-inputs', function(data){
+		console.log("RR", data);
+		self.scenes[data.s].addNetworkMessage(data.a);
+	})
+	/*
 	this.socket.on('player_controls_on', function(data){
 		var actor = data.actor;
 		var action = data.action;
 		var S = self.scenes[actor.scene];
-		console.log("PPLAY CONTOL", actor);
+		//console.log("PPLAY CONTOL", actor);
 		self.network_actor.act(S, action, true, actor)
 	
 	})
@@ -341,7 +363,7 @@ window.World.init_socket = function(){
 		var S = self.scenes[actor.scene];
 		self.network_actor.act(S, action, false, actor)
 	
-	})
+	})*/
 	
 
 	
@@ -525,10 +547,52 @@ window.World.redrawSun = function(vp){
 window.World.getServerTS = function(){
 	
 };
+window.World.sendAction=function(scene, action){
+	var act = _.clone(action)
+	act.ts += this._time_diff; 
+	act.p = JSON.stringify(act.p);
+	
+	delete act.vector;
+	// console.log({s:scene,a:action})
+	this.socket.emit("user_actions", {s:scene,a:act})
+},
 window.World.syncTime = function(){
 	this._sync_timestamp = new Date().getTime();
-	this.socket.emit("clock_request")
 	var self = this;
+	var Actions = this.protobufBuilder.build("Actions");
+	
+	var messages = {};
+	//console.log("ST", this.scenes);
+	/*
+	_.each(this.scenes, function(sc){
+		// var sq = sc._flushServerQueue();
+		// console.log("FFL", sq)
+		var result = sc._flushServerQueue();
+		result.actions = _.map(result.actions, function(mes){
+			mes.ts += self._time_diff; 
+			mes.p = JSON.stringify(mes.p);
+			delete mes.vector;
+			return mes;
+		})
+		//console.log("FFFLLL", result);
+		var actions = new Actions(result.actions)
+		//console.log("com_length", actions.inputs.length);
+		//console.log("shouldbe", result.actions.length)
+		//bin_len = actions.encode().length;
+		//txt_len = actions.toBase64().length;
+		//cur_len = JSON.stringify({actions:result.actions}).length
+		//console.log("effect", Math.floor(bin_len*100/cur_len) ,Math.floor(txt_len*100/cur_len) )
+		messages[sc.GUID] = actions.toBase64(); // result.actions
+		//console.log(" here's one action", JSON.stringify(result.actions[0]))
+		
+	})
+	//console.log("before sending syncing message");
+	*/
+	// console.log("length of message in bytes", JSON.stringify({actions:messages}).length)
+	this.socket.emit("sync_request")
+	
+	//console.log(">>>>", this.socket.emit);
+	var diff_statistics_length = 50
 	if(! this._sync_message_setup ){
 		this.socket.on("clock_response", function(data){
 			var recv_ts = new Date().getTime();
@@ -536,14 +600,17 @@ window.World.syncTime = function(){
 			
 			self.pings.push(ping)
 			
-			if (self.pings.length >5){self.pings.splice(0,1)};
-			var avg_ping = _.reduce(self.pings, function(a,b){return a+b},0)/ self.pings.length;
-			self.pings_instability.push(Math.abs(avg_ping - ping))
-			if (self.pings_instability.length >5){self.pings_instability.splice(0,1)};
+			//if (self.pings.length > ping_statistics_length ){self.pings.splice(0,1)};
+			//var avg_ping = _.reduce(self.pings, function(a,b){return a+b},0)/ self.pings.length;
+			//self.pings_instability.push(Math.abs(avg_ping - ping))
+			//if (self.pings_instability.length > ping_statistics_length){self.pings_instability.splice(0,1)};
 			var avg_ping_instab = _.reduce(self.pings_instability, function(a,b){return a>=b?a:b},0)
 			
-			var lat = avg_ping / 2
-			self._time_diff = data.ts - self._sync_timestamp - lat
+			var lat = ping / 2
+			var _time_diff = data.ts - self._sync_timestamp - lat
+			self._time_diffs.push(_time_diff)
+			if(self._time_diffs.length > diff_statistics_length){self._time_diffs.splice(0,1) }
+			self._time_diff = Math.floor(_.reduce(self._time_diffs, function(a,b){return a+b},0)/self._time_diffs.length)
 			//if(self._time_diff < 0){
 			//	self._time_diff = 0;
 			//}
@@ -551,15 +618,18 @@ window.World.syncTime = function(){
 			self.max_ping = _.max(self.pings)
 			
 			// console.log("T", avg_ping,self.pings,self._time_diff)
-			console.log("TIMES", self._time_diff, data.ts - self._sync_timestamp, lat)
+			//console.log("TIMES", self._time_diff, data.ts - self._sync_timestamp, lat)
+			
+			// var to = 100 / (avg_ping/1000)
+			// var instab_per  =  avg_ping_instab / avg_ping * 100;
+			//console.log("INSTV",to, avg_ping, avg_ping_instab, instab_per);
+			
+			setTimeout(function(){self.syncTime()}, 1000);
+			
 		})
 		this._sync_message_setup = true
 		
 	}
-	var to = 60 / (avg_ping/1000)
-	var instab_per  =  avg_ping_instab / avg_ping;
-	console.log(to, avg_ping, instab_per)
-	setTimeout(function(){self.syncTime()}, to);
 }
 window.World.redrawSky = function(vp){
 	//var m = this.scenes[vp.scene].meshes[vp.object]
@@ -588,6 +658,9 @@ window.World.render=function(vp,geom){
 	this.renderer.setViewport(geom.l, geom.t, geom.w, geom.h)
 	//console.log("BLBLB",this.three_scenes,vp.scene);
 	this.redrawSky(vp)
+	if(this.scenes[vp.scene]._action_on_the_run_var){
+		console.log('render M');
+	}
 	this.renderer.render( this.three_scenes[vp.scene], vp.three_camera );
 	
     //self.renderer.render(self.three_scene, self.camera);
@@ -603,16 +676,16 @@ window.World.go = function(){
 	// var _3d_scene = self.setup_scene(self.scene._3scene)
 	var _d = false
 	self.setupCameras();
-	self.pings = [];
-	self.pings_instability = [];
 	
 	
 	
 	// var _time_interv = 
 	
 	var updatePositions = function(){
-		_.each(self.scenes, function(s){
+		_.each(self.scenes, function(s, g){
+			//console.log("recount ",g);
 			s.tick()
+			//console.log("is made syncy"); 
 		})
 	}
 	

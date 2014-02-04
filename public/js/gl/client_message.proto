@@ -1,0 +1,15 @@
+
+message Actions{
+	
+	
+
+	message Action{
+		required float delta = 5;
+		required uint32 ident = 6;
+		required uint32 ts    = 7;
+		required uint32  type  = 8;
+		required string actor = 9;
+		required string p = 10;
+	}
+	repeated Action inputs=2 [packed=true];
+}

@@ -1,6 +1,7 @@
 var fs    = require('fs');
 var u = require('./utils');
 var THR = require('./three.node');
+var Controller = require('./controller');
 
 var _     = require('underscore');
 
@@ -19,14 +20,19 @@ if(typeof window === 'undefined'){
 	Scene.do_prepare_rendering = false
 	Scene.ajax_load_models = false
 	Scene.need_update_matrix = true
-	Scene.save_meshes_past = false
+	Scene.localActions = false
+	
 	
 }else{
 	Scene.THREE = THREE
 	Scene.do_prepare_rendering = true
 	Scene.ajax_load_models = true
 	Scene.need_update_matrix = false
-	Scene.save_meshes_past = true
+	Scene.localActions = true
+	Scene.INPUT_TIMESTEP = 0.0700 // seconds
+	Scene.time_since_last_actions_acquired = 0;
+	
+	// Scene.save_meshes_past = true
 	
 	
 }
@@ -34,7 +40,8 @@ if(typeof window === 'undefined'){
 
 
 
-Scene.mesh_for = function(actor){
+Scene.mesh_for = function(actor_guid){
+	var actor = this.actors[actor_guid];
 	return this.meshes[actor.control.object_guid]
 }
 Scene.create = function(){
@@ -47,8 +54,11 @@ Scene.create = function(){
 Scene._create = function(){
 	this.clock = new (this.THREE.Clock)();
 	this.time_inc  = 0;
+	
 	this._scene_object_cache = {}
 	this._scene_obj_actors={}
+	this._network_messages = [];
+	this.mesh_last_states = {}
 	this._target_aq = 0.01; // seconds to get to sync target
 	this.is_loaded = false
 	this._d = false
@@ -113,18 +123,19 @@ Scene.get_objects_in = function(){
 }
 Scene.join_object = function( object ){
 	this._scene.objects[object.GUID] = object
-	this._scene_obj_actors[object.GUID] = []
+	
+	// this._scene_obj_actors[object.GUID] = []
 	// console.log("PUT OBJ", object.GUID)
 }
 Scene.join_actor = function( actor ){
 	//if (this._scene.actors[actor.GUID]){
 	//	this._scene.actors[actor.GUID].push(actor)
 		//}else{
-		this._scene.actors[actor.GUID] = actor
+	this._scene.actors[actor.GUID] = actor
 	
 	// console.log("GET OBJ",this._scene_obj_actors,  actor.control.object_guid)
 	
-	this._scene_obj_actors[actor.control.object_guid].push(actor)
+	// this._scene_obj_actors[actor.control.object_guid].push(actor)
 	
 	return this
 	
@@ -150,8 +161,11 @@ Scene.load = function(onload, three_scene, W){
 	var self = this;
 	//console.log('loading');
 	// DEBUG THINGS
+	this._server_sync_queue = [];
+	this._server_last_sended = 0;
 	self.total = new self.THREE.Vector3();
 	self.total_t=0;
+	self.controller_map= Controller.ControllersActionMap()
 	
 	self.meshes = {}
 	self.loader =  new self.THREE.JSONLoader();
@@ -213,8 +227,12 @@ Scene.load = function(onload, three_scene, W){
 				
 				var mesh = new self.THREE.Mesh( geom, mat );
 				mesh.json = object
-				mesh.total_powers = [];
-				mesh.total_torques = [];
+				mesh.pending_actions = [];
+				mesh._processed_actions = [];
+				mesh._actions_index = {};
+				mesh._previous_states = []
+				mesh._previous_states_index = {}
+				//mesh.total_angular_impulses = [];
 						// console.log(i, mesh.total_torques, mesh.total_powers)
 				mesh.type=object.type
 				var object_rotated = false
@@ -286,7 +304,25 @@ Scene.load = function(onload, three_scene, W){
 					three_scene.add( mesh );
 					
 				}
-				
+				mesh.last_processed_timestamp = new Date().getTime();
+				mesh.update_static_physical_data = function(till_time){
+					var time_left = (till_time - this.last_processed_timestamp) / 1000 // to seconds;
+					// console.log(time_left);
+					var um = 1 / mesh.mass;
+					var umt = time_left * um
+	
+					var rots = this.angular_impulse.clone().multiplyScalar(umt)
+					var poses = this.impulse.clone().multiplyScalar(umt)
+	
+					// mesh.vel = mesh.impulse.clone().multiplyScalar(um);
+	
+					this.rotateX(rots.x)
+					this.rotateY(rots.y)
+					this.rotateZ(rots.z);
+	
+					this.position.add(poses);
+					this.last_processed_timestamp = till_time
+				}
 				//var turrets = {}
 				//_.each(object.workpoints, function( wp ){
 				//	turret = object.turrets[ wp.turret ] 
@@ -385,21 +421,23 @@ Scene._model_loaded = function(ix){
 }
 Scene.sync = function(sync){
 	var self = this;
+	console.log ("syncing pulse recv", sync)
+	self._last_server_report = sync
 	//self.targets = {};
-	
+	/*
 	_.each(sync, function(object, guid){
 		if (!(guid in self.meshes)) return;
 		self.meshes[guid].ph_targets = {}
-		console.log("SYNC========================================");
+		//console.log("SYNC========================================");
 		var delta = (new Date().getTime()) - object.ts + self.W._time_diff;
-		console.log("time",  object.ts, delta);
+		//console.log("time",  object.ts, delta);
 	
 		_.each(object._cache, function(vec, name){
 			var v = new self.THREE.Vector3()
 			v.fromArray(vec)
 			
 			//if(['position', 'rotation'].indexOf(name ) === -1){
-			console.log('name', name);
+			//console.log('name', name);
 			var target = {vec: v,
 						  started:false,
 					  	  ts: object.ts }
@@ -417,16 +455,18 @@ Scene.sync = function(sync){
 		})
 		
 	})
+	*/
 }
 Scene.get = function(){
 	return this._scene
 }
 Scene.get_almanach = function(){
 	// var self = this;
-	
-	return this._scene_object_cache
+	console.log(this.mesh_last_states);
+	return this.mesh_last_states
 	
 }
+
 Scene.tick = function(){
 	var self = this;
 	if(self.tick_num){
@@ -434,6 +474,8 @@ Scene.tick = function(){
 	}else{
 		self.tick_num = 0;
 	}
+	var now = new Date().getTime();
+	// console.log("tick");
 	// console.log('.');
 	//var time_inc = 0;
 	var time_left = self.clock.getDelta();
@@ -443,6 +485,34 @@ Scene.tick = function(){
 	if(self.last_ts === undefined){
 		self.last_ts = new Date().getTime();
 	}
+	if(self.localActions){
+		
+		if(self.time_since_last_actions_acquired > self.INPUT_TIMESTEP){
+			self.time_since_last_actions_acquired = 0
+			var new_actions = self.getLocalActions(now);
+			
+			if(new_actions.length > 0){
+				console.log("got something new");
+				_.each(new_actions, function(a){
+					self.controller_map[a.type].act(self, a, a.actor, function(object_guid, action){
+						//console.log(action);
+						self._addToServerQueue(action);
+					})
+				})
+			}
+			
+		}else{
+			self.time_since_last_actions_acquired += time_left;
+			
+		}
+	}
+	var nm = self.getNetworkActions();
+	//console.log("here's network actions", nm);
+	_.each(nm,function(action){
+		// console.log("pushing network actions", action )
+		var mesh = self.mesh_for(action.actor)
+		mesh.pending_actions.push(action)
+	})
 	
 	//console.log(self.time_inc);
 	
@@ -451,7 +521,7 @@ Scene.tick = function(){
 	// console.log(self.automatic_actors);
 	_.each(self.automatic_actors, function(actor){
 		//console.log(actor);
-		actor.run(time_left);
+		actor.run(time_left); // TODO Избавиться как-то от этой переменной
 	})
 	//console.log(time_inc)
 	
@@ -483,275 +553,171 @@ Scene.tick = function(){
 	}else{
 		self._d = false
 	}
-	var get_impulses = function(FA, last_ts, now){ 
-		var ps = []
-		if (FA.length == 0) return []
-		if(FA.length > 1){ // В списке есть силы, которые уже перестали действовать 
-			var _length = FA.length;
-			for(var i = 0; i < FA.length;i++){
-				var is_last = i === (_length-1)
-				if(!is_last){ 
-					var acts_untill = FA[i+1].ts
-				}else{
-					var acts_untill = now;
-				}
-				var acts_since = FA[i].ts
-				if(acts_since < last_ts){acts_since = last_ts }
-				var time = (acts_untill - acts_since)/1000;
-				var F = FA[i].vec.clone();
-				ps.push( {i:F.multiplyScalar( time ), t:time} )
-			}
-			//console.log(ps);
-			FA.splice(0, FA.length - 1); // удаляем все силы кроме последней
-			//console.log("TWO", ps);
-		}
-		else{ // одна сила в списке - действует до сих пор, или начнет действовать скоро
-			var F = FA[0].vec.clone()
-			var acts_since = FA[0].ts
-			
-			//console.log(now - last_ts);
-			// if(acts_since < last_ts){ acts_since = last_ts }
-			if(acts_since >= now) {
-				// ничего пока не делаем - возвращаем пустые импульсы 
-				console.log('in future');
-				return ps;
-			}
-			var time = (now - acts_since)/1000;
-			// console.log(time, now - acts_since );
-			if (F.length() === 0){ // Удаляем силу, если она равна нулю
-				FA.splice(0,1);
-			}else{
-				FA[0].ts = now // Если сила в далеком прошлом - её все равно надо отработать, а потом ставим время её реакции - сейчас
-			}
-			ps.push({i:F.multiplyScalar( time ), t:time});
-			// console.log("ONE", ps[0].i.z,ps[0].t);
-			
-		
-		}
-		
-		
-		return ps
-		
-	}
-	var now = new Date().getTime();
+	
+	// lastActions = getLastActions
 	_.each(self.meshes, function(mesh, i){
 		if (mesh.type == 'static') return;
-		
-		var ps = [];
-		var um = 1 / mesh.mass;
-		var umt = time_left * um
-		
-		// var FA = self.total_torques
-		// И в конце-концов оставляем последний таймстеп
-		// console.log(i, mesh.total_torques, mesh.total_powers)
-		var rots = mesh.angular_impulse.clone().multiplyScalar(umt)
-		var poses = mesh.impulse.clone().multiplyScalar(umt)
-		
-		if( mesh.has_engines) {
-			var TI = get_impulses(mesh.total_torques, self.last_ts, now) // Импульсы вращения
-			//mesh.total_torques = [ mesh.total_torques[mesh.total_torques.length] ]
-			var PI = get_impulses(mesh.total_powers, self.last_ts, now) // Импульсы поступательного
-			//var total_t = 0
-			if(TI.length > 0){
-				//_.each(TI, function(i, inum){
-				//	console.log("responses #"+inum, i.i, i.t, self.total.length(), self.total_t);
-					
-				//	self.total.add(i.i.clone())
-				//	self.total_t += i.t;
-				//})
-
+		//console.log("this is mesh loop", mesh.pending_actions.length);
+		if(self.localActions && (i in self._last_server_report) ){
+			//console.log("refreshing!")
+			var state = self._last_server_report[i]
+			var last_id = state.ident // индентификатор-таймстемп последней обработанной сервером команды для этого меша
+			var last_ts = state.server_ts;
+			// console.log(last_ts
+			if(last_id in mesh._actions_index) { // Мы недавно обрабoтали на клиенте это таймстемп
+				var _id = mesh._actions_index[last_id] //  идентификатор массива
+				var _stid = mesh._previous_states_index[last_id]
+				// console.log("S", last_id, _id, mesh._processed_actions.length);
 				
+				for(var yy = 0; yy <= _id; yy++){ // Удаляем лишние индексы
+					delete mesh._actions_index[mesh._processed_actions[yy].ident]
+				}
+				for(var zz = 0; zz <= _stid; zz++){ // Удаляем лишние индексы
+					delete mesh._previous_states_index[mesh._previous_states[zz].ident]
+				}
 				
-			}
-			_.each(TI, function(imp){
-
+				var command = mesh._processed_actions[_id];
+				var prev_state = mesh._previous_states[_stid]
+				if(command){
+					//console.log("we've got own ts");
+					current_ts = command.ts
+				}else{
+					//console.log("we've got server ts - constructing our own;");
 			
-				// Получаем дополнительные интегралы - суммируем 
-				rots.add(imp.i.clone().multiplyScalar( um*imp.t ))// Интегрируем изменения углов по импульсам
-				mesh.angular_impulse.add(imp.i)
-			})
-		
-			_.each(PI, function(imp){
-				var v = imp.i.clone();
-				v.applyQuaternion(mesh.quaternion);
-				poses.add( v.clone().multiplyScalar(um*imp.t) ) // Интегрируем изменения координат по импульсам
-				mesh.impulse.add(v)
-			})
+					current_ts = last_ts - self.W._time_diff
+				}
+				//console.log("total_PROCESSED_ACTIONS", mesh._processed_actions.length, _id);
+				var pending = mesh._processed_actions.slice(_id+1);
+				//console.log("pending starts with", pending[0], last_id);
+				//console.log("pending from slice", pending);
+				mesh._processed_actions = []
+				mesh.pending_actions = pending.concat(mesh.pending_actions);
+				if(mesh.pending_actions.length >  0){
+					//console.log('starting pending actions')
+					self._action_on_the_run_var = true
+				}
+				
+				//console.log("total pending", mesh.pending_actions);
+				for(v in state.state){
+					
+					if(prev_state){
+						var a = prev_state.state[v];
+						var b = state.state[v];
+						var c = [b[0] -a[0], b[1]-a[1], b[2]-a[2]];
+						var dc = Math.sqrt( (c[0]*c[0])+ (c[1] * c[1]) + (c[2] * c[2] ))
+						console.log( a, b,dc );
+					}
+					mesh[v].fromArray(state.state[v]);
+				}
+				mesh.last_processed_timestamp = current_ts
+				//console.log(mesh.last_processed_timestamp, now, now - mesh.last_processed_timestamp);
+				delete self._last_server_report[i]
+				
+			}else{
+				// такого таймстемпа нет в списке последних отработанных операций - это значит, 
+				// что сервер и клиент обработали равное количество операций
+			}
+			//v = a+c+e
 			
 		}
-		
-		mesh.vel = mesh.impulse.clone().multiplyScalar(um);
-		
-		mesh.rotateX(rots.x)
-		mesh.rotateY(rots.y)
-		mesh.rotateZ(rots.z);
-		
-		mesh.position.add(poses);
-		
-		/// Здесь мы будем достигать поставленных целей до тех импульсов, и координат, который нам нужны, для этого сначала
-		//  Попробуем на кошках - угловых моментах
-		//console.log("SYN", self.need_sync, (mesh.ph_targets !== undefined));
-		if(self.need_sync && (mesh.ph_targets !== undefined)){
-			// console.log(mesh.ph_targets)
-			//console.log("S");
-			_.each(mesh.ph_targets, function(target, name){
-				if(target.started){
-					var dv = target.v.clone().multiplyScalar(time_left)
-					target.total_time += time_left
-					target.diff_length -= dv.length();
-					//target.diff.sub(dv);
-					if(name==='rotation'){
-						//console.log("time and diff", target.total_time,target.diff_length, target.diff.toArray(), dv.toArray());
-					}
-					if(name === 'rotation'){
-						var _r = new self.THREE.Vector3().fromArray(mesh.rotation.toArray()).sub(dv).toArray();
-						//mesh.rotation = new self.THREE.Euler().fromArray(_r);
-					}else{
-						mesh[name].sub(dv)
-					}
-					if(target.diff_length <= 0.001){
-						// console.log("sync_stop");
-						
-						delete mesh.ph_targets[name];
-					}
-					
-					
-					
-				}else{
-					console.log("starting new sync");
-					
-					var acur = mesh[name].toArray()
-					if(acur){
-						var cur = new self.THREE.Vector3().fromArray(acur)
-					}else{
-						var cur = new self.THREE.Vector3()
-						
-					}
-					// var time_threshold = W.max_ping * 1.5)
-					if (mesh.past_states !== undefined){
-						for(var ts in mesh.past_states[name]){
-							var v = mesh.past_states[name][ts]
-							if (ts< target.ts){
-								//console.log('less')
-								delete mesh.past_states[name][ts]
-							}else{
-								var from = new self.THREE.Vector3().fromArray(v)
-								var afrom = v;
-								// console.log('NOW', now, from )
-								// console.log("GOT", ts, target.ts, target.vec.toArray())
-								// console.log('PS', mesh.past_states)
-								
-								break
-							}
-						}
-						if(from !== undefined){
-							target.diff = from.clone().sub(target.vec.clone())
-							target.v = target.diff.clone().multiplyScalar(1/self._target_aq)
-							if(name === 'rotation' || name === 'angular_impulse' ){
-								var cur_diff = cur.clone().sub(target.vec.clone());
-								console.log("start new sync ", name, target.vec.toArray());
-								console.log("FROM, DIFF", afrom, target.diff.toArray() );
-								//console.log("CUR,DIFF", cur, cur_diff.toArray() );
-							}
-					
-							target.started = true;
-							target.total_time = 0;
-							target.diff_length = target.diff.length()
-							
-						}else{
-							console.log('from is undefined')
-						}
-					
-						
-					}else{
-						console.log("no past states");
-					}
-				}
+		// console.log("L", mesh.pending_actions.length);
+		if(mesh.pending_actions.length > 0){
+			// apply actions
+			//console.log(mesh.pending_actions.length, "actions to process"  );
+			//console.log('now ', now);
+			
+			
+			
+			// console.log("last_action", _.last(mesh.pending_actions));
+			_.each(mesh.pending_actions, function(action){
+				// console.log(action.ident);
+				
+				self.controller_map[action.type].process(action, mesh)
+				
+				current_state = {ident:action.ident, 
+								 state:{position: mesh.position.toArray(),
+									    rotation: mesh.rotation.toArray(),
+									    impulse:  mesh.impulse.toArray(),
+									    angular_impulse: mesh.angular_impulse.toArray()}}
+				var st_id = mesh._previous_states.push(current_state)
+				mesh._previous_states_index[action.ident] = st_id -1
+				
+				var id_val = mesh._processed_actions.push(action) // - 1
+				
+				mesh._actions_index[action.ident] = id_val-1
+				
 			})
-			/*
+			// console.log('finished pending actions');
+			self._action_on_the_run_var = false
+			// console.log("last_state",  mesh.rotation, mesh.angular_impulse);
 			
-			if('rotation' in mesh.ph_targets){
-				
-				var to = mesh.rotation.toArray()
-				var from = mesh.ph_targets.rotation.toArray()
-				var tov = new self.THREE.Vector3().fromArray(to)
-				var R = new self.THREE.Vector3().fromArray(from).sub(tov);
-				if(R.length() < 0.01){
-					mesh.rotation = mesh.ph_targets.rotation
-					console.log('ROT too small');
-					delete mesh.ph_targets['rotation']
-				}
-				else{
-					//if(self.cur_tick === undefined){self.cur_tick = self.tick_num;}
-					console.log("ROT target", mesh.ph_targets.rotation);
-					console.log("ROT diff", R);
-					console.log('ROT lill big', R.length(), mesh.rotation);
-					R.multiplyScalar(1/ self._target_aq * time_left);
-					console.log(">>", R.x, R.y, R.z);
-					mesh.rotateX( R.x)
-					mesh.rotateY( R.y)
-					mesh.rotateZ( R.z)
-					console.log(">>", mesh.rotation);
-					
-					// console.log(R.length());
-					
-				}
-				
+			// console.log("local actions", self.localActions)
+			if(self.localActions){
+				// console.log('total_actions_proceed', mesh._processed_actions.length);
+			}else{
+				self.mesh_last_states[i] = {ident:_.last(mesh.pending_actions).ident, 
+					server_ts :_.last(mesh.pending_actions).ts, 
+											state:{position:mesh.position.toArray(),
+												   rotation:mesh.rotation.toArray(),
+												   impulse:mesh.impulse.toArray(),
+												   angular_impulse: mesh.angular_impulse.toArray()}}
 				
 			}
-			if('position' in mesh.ph_targets){
-				var PD = mesh.position.clone().sub(mesh.ph_targets.position.clone())
-				if(PD.length() < 0.01){
-					console.log('POS too small');
-					mesh.position = mesh.ph_targets.position
-					delete mesh.ph_targets['position']
-					
-				}else{
-					console.log('POS lill big', PD.length());
-					
-					PD.multiplyScalar(1/ self._target_aq);
-					PD.multiplyScalar(time_left)
-					mesh.position.add(PD)
-				}
-			}
-			if('angular_impulse' in mesh.ph_targets){
-				var ang_mom_diff = mesh.angular_impulse.clone().sub(mesh.ph_targets.angular_impulse.clone())
-				var amdV = ang_mom_diff.multiplyScalar(1/ self._target_aq);
-				var dm = amdV.multiplyScalar( time_left );
-				mesh.angular_impulse.add(dm)
-			}
-			if('impulse' in mesh.ph_targets){
-				var ID = mesh.impulse.clone().sub(mesh.ph_targets.impulse.clone())
-				ID.multiplyScalar(1/ self._target_aq);
-				ID.multiplyScalar( time_left );
-				mesh.impulse.add(dm)
-			}
-			*/
+			mesh.pending_actions = []; // Удаляем список
 			
-			// console.log(ang_mom_diff, ang_rot_diff );
-		
+			// мы должны именно здесь замерить текущие параметры объекта и послать их на
+			// клиенты с отметкой последнего идентификатора обработанного сообщения
+			self.process_physical(mesh,now) // добавляем движение объекта от последнего тс до сейчас 
+		}else{
+			// console.log('here...');
+			self.process_physical(mesh, now)
 		}
+		//console.log("ROT", mesh.rotation.toArray());
 		
-		var _this_cache={}
-		_.each(['position', 'rotation', 'impulse', 'angular_impulse'], function(v){
-			var vec = mesh[v];
-			if( vec ) _this_cache[v] = vec.toArray();
-			if( self.save_meshes_past ){
-				if (mesh.past_states === undefined){
-					mesh.past_states = {}
-				}
-				if (mesh.past_states[v] === undefined){
-					mesh.past_states[v] = {}
-				}
-				
-				mesh.past_states[v][now]  = vec.clone().toArray();
-			}
-		})
-		self._scene_object_cache[i] = {_cache:_this_cache, ts : new Date().getTime()};
+		
 		
 	})
 	self.last_ts = now
 	
 }
+Scene.getNetworkActions = function(){
+	var ret = _.clone(this._network_messages)
+	this._network_messages = [];
+	return ret;
+}
+Scene.getLocalActions = function(now){
+	//if (this.localActions){
+		return this.W.Inputs.getLatestActions(this.GUID, now)
+		//}else{var locals = []}
+	// var networks = this._network_messages
+	// var ret = locals// .concat(networks) // network messages will follow local messages- easier to find final processed message id
+	//return ret;
+	
+	
+	
+}
+Scene.process_physical = function(mesh, now){
+	mesh.update_static_physical_data(now);
+	
+}
+Scene._addToServerQueue = function(action){
+
+	// Теперь на сервер будем слать незамедлительно!
+	action.ident = action.ts
+	console.log("SEND");
+	this.W.sendAction(this.GUID, action);
+	// this._server_sync_queue.push(action)
+}
+Scene._flushServerQueue = function(){
+	var size = this._server_sync_queue.length ;
+	var ret = this._server_sync_queue.slice(this._server_last_sended);
+	//console.log("ffl", size, ret)
+	this._server_last_sended = size;
+	return {scene:this.GUID, actions:ret};
+}
+Scene.addNetworkMessage = function(mes){
+	this._network_messages.push(mes) // = this._network_messages.concat(mes)
+}
+
 SceneObject.prototype = Scene
 module.exports = SceneObject

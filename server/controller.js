@@ -1,7 +1,10 @@
 var THR = require('./three.node');
 var Utils = require("./utils");
 var _     = require('underscore');
-
+ROTATE  = 10
+ROTATEC = 11
+MOVE = 12
+SHOOT = 13
 
 var Controller = {description:'controller'}
 	
@@ -38,29 +41,38 @@ Controller.LocalInputActor = function(W, socket){
 		self.World = W;
 		var map = Controller.ControllersActionMap()
 		var actor = W.login;
+		self.actions_by_scene = {}
+		///// ACTION TYPES 
+		ROTATE  = 10
+		ROTATEC = 11
+		MOVE = 12
+		SHOOT = 13
+		
 		
 		
 		//self.actor_login = actor_login
 		self._default_actions={
-			65: {type:'rotate', axis:'y',dir:'+'},
-			68: {type:'rotate', axis:'y',dir:'-'},
 		
-			87: {type:'rotate', axis:'x',dir:'-'},
-			83: {type:'rotate', axis:'x',dir:'+'},
+			87: {type:ROTATE,  p:{ a:0,d:-1}},
+			83: {type:ROTATE,  p:{ a:0,d:1}},
+			
+			65: {type:ROTATE,  p:{ a:1,d:1}},
+			68: {type:ROTATE,  p:{ a:1,d:-1}},
+			
+			90: {type:ROTATE,  p:{ a:2,d:1}},
+			67: {type:ROTATE,  p:{ a:2,d:-1}},
 		
-			90: {type:'rotate', axis:'z',dir:'+'},
-			67: {type:'rotate', axis:'z',dir:'-'},
 		
-			79: {type:'rotatec', axis:'x',dir:'+'},
-			80: {type:'rotatec', axis:'x',dir:'-'},
+			79: {type:ROTATEC, p:{ a:'x',d:'+'}},
+			80: {type:ROTATEC, p:{ a:'x',d:'-'}},
 		
-			73: {type:'rotatec', axis:'y',dir:'+'},
-			75: {type:'rotatec', axis:'y',dir:'-'},
+			73: {type:ROTATEC, p:{ a:'y',d:'+'}},
+			75: {type:ROTATEC, p:{ a:'y',d:'-'}},
 		
-			38: {type:'move', axis:'z',dir:'-'},
-			40: {type:'move', axis:'z',dir:'+'},
+			38: {type:MOVE, p:{ a:2,d:-1}},
+			40: {type:MOVE, p:{ a:2,d:1}},
 		
-			'lmouse':{'type': 'shoot_primary', '_turret_direction': function(t,k){
+			'lmouse':{type: SHOOT, p:{ '_turret_direction': function(t,k){
 				delete t[k]
 				// console.log("w")
 				// console.log(W.controllable());
@@ -78,33 +90,104 @@ Controller.LocalInputActor = function(W, socket){
 				//console.log("camera pos in W", camera_position_vector);
 				
 				t[k.substr(1)] = W.mouse_projection_vec.clone() //.sub(camera_position_vector)
-			}},
+			}}},
 		}
 	
 		self.actions = self._default_actions;
 		self._keycodes_in_action = {}
 		this.input = function(keycode, up_or_down, modifiers){
-			// 1. Send to server action
-			if(_.has(self._keycodes_in_action, keycode)){
+			var ts = new Date().getTime()
+			
+			if(up_or_down) {// down == true
+				self._keycodes_in_action[keycode] = {in_action:true, ts:ts}
+			}else{
+				var t = self._keycodes_in_action[keycode].ts
+				self._keycodes_in_action[keycode].in_action = false
+				self._keycodes_in_action[keycode].ts = ts
+				self._keycodes_in_action[keycode].delta = ts - t
+				
+			}
+			
+			//var action = _.clone(self.actions[keycode]);
+			//action.timestamp = ts
+			
+			/*if(_.has(self._keycodes_in_action, keycode)){
 				var state = self._keycodes_in_action[keycode]
 				// console.log(state, up_or_down)
-				if(state === up_or_down){// Состояние не изменилось - ничего не делаем
+				if(state.kind === up_or_down){// Состояние не изменилось - ничего не делаем
 					return 
 				}else{
-					self._keycodes_in_action[keycode] = up_or_down
+					self._keycodes_in_action[keycode] = {kind:up_or_down, ts: ts}
 				}
 				
 			}else{
-				self._keycodes_in_action[keycode] = up_or_down
+				self._keycodes_in_action[keycode] = {kind:up_or_down, ts:ts}
 			}
+				*/
+		}
+		this.getLatestActions = function(scene, now){
+			//var now =  new Date().getTime()
+			//console.log("combining actions for ", scene);
+			_.each(self._keycodes_in_action, function(k_action, keycode){
+				if(k_action.in_action){
+					var delta = now - k_action.ts
+					var ts = now
+					k_action.ts = now
+					
+				}else{
+					var delta = k_action.delta
+					var ts = k_action.ts
+					delete self._keycodes_in_action[keycode]
+				}
+				var action = _.clone(self.actions[keycode]);
+				if(action){
+					_.each(action.p, function(item, k){
+						// console.log('a');
+						if (k[0] == '_'){
+							item(action.p,k)
+						}
+					})
+				
+					action.delta = delta / 1000 // come to seconds
+					action.ts = ts
+					var local_controller = map[action.type]
+					var actors = W.get_main_viewport().actors
+				
+					_.each(actors, function(actor){
+						var S = W.scenes[actor.scene];
+						var obj = S.get_objects()[actor.control.object_guid];
+						var wp = obj.workpoints[actor.control.workpoint];
+						if (wp.type == local_controller.type){
+							//var a_clone = _.clone( action )
+							action.actor = actor.GUID;
+							var s = actor.scene
+							if(!(s in self.actions_by_scene)){
+								self.actions_by_scene[s] = []
+							}
+							self.actions_by_scene[s].push(action)
+							//local_controller.act(self.World.scenes[actor.scene], action, up_or_down, actor, onAct);
+							//a_clone.timestamp += W._time_diff;
+							//if (up_or_down){
+							// socket.emit('control_on', {action:a_clone, actor:actor});
+								//}else{
+							//	socket.emit('control_off', {action:a_clone, actor:actor});
+							//}
+						}
+					})
+				}
+					
+			});
+			//console.log("actions_by-Scene", this.actions_by_scene, ">>", scene)
+			var returnable = this.actions_by_scene[scene];
+			this.actions_by_scene[scene] = []
+			if(returnable === undefined){
+				return []
+			}
+			return returnable
+					
+		}
 			
 			
-			var ts = new Date().getTime()
-			var action = _.clone(self.actions[keycode]);
-			action.timestamp = ts
-			
-			//action.timestamp += (W.average_ping_instability * 1.5) // Нестабильность пинга - чем пинг больше - тем меньше нестабильность
-			// На маленьких значения не превышает значения пинга
 			 
 			
 			// console.log("my diff", W._time_diff)
@@ -114,17 +197,13 @@ Controller.LocalInputActor = function(W, socket){
 			// console.log("my time - servtime", new Date().getTime()/1000 - action.timestamp/1000 )
 			
 			// console.log(action);
+			/*
 			if (action){
-				_.each(action, function(item, k){
-					// console.log('a');
-					if (k[0] == '_'){
-						item(action,k)
-					}
-				})
 				//console.log(action);
 				// DONE
 				// 2. Act it locally
-				var onAct = function(){ /*console.log('this is keyboard controller - no need in onAct here') */}
+				var onAct = function(){}
+				//
 				local_controller = map[action.type]
 				var actors = W.get_main_viewport().actors
 				
@@ -142,24 +221,19 @@ Controller.LocalInputActor = function(W, socket){
 							socket.emit('control_on', {action:a_clone, actor:actor});
 						}else{
 							socket.emit('control_off', {action:a_clone, actor:actor});
-			
 						}
-						
 					}
-					//console.log(wp);
-					
 				})
-				
-				// local_controller.act(self.World.scene, action, up_or_down, actor, onAct);
-			}
-			//DONE
-		}
+			}*/
+		
 	};
 
 
 Controller.CPilotController = function(){
 		this.type='pilot';
-		this.action_types=['rotate', 'move']
+		this.action_types=[ROTATE, MOVE];
+		var T = Controller.T();
+		
 		function get_axis(a){
 			if(a == 'x'){
 				axis = new Controller.T().Vector3(1,0,0)
@@ -174,79 +248,90 @@ Controller.CPilotController = function(){
 		
 		
 		}
-	
-		this.act = function(S, action, is_down, actor, onAct ){
+		this.process = function(raw_action, mesh){
+			// console.log("On the server", action);
+			
+			var process = function(object_guid, action){
+				mesh.update_static_physical_data(action.ts)
+				
+				if (action.type === ROTATE){
+					mesh.angular_impulse.add(action.vector)
+				}else if(action.type === MOVE){
+					if(action.vector instanceof T.Vector3){
+						var v = action.vector
+					}else{
+						var v = new T.Vector3(action.vector.x, action.vector.y, action.vector.z)
+					
+					}
+					var tug = v.clone().applyQuaternion(mesh.quaternion);
+					mesh.impulse.add(tug);
+				
+				}
+				
+			}
+			console.log('call process',  _.has(raw_action,'vector') );
+			if (_.has(raw_action, 'vector'))  {
+				process('-', raw_action)
+			}else{
+				this.act_for_mesh(mesh, raw_action, process)
+			}
+		};
+		this.act_for_mesh=function(mesh, action, onAct){
+			var C = mesh;
+			var T = Controller.T();
+			
+			var ets ={};
+			ets[ROTATE]='rotation';
+			ets[MOVE] = 'propulsion';
+			
+			var et = ets[action.type]
+			if(typeof action.p === 'string'){
+				action.p = JSON.parse(action.p);
+			}
+			var AX= action.p.a;
+			var ar = [0,0,0]
+			// var a = action.p.d == '+'? 1 : -1;
+			ar[AX] = action.p.d
+			
+			var vec = new T.Vector3();
+			vec.fromArray(ar);         // AX == 'x'?new T.Vector3(a,0,0):(AX =='y'?new T.Vector3(0, a, 0): new T.Vector3(0,0,a))
+			// Теперь его надо умножить на мощность двигателя и получить силу
+			var ea = action.p.a ==0 ? 'x' : action.p.a ==1 ? 'y': 'z'
+			if(action.p.d <0){ea +='-'}else{ea += '+' }
+			var power = C.engines[et][ea];
+			vec.multiplyScalar(power)
+			console.log("action delta", action.ts, action.delta);
+			vec.multiplyScalar(action.delta)
+			action.vector = vec
+		
+		//	if (et == "rotation"){
+				// onAct(C.GUID, action)
+				//C.pending_actions.push(action)
+		//	}else if(et =='propulsion'){
+		//		vec.multiplyScalar(action.delta)
+		//		action.vector = vec
+				//onAct(C.GUID, action)
+				// C.pending_actions.push(  action )
+				
+		//	}
+			onAct(C.GUID, action)
+			
+		},
+		this.act = function(S, action,  actor, onAct_ ){
 			// console.log('Wat');
 			// console.log("move by", actor)
 			//if (actor === undefined){
 				//console.log("MY", W.actors[W.login].control.object_guid)
 			//	var C = S.controllable()
 			//}else{
+			console.log("call act")
 			if(S === undefined ) return;
-			var C = S.mesh_for(actor)
-			var T = Controller.T();
-			
-			var ets = {rotate:'rotation', move:'propulsion'}
-			var et = ets[action.type]
-			var AX= action.axis;
-			if(! is_down){
-				var vec = new T.Vector3(0,0,0)
-			}else{
-				var a = action.dir == '+'? 1 : -1;
-				
-				var vec = AX == 'x'?new T.Vector3(a,0,0):(AX =='y'?new T.Vector3(0, a, 0): new T.Vector3(0,0,a))
-				// Теперь его надо умножить на мощность двигателя и получить силу
-				var power = C.engines[et][action.axis + action.dir];
-				vec.multiplyScalar(power)
+			var C = S.mesh_for(actor);
+			var onAct = function(guid, action){
+				C.pending_actions.push(action);
+				onAct_(guid, action);
 			}
-			var n = action.axis+action.dir
-			if(!C.powers){
-				C.powers = {}
-			}
-			if(!C.powers[et]){
-				C.powers[et] = {}
-			}
-			C.powers[et][n] = vec.clone()
-			
-			
-			if (et == "rotation"){
-				var tot = new T.Vector3(0,0,0)
-				_.each(C.powers.rotation, function(v,ename){
-					tot.add(v)
-				
-				})
-				C.total_torques.push({ts:action.timestamp, vec:tot} )
-			}
-			if (et =='propulsion'){
-				var tot = new T.Vector3(0,0,0)
-				_.each(C.powers.propulsion, function(vec,ename){
-					tot.add(vec)
-				})
-			
-				C.total_powers.push( {ts:action.timestamp, vec:tot} )
-			}
-			onAct(C.GUID)
-			// Получили единичный вектор тяги 
-			/*
-	
-			if (action.type == 'rotate'){
-				if (is_down){
-					C.put_on("rotation", vec, action.timestamp)
-				}else{
-					C.put_off("rotation", vec, action.timestamp)
-				}
-			}
-			if (action.type == 'move'){
-		
-				var a = action.dir == '+'?1:-1;
-		
-				// var m = new Controller.T().Matrix4()
-				if (is_down){
-					C.put_on("propulsion", vec, action.timestamp)
-				}else{
-					C.put_off("propulsion", vec, action.timestamp)
-				}
-			}*/
+			this.act_for_mesh(C, action, onAct );
 
 			
 		}
@@ -438,9 +523,9 @@ Controller.BasicBulletActor=function(S, id, coid){
 	
 Controller.CTurretController = function(){
 	this.type = 'turret';
-		this.act = function(S, action, is_down, actor ){
+		this.act = function(S, action,  actor ){
 			if (S === undefined){return;}
-			if (action.type =='shoot_primary'){
+			if (action.type === SHOOT ){
 				if(! is_down) return;
 				// console.log('>>>');
 				// var weapon = C.weapons[0];
@@ -513,12 +598,12 @@ Controller.ControllersActionMap= function(){
 		}else{
 			var PilotController = new Controller.CPilotController();
 			var TurretController = new Controller.CTurretController()
-			this._ControllersActionMap = {
-				'move': PilotController,
-				'rotate':PilotController,
-				'rotatec': PilotController,
-				'shoot_primary': TurretController
-			} 		
+			this._ControllersActionMap = {}
+			this._ControllersActionMap[MOVE]= PilotController;
+			this._ControllersActionMap[ROTATE]=PilotController;
+			this._ControllersActionMap[ROTATEC]= PilotController;
+			this._ControllersActionMap[SHOOT]= TurretController;
+			
 			return this._ControllersActionMap;
 			
 		}
