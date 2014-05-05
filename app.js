@@ -329,6 +329,7 @@ io.on('connection', function(socket){
 		socket.on('user_actions', function(message){
 			/// var scene = message.scene;
 			/// var action = message.action;
+			console.log("MESSAGE FROM CL", message); 
 			simulator.send({type:'client-actions',data:message, user_id:user_id})
 			
 		})
@@ -402,18 +403,25 @@ simulator.on('message', function(msg){
 		return ;
 	}
 	if(msg.type === "player-inputs"){
+		
+		//console.log("how to send back to USERS", msg);
+		var sender_user_id = msg.to_actors[msg.action.a.actor].user_id;
 		_.each(msg.to_actors, function(ac){
-			if (ac.GUID !== msg.action.a.actor){
-				var socket = Sockets[ac.user_id]
-				//console.log(msg)
-				socket.emit('player-inputs', msg.action );
+			var is_same_actor =  ac.GUID === msg.action.a.actor;
+			var is_same_user  =  ac.user_id === sender_user_id;
+			
+			if ( is_same_user  ||  is_same_actor ) return;
+			
+			var socket = Sockets[ac.user_id]
+			// console.log("DO WE SEND INFO TO THE SAME PH OBJECT");
+			socket.emit('player-inputs', msg.action );
 				
-			}
+			
 			
 		})
 	}
 	if(msg.type === "actor-joined"){
-		console.log("AC_J", msg)
+		// console.log("AC_J", msg)
 		_.each(msg.to_actors, function(ac){
 			if (ac.GUID !== msg.actor.GUID){
 				var socket = Sockets[ac.user_id]

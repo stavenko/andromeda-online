@@ -52,7 +52,7 @@ process.on('message', function(msg){
 		// console.log("CR");
 		Sim.newMissionInstance(msg.mission_type, msg.user_id, function(mission, this_user_missions){
 			//console.log('CM', msg)
-			console.log("this_user_missions", this_user_missions);
+			//console.log("this_user_missions", this_user_missions);
 			var ms = _.map(this_user_missions, function(m){return m.to_json(); });
 			var bmsg = {type:'player-missions', user_id:msg.user_id, missions: ms }
 			//console.log('BM', bmsg)
@@ -115,9 +115,9 @@ process.on('message', function(msg){
 		break;
 		
 	case 'client-actions':
-		// console.log(msg.data);
+		//console.log("MSG DATA TO SERVER", msg.data);
 		Sim.performAction(msg.data, function(action, to_actors){
-			process.send({type:"player-inputs", action:action, to_actors:to_actors})
+			process.send({type:"player-inputs", action:action, to_actors:to_actors, from_actor:msg.data.a.actor})
 			// callback with server returned action - need for sending it back to clients
 		});
 		break;

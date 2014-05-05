@@ -150,7 +150,7 @@ Simulation.prototype = {
 		var self = this;
 		_.each(this._scenes, function(sc){
 			_.each(sc.get_actors(), function(as, guid){
-				console.log("actor", as, guid);
+				// console.log("actor", as, guid);
 				self._actors[guid] = as
 				if(self._user_actors[as.user_id] === undefined){
 					self._user_actors[as.user_id] ={};

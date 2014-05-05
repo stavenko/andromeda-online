@@ -26,6 +26,9 @@ window.World.setup_scene = function(scene){
 	this.three_scenes[scene.GUID].add( light );
 	this.initSun(scene)
 }
+window.World.initGUI=function(){
+	
+}
 
 window.World.initSun = function(scene){
 	
@@ -201,22 +204,13 @@ window.World.init = function(auth_hash, client_login){
 	}, false );
 	this.renderer.domElement.addEventListener('mouseup', function(e){
 		// console.log(e)
+		// console.log("MOUSE");
 		self.Inputs.input( 'lmouse', false)
-		
-		// var action = self.actions['lmouse']
-		
-		//ControllersActionMap[action.type].act(self, action, true)
-		// Controller(self, action, true);
 	})
 	
 	this.renderer.domElement.addEventListener('mousedown', function(e){
 		// console.log(e)
 		self.Inputs.input( 'lmouse', true)
-		
-		// var action = self.actions['lmouse']
-		
-		//ControllersActionMap[action.type].act(self, action, true)
-		// Controller(self, action, true);
 	})
 	document.addEventListener('keydown', function(e){
 		var code = e.keyCode;
@@ -604,7 +598,7 @@ window.World.syncTime = function(){
 			//var avg_ping = _.reduce(self.pings, function(a,b){return a+b},0)/ self.pings.length;
 			//self.pings_instability.push(Math.abs(avg_ping - ping))
 			//if (self.pings_instability.length > ping_statistics_length){self.pings_instability.splice(0,1)};
-			var avg_ping_instab = _.reduce(self.pings_instability, function(a,b){return a>=b?a:b},0)
+			//var avg_ping_instab = _.reduce(self.pings_instability, function(a,b){return a>=b?a:b},0)
 			
 			var lat = ping / 2
 			var _time_diff = data.ts - self._sync_timestamp - lat
@@ -614,10 +608,10 @@ window.World.syncTime = function(){
 			//if(self._time_diff < 0){
 			//	self._time_diff = 0;
 			//}
-			self.average_ping_instability = avg_ping_instab;
+			// self.average_ping_instability = avg_ping_instab;
 			self.max_ping = _.max(self.pings)
 			
-			// console.log("T", avg_ping,self.pings,self._time_diff)
+			console.log("T", self._time_diff)
 			//console.log("TIMES", self._time_diff, data.ts - self._sync_timestamp, lat)
 			
 			// var to = 100 / (avg_ping/1000)

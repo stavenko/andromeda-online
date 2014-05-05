@@ -34,34 +34,34 @@ var create_mission_json = function(  ){
 										"direction":[0,0,1]
 										}
 									},
-									"turrets":{
-										"front":{"type":"ballistic",
-												 "position": [0,0.5,0]},
-		 								"back":{"type":"ballistic",
-		 										 "position": [0,0,2]}
+						"turrets":{
+							"front":{"type":"ballistic",
+									 "position": [0,0.5,0]},
+							"back":{"type":"ballistic",
+									 "position": [0,0,2]}
 
+						},
+						"workpoints":{
+							"Piloting":{
+									"views": ["front","back"],
+									"type":"pilot",
 									},
-									"workpoints":{
-										"Piloting":{
-												"views": ["front","back"],
-												"type":"pilot",
-												},
-										"Front turret":
-												{
-												"views":["front"],
-												"type":"turret",
-												"turret":"front"
-												},
-									
-										"Back turret":{
-												"views":["back"],
-												"type":"turret",
-												"turret":"back"
-									
-												},
-									
+							"Front turret":
+									{
+									"views":["front"],
+									"type":"turret",
+									"turret":"front"
+									},
 						
-											},
+							"Back turret":{
+									"views":["back"],
+									"type":"turret",
+									"turret":"back"
+						
+									},
+						
+			
+								},
 						'engines':{
 							'rotation':{
 								'x+':1000,'x-':1000,

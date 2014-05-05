@@ -2,6 +2,7 @@ var fs    = require('fs');
 var u = require('./utils');
 var THR = require('./three.node');
 var Controller = require('./controller');
+var EQ = require("./event_queue")
 
 var _     = require('underscore');
 
@@ -58,6 +59,7 @@ Scene._create = function(){
 	this._scene_object_cache = {}
 	this._scene_obj_actors={}
 	this._network_messages = [];
+	this._last_server_report = {}
 	this.mesh_last_states = {}
 	this._target_aq = 0.01; // seconds to get to sync target
 	this.is_loaded = false
@@ -227,12 +229,14 @@ Scene.load = function(onload, three_scene, W){
 				
 				var mesh = new self.THREE.Mesh( geom, mat );
 				mesh.json = object
+				
+				mesh.eventManager = new EQ();
 				mesh.pending_actions = [];
 				mesh._processed_actions = [];
 				mesh._actions_index = {};
 				mesh._previous_states = []
 				mesh._previous_states_index = {}
-				//mesh.total_angular_impulses = [];
+				mesh.total_angular_impulses = [];
 						// console.log(i, mesh.total_torques, mesh.total_powers)
 				mesh.type=object.type
 				var object_rotated = false
@@ -424,45 +428,14 @@ Scene.sync = function(sync){
 	console.log ("syncing pulse recv", sync)
 	self._last_server_report = sync
 	//self.targets = {};
-	/*
-	_.each(sync, function(object, guid){
-		if (!(guid in self.meshes)) return;
-		self.meshes[guid].ph_targets = {}
-		//console.log("SYNC========================================");
-		var delta = (new Date().getTime()) - object.ts + self.W._time_diff;
-		//console.log("time",  object.ts, delta);
-	
-		_.each(object._cache, function(vec, name){
-			var v = new self.THREE.Vector3()
-			v.fromArray(vec)
-			
-			//if(['position', 'rotation'].indexOf(name ) === -1){
-			//console.log('name', name);
-			var target = {vec: v,
-						  started:false,
-					  	  ts: object.ts }
-			self.meshes[guid].ph_targets[name] = target
-			self.need_sync = true;
-				
-				//}
-			
-			
-			
-			//if (!v.equals(ov)){
-			//	console.log(name, vec, ov.toArray() )
-			//}
-		
-		})
-		
-	})
-	*/
+
 }
 Scene.get = function(){
 	return this._scene
 }
 Scene.get_almanach = function(){
 	// var self = this;
-	console.log(this.mesh_last_states);
+	// console.log(this.mesh_last_states);
 	return this.mesh_last_states
 	
 }
@@ -485,18 +458,21 @@ Scene.tick = function(){
 	if(self.last_ts === undefined){
 		self.last_ts = new Date().getTime();
 	}
-	if(self.localActions){
+	if(self.localActions){ // Если это клиент и мы можем управлять склавиатуры
 		
 		if(self.time_since_last_actions_acquired > self.INPUT_TIMESTEP){
 			self.time_since_last_actions_acquired = 0
 			var new_actions = self.getLocalActions(now);
 			
 			if(new_actions.length > 0){
-				console.log("got something new");
 				_.each(new_actions, function(a){
-					self.controller_map[a.type].act(self, a, a.actor, function(object_guid, action){
-						//console.log(action);
+					self.controller_map[a.controller].act(self, a, a.actor, function(object_guid, action){
 						self._addToServerQueue(action);
+						// mesh.pending_actions.push(action);
+						// console.log("EVENT CB", object_guid, self.meshes);
+						var mesh = self.meshes[object_guid];
+						mesh.eventManager.add(action, action.ts)
+				
 					})
 				})
 			}
@@ -507,11 +483,12 @@ Scene.tick = function(){
 		}
 	}
 	var nm = self.getNetworkActions();
-	//console.log("here's network actions", nm);
 	_.each(nm,function(action){
-		// console.log("pushing network actions", action )
 		var mesh = self.mesh_for(action.actor)
-		mesh.pending_actions.push(action)
+		// TODO Need timestamp action manager, binded to mesh
+		console.log("How do we get actions to process?")
+		// mesh.pending_actions.push(action) // 1
+		mesh.eventManager.add(action, action.ts);
 	})
 	
 	//console.log(self.time_inc);
@@ -519,10 +496,10 @@ Scene.tick = function(){
 	// var actor = self.get_current_actor()
 	// var C = self.meshes()[actor.control.object_guid]
 	// console.log(self.automatic_actors);
-	_.each(self.automatic_actors, function(actor){
+	//_.each(self.automatic_actors, function(actor){
 		//console.log(actor);
-		actor.run(time_left); // TODO Избавиться как-то от этой переменной
-	})
+	//	actor.run(time_left); // TODO Избавиться как-то от этой переменной
+	// })
 	//console.log(time_inc)
 	
 	if((Math.floor(self.time_inc) % 5 ) ===0){
@@ -540,10 +517,7 @@ Scene.tick = function(){
 					var r = m.rot;
 					
 					if (v){
-						// console.log('v',i, v.x, v.y, v.z)
-						// console.log('p',i, p.x, p.y, p.z)
-						// console.log('x',i, x.x, x.y, x.z)
-						
+						// TODO Put here debug outputs
 					}
 					
 				}
@@ -556,123 +530,72 @@ Scene.tick = function(){
 	
 	// lastActions = getLastActions
 	_.each(self.meshes, function(mesh, i){
+		
 		if (mesh.type == 'static') return;
-		//console.log("this is mesh loop", mesh.pending_actions.length);
+		// console.log("self._last_server_report)
 		if(self.localActions && (i in self._last_server_report) ){
-			//console.log("refreshing!")
+			console.log("now server state yet")
 			var state = self._last_server_report[i]
 			var last_id = state.ident // индентификатор-таймстемп последней обработанной сервером команды для этого меша
 			var last_ts = state.server_ts;
+			
 			// console.log(last_ts
-			if(last_id in mesh._actions_index) { // Мы недавно обрабoтали на клиенте это таймстемп
-				var _id = mesh._actions_index[last_id] //  идентификатор массива
+			//if(last_id in mesh._actions_index) { // Мы недавно обрабoтали на клиенте это таймстемп
+
 				var _stid = mesh._previous_states_index[last_id]
-				// console.log("S", last_id, _id, mesh._processed_actions.length);
-				
-				for(var yy = 0; yy <= _id; yy++){ // Удаляем лишние индексы
-					delete mesh._actions_index[mesh._processed_actions[yy].ident]
-				}
 				for(var zz = 0; zz <= _stid; zz++){ // Удаляем лишние индексы
 					delete mesh._previous_states_index[mesh._previous_states[zz].ident]
 				}
+				var prev_state = mesh._previous_states[_stid];
+				console.log("WTF", prev_state, state); 
 				
-				var command = mesh._processed_actions[_id];
-				var prev_state = mesh._previous_states[_stid]
-				if(command){
-					//console.log("we've got own ts");
-					current_ts = command.ts
-				}else{
-					//console.log("we've got server ts - constructing our own;");
-			
-					current_ts = last_ts - self.W._time_diff
-				}
-				//console.log("total_PROCESSED_ACTIONS", mesh._processed_actions.length, _id);
-				var pending = mesh._processed_actions.slice(_id+1);
-				//console.log("pending starts with", pending[0], last_id);
-				//console.log("pending from slice", pending);
-				mesh._processed_actions = []
-				mesh.pending_actions = pending.concat(mesh.pending_actions);
-				if(mesh.pending_actions.length >  0){
-					//console.log('starting pending actions')
-					self._action_on_the_run_var = true
-				}
-				
-				//console.log("total pending", mesh.pending_actions);
 				for(v in state.state){
 					
-					if(prev_state){
-						var a = prev_state.state[v];
-						var b = state.state[v];
-						var c = [b[0] -a[0], b[1]-a[1], b[2]-a[2]];
-						var dc = Math.sqrt( (c[0]*c[0])+ (c[1] * c[1]) + (c[2] * c[2] ))
-						console.log( a, b,dc );
-					}
 					mesh[v].fromArray(state.state[v]);
 				}
-				mesh.last_processed_timestamp = current_ts
+				current_ts = last_ts - self.W._time_diff
+				
+				// mesh.last_processed_timestamp = current_ts
 				//console.log(mesh.last_processed_timestamp, now, now - mesh.last_processed_timestamp);
 				delete self._last_server_report[i]
+				// var from = current_ts;
 				
-			}else{
+				mesh.eventManager.set_last_processed(current_ts);
+				mesh.eventManager.remove(current_ts);
+				
+				
+				//}else{
 				// такого таймстемпа нет в списке последних отработанных операций - это значит, 
 				// что сервер и клиент обработали равное количество операций
-			}
+				//}
 			//v = a+c+e
 			
-		}
-		// console.log("L", mesh.pending_actions.length);
-		if(mesh.pending_actions.length > 0){
-			// apply actions
-			//console.log(mesh.pending_actions.length, "actions to process"  );
-			//console.log('now ', now);
-			
-			
-			
-			// console.log("last_action", _.last(mesh.pending_actions));
-			_.each(mesh.pending_actions, function(action){
-				// console.log(action.ident);
-				
-				self.controller_map[action.type].process(action, mesh)
-				
-				current_state = {ident:action.ident, 
-								 state:{position: mesh.position.toArray(),
-									    rotation: mesh.rotation.toArray(),
-									    impulse:  mesh.impulse.toArray(),
-									    angular_impulse: mesh.angular_impulse.toArray()}}
-				var st_id = mesh._previous_states.push(current_state)
-				mesh._previous_states_index[action.ident] = st_id -1
-				
-				var id_val = mesh._processed_actions.push(action) // - 1
-				
-				mesh._actions_index[action.ident] = id_val-1
-				
-			})
-			// console.log('finished pending actions');
-			self._action_on_the_run_var = false
-			// console.log("last_state",  mesh.rotation, mesh.angular_impulse);
-			
-			// console.log("local actions", self.localActions)
-			if(self.localActions){
-				// console.log('total_actions_proceed', mesh._processed_actions.length);
-			}else{
-				self.mesh_last_states[i] = {ident:_.last(mesh.pending_actions).ident, 
-					server_ts :_.last(mesh.pending_actions).ts, 
-											state:{position:mesh.position.toArray(),
-												   rotation:mesh.rotation.toArray(),
-												   impulse:mesh.impulse.toArray(),
-												   angular_impulse: mesh.angular_impulse.toArray()}}
-				
-			}
-			mesh.pending_actions = []; // Удаляем список
-			
-			// мы должны именно здесь замерить текущие параметры объекта и послать их на
-			// клиенты с отметкой последнего идентификатора обработанного сообщения
-			self.process_physical(mesh,now) // добавляем движение объекта от последнего тс до сейчас 
 		}else{
-			// console.log('here...');
-			self.process_physical(mesh, now)
+			//var from =  self.last_ts;
 		}
-		//console.log("ROT", mesh.rotation.toArray());
+		// console.log("L", from, now);
+		
+		mesh.eventManager.process(now, function(event){
+			console.log("Cont", event);
+			self.controller_map[event.controller].process(event, mesh);
+			
+		})
+		
+		
+		var current_state = {	ident: mesh.eventManager._last_processed , 
+								state:{	position: mesh.position.toArray(),
+										rotation: mesh.rotation.toArray(),
+										impulse:  mesh.impulse.toArray(),
+										angular_impulse: mesh.angular_impulse.toArray()
+									}
+							};
+								
+		var st_id = mesh._previous_states.push(current_state);
+		
+		mesh._previous_states_index[ mesh.eventManager._last_processed ] = st_id - 1;
+		
+		self.process_physical(mesh, now);
+		
 		
 		
 		
@@ -687,7 +610,11 @@ Scene.getNetworkActions = function(){
 }
 Scene.getLocalActions = function(now){
 	//if (this.localActions){
-		return this.W.Inputs.getLatestActions(this.GUID, now)
+		var acts =this.W.Inputs.getLatestActions(this.GUID, now);  
+		if(acts.length > 0){
+			console.log(acts);
+		}
+		return acts;
 		//}else{var locals = []}
 	// var networks = this._network_messages
 	// var ret = locals// .concat(networks) // network messages will follow local messages- easier to find final processed message id
@@ -704,7 +631,7 @@ Scene._addToServerQueue = function(action){
 
 	// Теперь на сервер будем слать незамедлительно!
 	action.ident = action.ts
-	console.log("SEND");
+	// console.log("SEND");
 	this.W.sendAction(this.GUID, action);
 	// this._server_sync_queue.push(action)
 }

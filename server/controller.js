@@ -18,21 +18,10 @@ Controller.NetworkActor =   function(onAct, W){
 			// no need to bother - event style
 		}
 		this.act=function(S, action, is_on, actor){
-			//var C = W.meshes[ W.actors[actor].control.object_guid ]
-			// console.log(action)
-			// console.log("SCENES",scenes, actor.scene);
-			// console.log("my time", new Date().getTime()/1000)
-			// console.log("server time", action.timestamp/1000 )
-			// console.log("my time - servtime", new Date().getTime()/1000 - action.timestamp/1000 )
 			if (W !== undefined){
-				// console.log(W, W._time_diff);
 				action.timestamp -= W._time_diff
 			}
-			// console.log("my time - servtime [fixed]", new Date().getTime()/1000 - action.timestamp/1000 )
-			
-			// console.log(  )
-			var _a = map[action.type].act(S, action, is_on, actor, onAct);
-		
+			var _a = map[action.controller].act(S, action, is_on, actor, onAct);
 		}
 		return this;
 	};
@@ -53,27 +42,27 @@ Controller.LocalInputActor = function(W, socket){
 		//self.actor_login = actor_login
 		self._default_actions={
 		
-			87: {type:ROTATE,  p:{ a:0,d:-1}},
-			83: {type:ROTATE,  p:{ a:0,d:1}},
+			87: {type:ROTATE, controller:"pilot", p:{ a:0,d:-1}},
+			83: {type:ROTATE, controller:"pilot",  p:{ a:0,d:1}},
 			
-			65: {type:ROTATE,  p:{ a:1,d:1}},
-			68: {type:ROTATE,  p:{ a:1,d:-1}},
+			65: {type:ROTATE, controller:"pilot",  p:{ a:1,d:1}},
+			68: {type:ROTATE, controller:"pilot",  p:{ a:1,d:-1}},
 			
-			90: {type:ROTATE,  p:{ a:2,d:1}},
-			67: {type:ROTATE,  p:{ a:2,d:-1}},
+			90: {type:ROTATE, controller:"pilot",  p:{ a:2,d:1}},
+			67: {type:ROTATE, controller:"pilot",  p:{ a:2,d:-1}},
 		
 		
-			79: {type:ROTATEC, p:{ a:'x',d:'+'}},
-			80: {type:ROTATEC, p:{ a:'x',d:'-'}},
+			79: {type:ROTATEC, controller:"pilot", p:{ a:'x',d:'+'}},
+			80: {type:ROTATEC, controller:"pilot", p:{ a:'x',d:'-'}},
 		
-			73: {type:ROTATEC, p:{ a:'y',d:'+'}},
-			75: {type:ROTATEC, p:{ a:'y',d:'-'}},
+			73: {type:ROTATEC, controller:"pilot", p:{ a:'y',d:'+'}},
+			75: {type:ROTATEC, controller:"pilot", p:{ a:'y',d:'-'}},
 		
-			38: {type:MOVE, p:{ a:2,d:-1}},
-			40: {type:MOVE, p:{ a:2,d:1}},
+			38: {type:MOVE, controller:"pilot", p:{ a:2,d:-1}},
+			40: {type:MOVE, controller:"pilot", p:{ a:2,d:1}},
 		
-			'lmouse':{type: SHOOT, p:{ '_turret_direction': function(t,k){
-				delete t[k]
+			'lmouse':{type: SHOOT, controller:"turret", p:{ '_turret_direction': function(t,k){
+				// delete t[k]
 				// console.log("w")
 				// console.log(W.controllable());
 				//var T = Controller.T();
@@ -88,6 +77,7 @@ Controller.LocalInputActor = function(W, socket){
 				//camera_position_vector.applyEuler( C.rotation.clone() )
 				//camera_position_vector.add(C.position.clone());
 				//console.log("camera pos in W", camera_position_vector);
+				// console.log("REPLACING",W.mouse_projection_vec.clone())
 				
 				t[k.substr(1)] = W.mouse_projection_vec.clone() //.sub(camera_position_vector)
 			}}},
@@ -98,6 +88,9 @@ Controller.LocalInputActor = function(W, socket){
 		this.input = function(keycode, up_or_down, modifiers){
 			var ts = new Date().getTime()
 			
+			// Updating values in event:
+			
+			
 			if(up_or_down) {// down == true
 				self._keycodes_in_action[keycode] = {in_action:true, ts:ts}
 			}else{
@@ -107,27 +100,8 @@ Controller.LocalInputActor = function(W, socket){
 				self._keycodes_in_action[keycode].delta = ts - t
 				
 			}
-			
-			//var action = _.clone(self.actions[keycode]);
-			//action.timestamp = ts
-			
-			/*if(_.has(self._keycodes_in_action, keycode)){
-				var state = self._keycodes_in_action[keycode]
-				// console.log(state, up_or_down)
-				if(state.kind === up_or_down){// Состояние не изменилось - ничего не делаем
-					return 
-				}else{
-					self._keycodes_in_action[keycode] = {kind:up_or_down, ts: ts}
-				}
-				
-			}else{
-				self._keycodes_in_action[keycode] = {kind:up_or_down, ts:ts}
-			}
-				*/
 		}
 		this.getLatestActions = function(scene, now){
-			//var now =  new Date().getTime()
-			//console.log("combining actions for ", scene);
 			_.each(self._keycodes_in_action, function(k_action, keycode){
 				if(k_action.in_action){
 					var delta = now - k_action.ts
@@ -140,6 +114,7 @@ Controller.LocalInputActor = function(W, socket){
 					delete self._keycodes_in_action[keycode]
 				}
 				var action = _.clone(self.actions[keycode]);
+				
 				if(action){
 					_.each(action.p, function(item, k){
 						// console.log('a');
@@ -150,21 +125,22 @@ Controller.LocalInputActor = function(W, socket){
 				
 					action.delta = delta / 1000 // come to seconds
 					action.ts = ts
-					var local_controller = map[action.type]
-					var actors = W.get_main_viewport().actors
+					// console.log("Lets check if we have this controller in map:", action.type, map);
+					var local_controller = map[action.controller] // Выбираем контроллер от типа действия
+					var actors = W.get_main_viewport().actors // Собираем акторов в этом вьюпорте
 				
 					_.each(actors, function(actor){
 						var S = W.scenes[actor.scene];
 						var obj = S.get_objects()[actor.control.object_guid];
 						var wp = obj.workpoints[actor.control.workpoint];
-						if (wp.type == local_controller.type){
+						if (wp.type == local_controller.type){ // Если это действие принадлежит этому актору и это контроллеру 
 							//var a_clone = _.clone( action )
 							action.actor = actor.GUID;
 							var s = actor.scene
 							if(!(s in self.actions_by_scene)){
 								self.actions_by_scene[s] = []
 							}
-							self.actions_by_scene[s].push(action)
+							self.actions_by_scene[s].push(action) // Генерируем акцию и складываем её в массив и передаем их для дальнейшей обработки
 							//local_controller.act(self.World.scenes[actor.scene], action, up_or_down, actor, onAct);
 							//a_clone.timestamp += W._time_diff;
 							//if (up_or_down){
@@ -230,6 +206,11 @@ Controller.LocalInputActor = function(W, socket){
 
 
 Controller.CPilotController = function(){
+	
+		// Обработка события осуществляется в два этапа:
+		// Первый этап - вычисления исходя из параметров события тех характеристик, которые направлены на нужный корабль (Вектора)
+		// Второй этап - пересчет координат (работа двигателей)
+		 
 		this.type='pilot';
 		this.action_types=[ROTATE, MOVE];
 		var T = Controller.T();
@@ -269,11 +250,12 @@ Controller.CPilotController = function(){
 				}
 				
 			}
-			console.log('call process',  _.has(raw_action,'vector') );
-			if (_.has(raw_action, 'vector'))  {
+			// console.log('call process',  _.has(raw_action,'vector') );
+			
+			if (_.has(raw_action, 'vector'))  { // Если акцию уже вычислили - будем применять все вектора на нее
 				process('-', raw_action)
 			}else{
-				this.act_for_mesh(mesh, raw_action, process)
+				this.act_for_mesh(mesh, raw_action, process); // Если нет - то сначала вычислим их
 			}
 		};
 		this.act_for_mesh=function(mesh, action, onAct){
@@ -290,7 +272,6 @@ Controller.CPilotController = function(){
 			}
 			var AX= action.p.a;
 			var ar = [0,0,0]
-			// var a = action.p.d == '+'? 1 : -1;
 			ar[AX] = action.p.d
 			
 			var vec = new T.Vector3();
@@ -300,35 +281,21 @@ Controller.CPilotController = function(){
 			if(action.p.d <0){ea +='-'}else{ea += '+' }
 			var power = C.engines[et][ea];
 			vec.multiplyScalar(power)
-			console.log("action delta", action.ts, action.delta);
+			//console.log("action delta", action.ts, action.delta);
 			vec.multiplyScalar(action.delta)
 			action.vector = vec
-		
-		//	if (et == "rotation"){
-				// onAct(C.GUID, action)
-				//C.pending_actions.push(action)
-		//	}else if(et =='propulsion'){
-		//		vec.multiplyScalar(action.delta)
-		//		action.vector = vec
-				//onAct(C.GUID, action)
-				// C.pending_actions.push(  action )
-				
-		//	}
-			onAct(C.GUID, action)
+			
+			// Нашли все силы и возвращаем обратно событие
+			// console.log("MESH", "GUID", C);
+			onAct(C.json.GUID, action)
 			
 		},
 		this.act = function(S, action,  actor, onAct_ ){
-			// console.log('Wat');
-			// console.log("move by", actor)
-			//if (actor === undefined){
-				//console.log("MY", W.actors[W.login].control.object_guid)
-			//	var C = S.controllable()
-			//}else{
-			console.log("call act")
+			// Эта функция создаёет акцию исходя из условий окружения
+			// В данном случае нам надо создать подробно описывающее событие о том, что может и дожно происходить с кораблем
 			if(S === undefined ) return;
 			var C = S.mesh_for(actor);
 			var onAct = function(guid, action){
-				C.pending_actions.push(action);
 				onAct_(guid, action);
 			}
 			this.act_for_mesh(C, action, onAct );
@@ -523,36 +490,134 @@ Controller.BasicBulletActor=function(S, id, coid){
 	
 Controller.CTurretController = function(){
 	this.type = 'turret';
-		this.act = function(S, action,  actor ){
+	
+		this.act = function(S, action,  actor_guid, onAct ){
 			if (S === undefined){return;}
 			if (action.type === SHOOT ){
-				if(! is_down) return;
+				// if(! is_down) return;
 				// console.log('>>>');
 				// var weapon = C.weapons[0];
 				//console.log("shot by", actor)
 				var T = Controller.T();
+				console.log("Woah");
+				
+				// TODO Надо сделать простой способ проверить попадание в текующую цель исходя из данных в сообщении
+				// TODO Не будем гнаться за достоверностью - проверяем достоверности попадания + вводим величину везения.
+				// TODO Кратчайшее расстояние между скрещивающимися кривыми и сравнение с физическими размерами
+				// TODO Умноженное на коэффициенты разброса
+				// Для медленно движующихся зарадов вычислять вероятность их попадания - возможность изменить скорость цели так, чтобы попасть под обстрел или уйти от него
+				// Для ракет - это будут функции захвата цели и выстрела - влияния на состояние турели.
+				
+				
+				var seed = Math.random() // Это зерно будет использоваться для вычисления вероятностей и оно должно быть записано в сообщение - чтобы позволить серверу вычислить параметры попадания детерминированно
+				// console.log(action)
+				// Теперь высляем вектор выстрела в мировых координатах
+				var shoot_vec = new T.Vector3(action.p.turret_direction.x,
+											  action.p.turret_direction.y,
+											  action.p.turret_direction.z);
+
+				//dist
+				// For all targets:
+				// calculate closest distance and time to that 
+				// console.log("ACTOR", actor);
+				
+				var C = S.mesh_for(actor_guid);
+				var actor = S.actors[actor_guid];
+				var object = C.json
+				var wp = object.workpoints[actor.control.workpoint];
+				var turret = object.turrets[ wp.turret ] 
+				
+				var turret_position_vector = new T.Vector3();
+				turret_position_vector.fromArray(turret.position );
+				
+				var bullet_pos = C.position.clone()
+				bullet_pos.add(  turret_position_vector.clone() )
+				
+				shoot_vec.sub(bullet_pos.clone())
+				// Надо составить список мешей, через которые проходит луч траектории движения снаряда с учетом вероятности попадания
+				var collidables = [];
+				_.each(S.meshes, function(mesh, i){
+					if(i ==  actor.control.object_guid) return;
+					
+					var target_pos = mesh.position.clone();
+					var target_impulse = mesh.impulse.clone();
+					var target_velocity = target_impulse.multiplyScalar(1/mesh.mass);
+					
+					// Увеличим скорость во много-много раз
+					// shoot_vec.multiplyScalar( 100 );
+					target_pos.sub( bullet_pos );
+					target_velocity.sub( shoot_vec );
+					
+					var dot = target_pos.dot(target_velocity);
+					
+					
+					var cosp = dot/( target_pos.length() * target_velocity.length() )
+					var sinp = Math.sqrt(1 - cosp*cosp);
+					
+					var v = Math.abs(cosp) * target_velocity.length();
+					var time = v / target_pos.length()
+					var distance = sinp * target_pos.length(); // Максимальная дистанция, в которой пройдет снаряд от корабля
+					
+					//console.log("distance and time", distance, time);
+					
+					// Решение о попадании надо принимать здесь
+					//  distance Может уменьшиться в зависимости от скиллов игрока и характеристик оружия
+					
+					// Сравнение с геометрическими размерами тела:
+					var boundRadius = mesh.geometry.boundingSphere;
+					// console.log("SPHERE", boundRadius.radius, distance);
+					if(distance < boundRadius.radius){
+						// hit 
+						collidables.push({time: time, mesh:i})
+						
+					}
+					
+					// Синус - это мера попадания. При умножении её на вектор позиции мы узнаем на какой дистанции пройдет снаряд от цели
+					// Косинус дает представление о времени  до контакта. Если косинус отрицательный - значит  
+					// console.log("sin and cos", target_pos.toArray(), mesh.position.toArray(), sinp, cosp);
+					
+				});
+				// Теперь, надо запихнуть это событие в очередь процессинга:
+				// 1. Событие - импульс на нас, которое может включать также измение состояний внутренних приборов - например количество патронов
+				// 2. В случае попадания - отправить в будущее событие об изменении импульса и состояния цели.
+				
+				
+				if (collidables.length > 0){
+					var  mesh_id = _.sortBy(collidables, function(i){ return i.time})[0].mesh
+					action.hit = true;
+					action.time = i.time;
+					action.mesh = mesh_id;
+					action.distance = distance;
+					action.seed = seed;
+				}else{
+					action.hit = false;
+				}
+				onAct(C.GUID, action);
+				 
 				//if (actor === undefined){
 					// console.log("MY", W.get_current_actor().control.object_guid)
 				//	var C = S.meshes[ W.get_actor(actor).control.object_guid ]
 				//}else{
 				//console.log(actor, action);
-				var C = S.meshes[actor.control.object_guid]
-				var object = C.json
-				var wp = object.workpoints[actor.control.workpoint];
-				var turret = object.turrets[ wp.turret ] 
+				
+				//var C = S.meshes[actor.control.object_guid]
+				//var object = C.json
+				//var wp = object.workpoints[actor.control.workpoint];
+				//var turret = object.turrets[ wp.turret ] 
 				// console.log(turret, C.json.turrets, C.json.workpoints, actor)
 				
 				
 					//}
+					/*
 				if (action.turret_direction instanceof T.Vector3){
 					var mpv = action.turret_direction
 				
 				}else{
-					var mpv = new T.Vector3(action.turret_direction.x,
-												action.turret_direction.y,
-												action.turret_direction.z)
+					var mpv = new T.Vector3(action.p.turret_direction.x,
+												action.p.turret_direction.y,
+												action.p.turret_direction.z)
 				}
-				console.log(mpv)
+			//	console.log(mpv)
 				//console.log('TH', Controller.T())
 				// var front_vector = C.
 				var turret_position_vector = new T.Vector3()
@@ -585,7 +650,7 @@ Controller.CTurretController = function(){
 				var bullet_actor = new Controller.BasicBulletActor(S, B_GUID, C.GUID)
 				S.automatic_actors[bullet_actor.name] = bullet_actor;
 				// console.log(W.scene.automatic_actors);
-			
+					*/
 			
 			}
 		}
@@ -599,10 +664,10 @@ Controller.ControllersActionMap= function(){
 			var PilotController = new Controller.CPilotController();
 			var TurretController = new Controller.CTurretController()
 			this._ControllersActionMap = {}
-			this._ControllersActionMap[MOVE]= PilotController;
-			this._ControllersActionMap[ROTATE]=PilotController;
-			this._ControllersActionMap[ROTATEC]= PilotController;
-			this._ControllersActionMap[SHOOT]= TurretController;
+			//this._ControllersActionMap[MOVE]= PilotController;
+			//this._ControllersActionMap[ROTATE]=PilotController;
+			this._ControllersActionMap['pilot']= PilotController;
+			this._ControllersActionMap['turret']= TurretController;
 			
 			return this._ControllersActionMap;
 			
@@ -615,10 +680,10 @@ if(typeof window === 'undefined'){
 	};
 	Controller.createShotParticle=function(){
 		var T = this.T();
-		// console.log('P');
-		//var cubeGeometry = new T.CubeGeometry(1,1,1,1,1,1);
-		//var map	= T.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
-		//var SpriteMaterial = new T.SpriteMaterial( { map: map, color: 0xffffff, fog: true } );
+		console.log('P');
+		var cubeGeometry = new T.CubeGeometry(1,1,1,1,1,1);
+		var map	= T.ImageUtils.loadTexture( "/textures/lensflare/lensflare0.png" );
+		var SpriteMaterial = new T.SpriteMaterial( { map: map, color: 0xffffff, fog: true } );
 		return new T.Object3D();
 	};
 
