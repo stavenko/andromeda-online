@@ -1,10 +1,11 @@
 var THR = require('./three.node');
 var Utils = require("./utils");
 var _     = require('underscore');
-ROTATE  = 10
-ROTATEC = 11
-MOVE = 12
-SHOOT = 13
+ROTATE  = 10;
+ROTATEC = 11;
+MOVE = 12;
+SHOOT = 13;
+HIT = 15;
 
 var Controller = {description:'controller'}
 	
@@ -61,7 +62,7 @@ Controller.LocalInputActor = function(W, socket){
 			38: {type:MOVE, controller:"pilot", p:{ a:2,d:-1}},
 			40: {type:MOVE, controller:"pilot", p:{ a:2,d:1}},
 		
-			'lmouse':{type: SHOOT, controller:"turret", p:{ '_turret_direction': function(t,k){
+			'lmouse':{type: SHOOT, MA:true, controller:"turret", p:{ '_turret_direction': function(t,k){
 				// delete t[k]
 				// console.log("w")
 				// console.log(W.controllable());
@@ -123,8 +124,9 @@ Controller.LocalInputActor = function(W, socket){
 						}
 					})
 				
-					action.delta = delta / 1000 // come to seconds
-					action.ts = ts
+					action.delta = delta / 1000; // come to seconds
+					action.ts = ts;
+					action.ident = action.ts;
 					// console.log("Lets check if we have this controller in map:", action.type, map);
 					var local_controller = map[action.controller] // Выбираем контроллер от типа действия
 					var actors = W.get_main_viewport().actors // Собираем акторов в этом вьюпорте
@@ -213,6 +215,23 @@ Controller.CPilotController = function(){
 		 
 		this.type='pilot';
 		this.action_types=[ROTATE, MOVE];
+		this.getUI = function(W, actor){
+			var ui = function(){
+				this.actor = actor;
+				this.construct = function(){
+					
+	
+				}
+				this._set_magazine_capacity = function(){
+					var mag_cap = actor.workpoint.magazine_capacity;
+					var _mag    = W.scenes[actor.scene].meshes[actor.control.object_guid].getState(wp);
+				}
+			}
+		
+			var UI = new ui();
+			return UI;
+		}
+		
 		var T = Controller.T();
 		
 		function get_axis(a){
@@ -491,15 +510,107 @@ Controller.BasicBulletActor=function(S, id, coid){
 Controller.CTurretController = function(){
 	this.type = 'turret';
 	
+	this.getUI = function(W, actor){
+		var ui = function(){
+			this.actor = actor;
+			this.construct = function(){
+				this.cont = $('<div>').css({'position':'fixed',
+								// 'border': '1px solid red',
+								'width':"66px",
+								'height': '170px',
+								'top':40,
+								'left':50,
+								'background-color':'white'});
+				
+				var rul_cont = $('<div>').css({
+					"width":  "100%",
+					"height": charge_height + 'px',
+					'background-color':'blue'
+		
+				}).appendTo(this.cont);
+	
+				var bul_cont = $('<div>').css({
+					"width":  "100%",
+					"height": (170 - charge_height) + "px",
+					'background-color':'green'
+				}).appendTo(this.cont);
+	
+				var auto_track_switch = $('<div>').css({'width':'22px',
+														'height':'22px',
+														'border-radius':'11px',
+														'float':'left',
+														'background-color':'white'}).appendTo(rul_cont);
+				var magazine_indic = $('<div>').css(
+					{'width':'22px',
+					'height': (magazine/magazine_capacity * charge_height) +  'px',
+					'float':'left',
+					'background-color':'red'}).appendTo(rul_cont);
+				var time_indic = $('<div>').css(
+					{'width':'22px',
+					'height': (magazine/magazine_capacity * charge_height) +  'px',
+					'float':'left',
+					'background-color':'red'}
+				) .appendTo(rul_cont);
+	
+			}
+			this._set_magazine_capacity = function(){
+				var mag_cap = actor.workpoint.magazine_capacity;
+				var _mag    = W.scenes[actor.scene].meshes[actor.control.object_guid].getState(wp);
+			}
+		}
+		
+		var UI = new ui();
+		return UI;
+	}
+		
+	
+	
+	this.process = function(raw_action, mesh){
+		// console.log("On the server", action);
+		
+		var process = function(object_guid, action){
+			// console.log("HITED", object_guid, action)
+			
+			// mesh.update_static_physical_data(action.ts)
+			
+			// if (action.type === ROTATE){
+			//	mesh.angular_impulse.add(action.vector)
+			//}else if(action.type === MOVE){
+			//	if(action.vector instanceof T.Vector3){
+			//		var v = action.vector
+			//	}else{
+			//		var v = new T.Vector3(action.vector.x, action.vector.y, action.vector.z)
+			//	
+			//	}
+			//	var tug = v.clone().applyQuaternion(mesh.quaternion);
+			//	mesh.impulse.add(tug);
+			
+			//}
+			
+		}
+		// console.log('call process',  _.has(raw_action,'vector') );
+		
+		//if (_.has(raw_action, 'vector'))  { // Если акцию уже вычислили - будем применять все вектора на нее
+		process('-', raw_action)
+			//}else{
+		//	this.act_for_mesh(mesh, raw_action, process); // Если нет - то сначала вычислим их
+			// }
+	};
+	
 		this.act = function(S, action,  actor_guid, onAct ){
 			if (S === undefined){return;}
+			if (action.type === HIT){
+				console.log("we already processed  hit");
+				
+				return;
+			}
 			if (action.type === SHOOT ){
 				// if(! is_down) return;
 				// console.log('>>>');
 				// var weapon = C.weapons[0];
 				//console.log("shot by", actor)
 				var T = Controller.T();
-				console.log("Woah");
+				//console.log("Woah");
 				
 				// TODO Надо сделать простой способ проверить попадание в текующую цель исходя из данных в сообщении
 				// TODO Не будем гнаться за достоверностью - проверяем достоверности попадания + вводим величину везения.
@@ -555,7 +666,8 @@ Controller.CTurretController = function(){
 					var sinp = Math.sqrt(1 - cosp*cosp);
 					
 					var v = Math.abs(cosp) * target_velocity.length();
-					var time = v / target_pos.length()
+					console.log(v, target_pos.length());
+					var time = target_pos.length() / v 
 					var distance = sinp * target_pos.length(); // Максимальная дистанция, в которой пройдет снаряд от корабля
 					
 					//console.log("distance and time", distance, time);
@@ -568,7 +680,7 @@ Controller.CTurretController = function(){
 					// console.log("SPHERE", boundRadius.radius, distance);
 					if(distance < boundRadius.radius){
 						// hit 
-						collidables.push({time: time, mesh:i})
+						collidables.push({time: time, mesh:i, distance:distance})
 						
 					}
 					
@@ -583,74 +695,36 @@ Controller.CTurretController = function(){
 				
 				
 				if (collidables.length > 0){
-					var  mesh_id = _.sortBy(collidables, function(i){ return i.time})[0].mesh
+					var col = _.sortBy(collidables, function(i){ return i.time})[0]
+					var  mesh_id = col.mesh
 					action.hit = true;
-					action.time = i.time;
+					action.time = col.time;
 					action.mesh = mesh_id;
-					action.distance = distance;
+					action.distance = col.distance;
 					action.seed = seed;
+					
+					var hit_action = {};
+					hit_action.ts = action.ts + action.time;
+					hit_action.slave = true;
+					hit_action.parent = action.ident;
+					hit_action.diff = action.diff;
+					hit_action.power = 100500;
+					hit_action.distance = col.distance;
+					hit_action.mesh = mesh_id;
+					hit_action.controller = "turret";
+					hit_action.type = HIT;
+					hit_action.actor = action.actor;
+					// console.log("HIT", action, hit_action);
+					console.log("HIHIHIT", action.time);
+					onAct(mesh_id, hit_action);
+					
+					
 				}else{
 					action.hit = false;
 				}
-				onAct(C.GUID, action);
+				onAct(C.json.GUID, action);
 				 
-				//if (actor === undefined){
-					// console.log("MY", W.get_current_actor().control.object_guid)
-				//	var C = S.meshes[ W.get_actor(actor).control.object_guid ]
-				//}else{
-				//console.log(actor, action);
 				
-				//var C = S.meshes[actor.control.object_guid]
-				//var object = C.json
-				//var wp = object.workpoints[actor.control.workpoint];
-				//var turret = object.turrets[ wp.turret ] 
-				// console.log(turret, C.json.turrets, C.json.workpoints, actor)
-				
-				
-					//}
-					/*
-				if (action.turret_direction instanceof T.Vector3){
-					var mpv = action.turret_direction
-				
-				}else{
-					var mpv = new T.Vector3(action.p.turret_direction.x,
-												action.p.turret_direction.y,
-												action.p.turret_direction.z)
-				}
-			//	console.log(mpv)
-				//console.log('TH', Controller.T())
-				// var front_vector = C.
-				var turret_position_vector = new T.Vector3()
-				turret_position_vector.fromArray(turret.position );
-				// turret_position_vector.multiplyScalar(1);
-				turret_position_vector.applyEuler( C.rotation.clone() )
-				
-				var bullet = Controller.createShotParticle();
-				bullet.position = C.position.clone()
-				bullet.position.add(  turret_position_vector.clone() )
-				// console.log("BULLET POS IN W", C.position, C.pos,  bullet.position)
-				
-			
-				bullet.has_engines = false;
-				bullet.is_not_collidable = true;
-				bullet.vel = new T.Vector3(0,0,0); // mpv//.multiplyScalar(0.10);
-				
-				bullet.mass = 1;
-				
-				mpv.sub(bullet.position.clone()).normalize().multiplyScalar(120.00);
-				
-				bullet.impulse = mpv;
-				bullet.angular_impulse = new T.Vector3(0,0,0);
-				if ( typeof window !== 'undefined'){
-					S.three_scene.add( bullet );
-				}
-				B_GUID = Utils.make_guid()
-				S.meshes[B_GUID] =  bullet ;
-			
-				var bullet_actor = new Controller.BasicBulletActor(S, B_GUID, C.GUID)
-				S.automatic_actors[bullet_actor.name] = bullet_actor;
-				// console.log(W.scene.automatic_actors);
-					*/
 			
 			}
 		}

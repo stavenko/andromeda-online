@@ -329,7 +329,7 @@ io.on('connection', function(socket){
 		socket.on('user_actions', function(message){
 			/// var scene = message.scene;
 			/// var action = message.action;
-			console.log("MESSAGE FROM CL", message); 
+			// console.log("MESSAGE FROM CL", message); 
 			simulator.send({type:'client-actions',data:message, user_id:user_id})
 			
 		})

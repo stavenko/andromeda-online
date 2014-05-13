@@ -100,9 +100,11 @@ var create_mission_json = function(  ){
 									},
 									"turrets":{
 										"front":{"type":"ballistic",
-												 "position": [0,0.5,0]},
+												 "position": [0,0.5,0],
+											 	 "magazine_capacity": 100},
 		 								"back":{"type":"ballistic",
-		 										 "position": [0,0,2]}
+		 										 "position": [0,0,2],
+											 	 "magazine_capacity": 100}
 
 									},
 									"workpoints":{
@@ -274,8 +276,8 @@ Mission.prototype = {
 	_make_actor: function(pos_id, user_id){
 		var pos = this._positions[pos_id]
 		var new_actor_guid = u.make_short_guid()
-		var controllable = {object_guid:pos.object_guid, workpoint:pos.workpoint} // viewport:'front', controls:['Pilot', 'Turret']} 
-		console.log(this._positions, pos_id, user_id, pos);
+		var controllable = {object_guid:pos.object_guid, workpoint:pos.workpoint, type: pos.control_type} // viewport:'front', controls:['Pilot', 'Turret']} 
+		console.log("make actor",  pos);
 		return {command:pos.command, user_id: user_id, control: controllable, GUID:  new_actor_guid}
 		
 	},
@@ -373,6 +375,7 @@ Mission.prototype = {
 									 'object_subtype':object.ship_type,
 									 'object_guid': object.GUID,
 								 	 'workpoint':wp_label,
+									 'control_type': workpoint.type,
 									 'MGUID' : self.GUID
 								 
 								 }

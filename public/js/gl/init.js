@@ -5,12 +5,43 @@ window.World = (function(){
 	return Cons;
 })()
 
+function StaticLogger(){
+	this._vals = {}
+	this.setValue = function(param, val){
+		// console.log(param, val);
+		this._vals[param] = val;
+	}
+	this.init = function(){
+		this.cont = $("<div>").css({
+			'position':'fixed',
+			'top':0,
+			'right':0,
+			'width':400,
+			'bottom':0,
+			'background-color':"rgba(0,200,100,0.7)"
+		}).appendTo('body');
+	// 	console.log(this.cont);
+		
+	}
+	this.redraw = function(){
+		this.cont.find('*').remove();
+		//console.log(this._vals);
+		for(var i in this._vals){
+			//console.log('asda');
+			c = $('<div>').appendTo(this.cont)
+			l = $('<span>').html(i + "&nbsp;: &nbsp;").css('font-weight','bold').appendTo(c);
+			v = $('<span>').text( this._vals[i] ).appendTo(c);
+		}
+	}
+}
+
+var SL = new StaticLogger();
 window.World.setup_scene = function(scene){
 	material = new THREE.MeshBasicMaterial({
 	   color: 0xff0000,
 	   wireframe: true
 	});
-	console.log(scene._scene)
+	// console.log(scene._scene)
 	
 	var sunDirection = new THREE.Vector3().fromArray(scene._scene.sunDirection) ;
 	//this.sunLightColor = [0.1, 0.7, 0.5];
@@ -171,7 +202,7 @@ window.World.init = function(auth_hash, client_login){
 	this.skyBoxes = {}; //[scene.guid]  = new THREE.Mesh( new THREE.CubeGeometry( 9000, 9000, 9000 ), material );
 	this.skyBoxCamera = {};//[scene.guid]
 	this.mouse_projection_vec = new THREE.Vector3();
-	
+	SL.init();
 	var self = this;
 	self.pings = [];
 	self.pings_instability = [];
@@ -261,7 +292,7 @@ window.World.init_socket = function(){
 		// Здесь мы получаем всех акторов, которые присущи для этого логина - их может оказаться несколько и для них могут быть разные сцены
 		var actors = data.actors;
 		self.actors = actors // Здесь список всех акторов, которые так или иначе связаны с нашим логином
-		console.log('actors', actors);
+		//console.log('actors', actors);
 		self.syncTime()
 		
 		var scenes = _.map(self.actors, function(actor){
@@ -290,7 +321,7 @@ window.World.init_socket = function(){
 		var onload = function(scene){
 			// console.log('loaded');
 			var onAct = function(){
-				console.log('act on client')
+				//console.log('act on client')
 			}
 			_totals +=1
 			self.setup_scene(scene);
@@ -339,25 +370,7 @@ window.World.init_socket = function(){
 		console.log("RR", data);
 		self.scenes[data.s].addNetworkMessage(data.a);
 	})
-	/*
-	this.socket.on('player_controls_on', function(data){
-		var actor = data.actor;
-		var action = data.action;
-		var S = self.scenes[actor.scene];
-		//console.log("PPLAY CONTOL", actor);
-		self.network_actor.act(S, action, true, actor)
-	
-	})
 
-	this.socket.on('player_controls_off', function(data){
-		// console.log('ok recv', data)
-		var actor = data.actor
-		var action = data.action;
-		
-		var S = self.scenes[actor.scene];
-		self.network_actor.act(S, action, false, actor)
-	
-	})*/
 	
 
 	
@@ -427,7 +440,7 @@ window.World.makeCamera = function(vp ){
 	
 	var vp_pos    	 = new THREE.Vector3();
 	var vp_rot  	 = new THREE.Vector3();
-	console.log(object, camera);
+	// console.log(object, camera);
 	vp_pos.set.apply(vp_pos, object.cameras[port].position)
 	vp_rot.set.apply(vp_rot, object.cameras[port].direction)
 	
@@ -457,10 +470,14 @@ window.World.setupCameras = function(){
 	self._viewports = {}
 	self._viewport_amount = 0;
 	var is_first = true;
+	var cmap = Controller.ControllersActionMap();
 	
 	_.each(self.actors, function(actor){
 		//console.log(actor)
 		var wp = actor.control.workpoint;
+
+		var C = cmap[actor.control.type];
+		var UI = C.getUI(self, actor);
 		
 		var views = self.scenes[actor.scene].get_objects()[actor.control.object_guid].workpoints[wp].views
 		
@@ -469,13 +486,15 @@ window.World.setupCameras = function(){
 			if (is_first){
 				self._main_viewport = vp_hash;
 			}
-		
+			// console.log(" show me ", actor);
 			if(!(vp_hash in self._viewports)){
-				var vp = {scene:actor.scene, object:actor.control.object_guid, camera: view, actors:[actor]}
+				var vp = {scene:actor.scene, object:actor.control.object_guid, camera: view, actors:[actor], UIS : [UI]}
 				self._viewports[vp_hash] = vp
 				self._viewport_amount +=1;
 			}else{
 				self._viewports[vp_hash].actors.push(actor);
+				self._viewports[vp_hash].UIS.push(UI);
+				
 			}
 		})
 	})
@@ -502,6 +521,7 @@ window.World._init_vps = function(){
 	var mvp = this._viewports[this._main_viewport];
 	mvp.geom = {t:0, l:0, w:this.vp_width, h:this.vp_height};
 	mvp.three_camera = this.makeCamera(mvp)
+	// this.
 	this.three_scenes[mvp.scene].add(this.cur);
 	this.initSpace(mvp);
 	
@@ -556,33 +576,7 @@ window.World.syncTime = function(){
 	var Actions = this.protobufBuilder.build("Actions");
 	
 	var messages = {};
-	//console.log("ST", this.scenes);
-	/*
-	_.each(this.scenes, function(sc){
-		// var sq = sc._flushServerQueue();
-		// console.log("FFL", sq)
-		var result = sc._flushServerQueue();
-		result.actions = _.map(result.actions, function(mes){
-			mes.ts += self._time_diff; 
-			mes.p = JSON.stringify(mes.p);
-			delete mes.vector;
-			return mes;
-		})
-		//console.log("FFFLLL", result);
-		var actions = new Actions(result.actions)
-		//console.log("com_length", actions.inputs.length);
-		//console.log("shouldbe", result.actions.length)
-		//bin_len = actions.encode().length;
-		//txt_len = actions.toBase64().length;
-		//cur_len = JSON.stringify({actions:result.actions}).length
-		//console.log("effect", Math.floor(bin_len*100/cur_len) ,Math.floor(txt_len*100/cur_len) )
-		messages[sc.GUID] = actions.toBase64(); // result.actions
-		//console.log(" here's one action", JSON.stringify(result.actions[0]))
-		
-	})
-	//console.log("before sending syncing message");
-	*/
-	// console.log("length of message in bytes", JSON.stringify({actions:messages}).length)
+
 	this.socket.emit("sync_request")
 	
 	//console.log(">>>>", this.socket.emit);
@@ -611,7 +605,7 @@ window.World.syncTime = function(){
 			// self.average_ping_instability = avg_ping_instab;
 			self.max_ping = _.max(self.pings)
 			
-			console.log("T", self._time_diff)
+			// console.log("T", self._time_diff)
 			//console.log("TIMES", self._time_diff, data.ts - self._sync_timestamp, lat)
 			
 			// var to = 100 / (avg_ping/1000)
@@ -705,10 +699,13 @@ window.World.go = function(){
 				self.render(vp, self._additional_vps_geom[i])
 			})
 		}
+		SL.redraw();
+    
 		requestAnimationFrame(animate)
     	
     }
-	
-    requestAnimationFrame(animate);
+	requestAnimationFrame(animate);
 	
 }
+
+

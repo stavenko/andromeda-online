@@ -2,6 +2,7 @@ var fs    = require('fs');
 var u = require('./utils');
 var THR = require('./three.node');
 var Controller = require('./controller');
+var AObject = require('./object');
 var EQ = require("./event_queue")
 
 var _     = require('underscore');
@@ -15,16 +16,17 @@ var SceneObject = function(x,y,z){
 	this.gz = z
 }
 Scene = {constructor: SceneObject}
-
 if(typeof window === 'undefined'){
 	Scene.THREE = THR // Saveing THREE.js as part of scene - this step could be done on a certain platform
 	Scene.do_prepare_rendering = false
 	Scene.ajax_load_models = false
 	Scene.need_update_matrix = true
 	Scene.localActions = false
+	var is_browser = false;
 	
 	
 }else{
+	var is_browser = true;
 	Scene.THREE = THREE
 	Scene.do_prepare_rendering = true
 	Scene.ajax_load_models = true
@@ -55,7 +57,7 @@ Scene.create = function(){
 Scene._create = function(){
 	this.clock = new (this.THREE.Clock)();
 	this.time_inc  = 0;
-	
+	this.tick_counter = 0;
 	this._scene_object_cache = {}
 	this._scene_obj_actors={}
 	this._network_messages = [];
@@ -227,77 +229,10 @@ Scene.load = function(onload, three_scene, W){
 				// var turret = object.turrets[objects.workpoints[actor.control.workpoint].turret] 
 				
 				
-				var mesh = new self.THREE.Mesh( geom, mat );
-				mesh.json = object
+				var mesh = AObject(geom, mat) ;//self.THREE.Mesh( geom, mat );
+				mesh.json = object;
+				mesh.load_json();
 				
-				mesh.eventManager = new EQ();
-				mesh.pending_actions = [];
-				mesh._processed_actions = [];
-				mesh._actions_index = {};
-				mesh._previous_states = []
-				mesh._previous_states_index = {}
-				mesh.total_angular_impulses = [];
-						// console.log(i, mesh.total_torques, mesh.total_powers)
-				mesh.type=object.type
-				var object_rotated = false
-				// Setting defaults 
-				mesh.avel = new self.THREE.Vector3(0,0,0)
-				mesh.aacc = new self.THREE.Vector3(0,0,0)
-				mesh.vel = new self.THREE.Vector3(0,0,0)
-				mesh.acc = new self.THREE.Vector3(0,0,0)
-				
-				
-				if ( object.physical ){
-					for(i in object.physical){
-						
-						var _is = 'to' in object.physical[i]
-						if (!_is){
-							if(i !='rotation'){
-								var v = new self.THREE.Vector3()
-								
-							}else{
-								var v = new self.THREE.Euler()
-							}
-							v.set.apply(v, object.physical[i])
-							mesh[i] = v
-						
-						}else{
-							var p = new self.THREE.Vector3(object.physical[i].to[0], object.physical[i].to[1], object.physical[i].to[2])
-							// Try to rotate p on 180 
-							//p.rotateX(2* Math.PI);
-							mesh.lookAt(p.negate())
-							// mesh.rotateX(2*Math.PI)
-							mesh.rot = new self.THREE.Vector3(mesh.rotation.x, mesh.rotation.y, mesh.rotation.z);
-							object_rotated = true;
-						}
-					}
-				}else{
-					var pi2 = Math.PI * 2;
-					mesh.pos = new self.THREE.Vector3(Math.random() * 200, Math.random() * 200, Math.random() * 200);
-					mesh.rot = new self.THREE.Vector3(Math.random() * pi2, Math.random() * pi2, Math.random() * pi2);
-					
-				}
-				mesh.position = mesh.pos;
-				if (! object_rotated &&  'rot' in mesh){
-					
-					var uel = new self.THREE.Euler(mesh.rot.x, mesh.rot.y, mesh.rot.z);
-					mesh.rotation = uel;
-				}
-				// console.log(mesh.position)
-				mesh.cameras = object.cameras;
-				mesh.engines = object.engines;
-				mesh.has_engines = object.engines !== undefined;
-				if (mesh.has_engines){
-					mesh.on_engines_rotation = [];
-					mesh.on_engines_propulsion = [];
-				}
-				mesh.put_off = put_off;
-				mesh.put_on  = put_on;
-				mesh.mass = object.mass;
-				mesh.angular_impulse = mesh.avel.clone().multiplyScalar(mesh.mass)
-				mesh.impulse = mesh.vel.clone().multiplyScalar(mesh.mass)
-				
-		
 				if (self.do_prepare_rendering){
 					if (object.type !=='static'){
 						var label = SpriteUtils.makeTextSprite("mesh: " + ix);
@@ -306,38 +241,9 @@ Scene.load = function(onload, three_scene, W){
 						// console.log("added");
 					}
 					three_scene.add( mesh );
-					
-				}
-				mesh.last_processed_timestamp = new Date().getTime();
-				mesh.update_static_physical_data = function(till_time){
-					var time_left = (till_time - this.last_processed_timestamp) / 1000 // to seconds;
-					// console.log(time_left);
-					var um = 1 / mesh.mass;
-					var umt = time_left * um
-	
-					var rots = this.angular_impulse.clone().multiplyScalar(umt)
-					var poses = this.impulse.clone().multiplyScalar(umt)
-	
-					// mesh.vel = mesh.impulse.clone().multiplyScalar(um);
-	
-					this.rotateX(rots.x)
-					this.rotateY(rots.y)
-					this.rotateZ(rots.z);
-	
-					this.position.add(poses);
-					this.last_processed_timestamp = till_time
-				}
-				//var turrets = {}
-				//_.each(object.workpoints, function( wp ){
-				//	turret = object.turrets[ wp.turret ] 
-				//	var turret_pos = new self.THREE.Vector3();
-				//	turret_pos.fromArray(turret.position)
-				//	turrets[ wp.turret ] = turret_pos;
-				//	mesh.add(
-					
-					//})
-				
 			
+				}
+				
 				self.meshes[ object.GUID ] = mesh;
 				self.loaded_objects_count +=1;
 				self._model_loaded( ix )
@@ -425,7 +331,7 @@ Scene._model_loaded = function(ix){
 }
 Scene.sync = function(sync){
 	var self = this;
-	console.log ("syncing pulse recv", sync)
+	// console.log ("syncing pulse recv", sync)
 	self._last_server_report = sync
 	//self.targets = {};
 
@@ -467,11 +373,23 @@ Scene.tick = function(){
 			if(new_actions.length > 0){
 				_.each(new_actions, function(a){
 					self.controller_map[a.controller].act(self, a, a.actor, function(object_guid, action){
-						self._addToServerQueue(action);
-						// mesh.pending_actions.push(action);
-						// console.log("EVENT CB", object_guid, self.meshes);
-						var mesh = self.meshes[object_guid];
-						mesh.eventManager.add(action, action.ts)
+						if ('MA' in action){ // Здесь будут отсеиваться Мастер-действия, которые порождают другие действия, в
+											 // лияющие на произвльных игроков. Такие сведения нужно сохранять в каждом 
+											 // меше - это будет нужно для того, чтобы валидировать Слейв-акции.
+											 // Но пока обойдемся тем, что просто будем их посылать на сервер. 
+											 // ------
+											 // Кстати, для того, чтобы не путать сервер, после валидации ненужные, неверные акции 
+											 // будем просто дропать, без возможности пересчитать.
+							self._addToServerQueue(action);
+							var mesh = self.meshes[object_guid];
+							mesh.eventManager.add(action, action.ts)
+							
+						}else{ // Это одиночное действие, не влияющее прямо на других игроков - только на собственное состояние
+							self._addToServerQueue(action);
+							var mesh = self.meshes[object_guid];
+							mesh.eventManager.add(action, action.ts)
+							
+						}
 				
 					})
 				})
@@ -484,116 +402,55 @@ Scene.tick = function(){
 	}
 	var nm = self.getNetworkActions();
 	_.each(nm,function(action){
-		var mesh = self.mesh_for(action.actor)
-		// TODO Need timestamp action manager, binded to mesh
-		console.log("How do we get actions to process?")
-		// mesh.pending_actions.push(action) // 1
+		if (action.slave){
+			console.log("SALVE ACTION", action);
+			var mesh = self.meshes[action.mesh];
+		}else{
+			var mesh = self.mesh_for(action.actor);
+			// TODO Need timestamp action manager, binded to mesh
+			// console.log("How do we get actions to process?")
+			// mesh.pending_actions.push(action) // 1
+			
+		}
 		mesh.eventManager.add(action, action.ts);
 	})
-	
-	//console.log(self.time_inc);
-	
-	// var actor = self.get_current_actor()
-	// var C = self.meshes()[actor.control.object_guid]
-	// console.log(self.automatic_actors);
-	//_.each(self.automatic_actors, function(actor){
-		//console.log(actor);
-	//	actor.run(time_left); // TODO Избавиться как-то от этой переменной
-	// })
-	//console.log(time_inc)
-	
-	if((Math.floor(self.time_inc) % 5 ) ===0){
-		if (!self._d){
-			self._d = true
-			//console.log("5sek tick")
-			// only two first
-			for(i in self.meshes){
-				var m = self.meshes[i]
-				if (m.type == 'ship'){
-					var v = m.vel;
-					var p = m.impulse;
-					var x = m.position;
-					
-					var r = m.rot;
-					
-					if (v){
-						// TODO Put here debug outputs
-					}
-					
-				}
-			}
-		}
-		
-	}else{
-		self._d = false
-	}
+
 	
 	// lastActions = getLastActions
 	_.each(self.meshes, function(mesh, i){
 		
 		if (mesh.type == 'static') return;
-		// console.log("self._last_server_report)
 		if(self.localActions && (i in self._last_server_report) ){
-			console.log("now server state yet")
-			var state = self._last_server_report[i]
-			var last_id = state.ident // индентификатор-таймстемп последней обработанной сервером команды для этого меша
-			var last_ts = state.server_ts;
+			// console.log(">>>", self._last_server_report)
 			
-			// console.log(last_ts
-			//if(last_id in mesh._actions_index) { // Мы недавно обрабoтали на клиенте это таймстемп
-
-				var _stid = mesh._previous_states_index[last_id]
-				for(var zz = 0; zz <= _stid; zz++){ // Удаляем лишние индексы
-					delete mesh._previous_states_index[mesh._previous_states[zz].ident]
-				}
-				var prev_state = mesh._previous_states[_stid];
-				console.log("WTF", prev_state, state); 
-				
-				for(v in state.state){
-					
-					mesh[v].fromArray(state.state[v]);
-				}
-				current_ts = last_ts - self.W._time_diff
-				
-				// mesh.last_processed_timestamp = current_ts
-				//console.log(mesh.last_processed_timestamp, now, now - mesh.last_processed_timestamp);
-				delete self._last_server_report[i]
-				// var from = current_ts;
-				
-				mesh.eventManager.set_last_processed(current_ts);
-				mesh.eventManager.remove(current_ts);
-				
-				
-				//}else{
-				// такого таймстемпа нет в списке последних отработанных операций - это значит, 
-				// что сервер и клиент обработали равное количество операций
-				//}
-			//v = a+c+e
+			mesh.recalculate_till_server_report(self._last_server_report[i] , self.W._time_diff);
+			delete self._last_server_report[i]; 
 			
-		}else{
-			//var from =  self.last_ts;
+			
 		}
-		// console.log("L", from, now);
 		
 		mesh.eventManager.process(now, function(event){
-			console.log("Cont", event);
+			// console.log("Cont", event);
 			self.controller_map[event.controller].process(event, mesh);
 			
 		})
+		if(! is_browser){
+			// console.log("MESH EQ:", i,": ", mesh.eventManager._last_processed );
+		}
 		
-		
-		var current_state = {	ident: mesh.eventManager._last_processed , 
+		/*var current_state = {	ident: mesh.eventManager._last_processed , 
 								state:{	position: mesh.position.toArray(),
 										rotation: mesh.rotation.toArray(),
 										impulse:  mesh.impulse.toArray(),
 										angular_impulse: mesh.angular_impulse.toArray()
 									}
 							};
-								
-		var st_id = mesh._previous_states.push(current_state);
-		
-		mesh._previous_states_index[ mesh.eventManager._last_processed ] = st_id - 1;
-		
+		*/
+		if(! (self.localActions )){
+			
+			self.mesh_last_states[i] = mesh.getState();
+			
+		}
 		self.process_physical(mesh, now);
 		
 		
@@ -630,7 +487,7 @@ Scene.process_physical = function(mesh, now){
 Scene._addToServerQueue = function(action){
 
 	// Теперь на сервер будем слать незамедлительно!
-	action.ident = action.ts
+	
 	// console.log("SEND");
 	this.W.sendAction(this.GUID, action);
 	// this._server_sync_queue.push(action)

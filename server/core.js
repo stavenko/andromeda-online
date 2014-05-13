@@ -139,7 +139,7 @@ Simulation.prototype = {
 		var scs = {},
 			self = this;
 		_.each(scene_guids, function(sc_guid){
-			console.log("SC", sc_guid, self._scenes)
+			// console.log("SC", sc_guid, self._scenes)
 			var scene_json = self._scenes[sc_guid].get()
 			scs[sc_guid] = scene_json
 			
@@ -244,7 +244,7 @@ Simulation.prototype = {
 			if(scene_guid in self._scenes && messages){
 				
 				actions = self.protoBuilder.build('Actions')
-				message = actions.decode64(messages)
+				json = actions.decode64(messages)
 				console.log(message);
 				
 				self._scenes[scene_guid].addNetworkMessages(message.inputs);
@@ -269,6 +269,7 @@ Simulation.prototype = {
 		var self = this;
 		_.each(this._scenes, function(scene, scene_guid){
 			var al = scene.get_almanach()
+			// console.log("SYNC>>>", al);
 			self.sender({type:"scene_sync", scene:scene_guid, almanach:al})
 				
 			
