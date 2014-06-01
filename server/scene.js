@@ -40,7 +40,9 @@ if(typeof window === 'undefined'){
 	
 }
 
-
+Scene.get_actor = function(actor_guid){
+	return this.actors[actor_guid];
+}
 
 
 Scene.mesh_for = function(actor_guid){
@@ -181,22 +183,7 @@ Scene.load = function(onload, three_scene, W){
 		self.W = W;
 	}
 	
-	function put_on(type, name, ts){
-		var es = this["on_engines_" + type]
-		obj = {name:name, ts:ts}
-		// console.log(es)
-		if ( es.indexOf( name ) === -1){
-			es.push( name )	
-		}
-		// console.log(es)
-	}
-	function put_off(type, name,ts){
-		var es = this["on_engines_" + type]
-		var ix = es.indexOf(name)
-		if (  ix !== -1 ){
-			es.splice(ix, 1);
-		}
-	}
+
 	var json = this._scene
 	
 	
@@ -345,6 +332,30 @@ Scene.get_almanach = function(){
 	return this.mesh_last_states
 	
 }
+Scene.createSettingAction =function(actor, setting_name, setting_value){
+	console.log("A", actor)
+	var action = {
+		type: 1000,
+		name:setting_name,
+		value:setting_value,
+		actor:actor.GUID,
+		wp : actor.control.workpoint,
+		object_guid: actor.control.object_guid,
+		scene:actor.scene,
+		ts: new Date().getTime(),
+		controller: "settings"
+	}
+	return action;
+	
+}
+Scene.makeActorSetting = function(actor, setting_name, setting_value){
+	this._addToServerQueue(this.createSettingAction(actor,setting_name,setting_value));
+}
+Scene.addSettingToScene = function(actor, setting_name, setting_value){
+	var action = this.createSettingAction(actor, setting_name, setting_value);
+	var mesh = this.meshes[actor.control.object_guid];
+	mesh.eventManager.add(action, action.ts)
+}
 
 Scene.tick = function(){
 	var self = this;
@@ -402,6 +413,7 @@ Scene.tick = function(){
 	}
 	var nm = self.getNetworkActions();
 	_.each(nm,function(action){
+		// console.log("NA", action);
 		if (action.slave){
 			console.log("SALVE ACTION", action);
 			var mesh = self.meshes[action.mesh];
@@ -412,6 +424,7 @@ Scene.tick = function(){
 			// mesh.pending_actions.push(action) // 1
 			
 		}
+		// console.log("ADD");
 		mesh.eventManager.add(action, action.ts);
 	})
 
@@ -431,6 +444,7 @@ Scene.tick = function(){
 		
 		mesh.eventManager.process(now, function(event){
 			// console.log("Cont", event);
+			// console.log("CCC",self.controller_map[event.controller])
 			self.controller_map[event.controller].process(event, mesh);
 			
 		})

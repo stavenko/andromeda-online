@@ -38,9 +38,44 @@ function createObject(mat, geom){
 	var m = THREE.Mesh;
 	m.prototype.some_counter = 0;
 	
+	m.prototype.reload_saved_state= function(){
+		// Здесь мы возвращаем сохраненное ранее состояние - состояние, которое было с этим объектом когда-то давно
+		prev_state = {workpoints:{
+			"Front turret": {
+				"magazine": 3,
+				"last_shot_time":0,
+			},
+			"Back turret": {
+				"magazine": 50,
+				"last_shot_time":0,
+			},
+			"Piloting":{
+				"capacitor":0,
+				"eng_rotation_x+_power": 100,
+				"eng_rotation_y+_power": 100,
+				"eng_rotation_z+_power": 100,
+				"eng_rotation_x-_power": 100,
+				"eng_rotation_y-_power": 100,
+				"eng_rotation_z-_power": 100,
+
+				"eng_propulsion_x-_power": 100,
+				"eng_propulsion_y-_power": 100,
+				"eng_propulsion_z-_power": 100,
+				"eng_propulsion_x+_power": 100,
+				"eng_propulsion_y+_power": 100,
+				"eng_propulsion_z+_power": 100,
+
+				
+			}
+			
+		}};
+		this.restoreState(prev_state);
+		
+	}
+	
 	m.prototype.getState = function(){
 		if(this.some_counter < 100){
-			console.log("Last Process while state" + this.eventManager._mesh_id, this.eventManager._last_processed);
+			// console.log("Last Process while state" + this.eventManager._mesh_id, this.eventManager._last_processed);
 			this.some_counter +=1;
 		}
 		var current_state = {	
@@ -75,7 +110,7 @@ function createObject(mat, geom){
 				if (typeof this.workpoint_states[wp] ==='undefined'){
 					this.workpoint_states[wp] = {};
 				}
-				for(var p in state.workpoints[wp][p]){
+				for(var p in state.workpoints[wp]){
 					this.workpoint_states[wp][p] = state.workpoints[wp][p];
 				}
 			}
@@ -98,14 +133,24 @@ function createObject(mat, geom){
 		}
 		return undefined;
 	}
-	
+	m.prototype.alterWorkpointValue = function(wp, param, modifier){
+		if (this.workpoint_states[wp]){
+			value = this.workpoint_states[wp][param];
+			new_value = modifier(value);
+			if (new_value !== undefined){
+				this.workpoint_states[wp][param] = new_value;
+			}
+		}
+		// return undefined;
+		
+	}
 	m.prototype.recalculate_till_server_report = function(server_report, time_diff){
 		var state = server_report;
 		var last_ts = state.server_ts;
 		this.restoreState(state);
 		
 		current_ts = last_ts - time_diff;
-		console.log("MARK", current_ts);
+		// console.log("MARK", current_ts);
 		if (last_ts !== 0){
 			this.eventManager.set_last_processed(current_ts);
 			this.eventManager.remove(current_ts);
@@ -131,7 +176,28 @@ function createObject(mat, geom){
 		this.rotateZ(rots.z);
 
 		this.position.add(poses);
+		
+		var power_plant_current_power = 100;
+		var power_produced = (this.json.power_source.max_power * power_plant_current_power) /100 * time_left ;
+		var max_capacitor = this.json.power_source.capacitor
+		L.setValue("POWER PRODUCED", power_produced);
+		L.setValue("TIME ", time_left);
+		
+		this.alterWorkpointValue('Piloting', "capacitor", function(value){
+			if (value < max_capacitor){
+				
+				return value + power_produced;
+			}else{
+				return value;
+			}
+		})
+		
+		
+		
 		this.last_processed_timestamp = till_time
+		
+		
+		
 	}
 	
 	
@@ -214,7 +280,7 @@ function createObject(mat, geom){
 
 		
 		self.last_processed_timestamp = new Date().getTime();
-		
+		self.reload_saved_state();
 	
 	}
 	return (new m(mat, geom));

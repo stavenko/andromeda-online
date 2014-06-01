@@ -25,9 +25,9 @@ var EventQueue = function(mesh_id){
 	// this._stamps_ix
 }
 EventQueue.prototype.add = function( e, ts ){
-	if(is_browser==false){
-		console.log("ADDING", e, ts);
-	}
+	//if(is_browser==false){
+	//	console.log("ADDING", e, ts);
+	//}
 	if(this._events[ts]){
 		this._events[ts].push(e);	
 	}else{
@@ -39,9 +39,9 @@ EventQueue.prototype.add = function( e, ts ){
 }
 EventQueue.prototype.set_last_processed = function(ts){
 	
-	if(! is_browser){
-		console.log("just checking - we can't get here on serverside");
-	}
+	//if(! is_browser){
+	//	console.log("just checking - we can't get here on serverside");
+	//}
 	
 	this._last_processed = ts;
 	this._include_last_once = true;
@@ -70,33 +70,33 @@ EventQueue.prototype.process = function(now, processor){
 		// console.log("FFF", self._last_processed, ts, now );
 		var is_from = self._include_last_once? self._last_processed <= ts : self._last_processed < ts;
 
-		L.setValue("IF" + self._mesh_id, is_from)
-		L.setValue("Includeonce " + self._mesh_id, self._include_last_once)
+		//L.setValue("IF" + self._mesh_id, is_from)
+		//L.setValue("Includeonce " + self._mesh_id, self._include_last_once)
 		
 		if(is_from && ts <= now){
 			// console.log("NO ACTIONS? KIDDING?! ", self._events[ts] )
 			self._include_last_once = false;
 			_.each(self._events[ts], function(e){
 				if(!is_browser){
-					console.log("processing", e.type)
+					//console.log("processing", e.type)
 				}
 				processor(  e,ts )
 				processed_events += 1;
 			})
-			console.log("last_proc was ", self._mesh_id, self._last_processed);
+			//console.log("last_proc was ", self._mesh_id, self._last_processed);
 			self._last_processed = ts;
-			console.log("last_proc became ", self._mesh_id , self._last_processed);
+			//console.log("last_proc became ", self._mesh_id , self._last_processed);
 			
 		}
 	})
-	L.setValue("events "+ self._mesh_id, processed_events);
+	//L.setValue("events "+ self._mesh_id, processed_events);
 	
 	// console.log("E");
 	
 	_.each(removed_ixes, function(ix){
 		self._stamps.splice(ix, 1);
 	})
-	L.setValue("ST" + this._mesh_id, this._stamps.length)
+	//L.setValue("ST" + this._mesh_id, this._stamps.length)
 	
 }
 

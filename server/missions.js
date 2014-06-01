@@ -13,7 +13,61 @@ var create_mission_json = function(  ){
 	var c = 0.2
 	var p1 = _.map(p1,function(v){return v*c});
 	var p2 = _.map(p2,function(v){return v*c});;
+	var psource = {
+		fuel_cell_capacity: 500, // Объем топлива
+		fuel_consumption_performance: 1, // Удельная энергия топлива - 
+		max_power: 6000, // Максимальная мощность источника энергии - Дж (Вт.с)
+		min_power:0, // Минимальная мощность источника энергии
+		powerup_speed:2, // Скорость увеличения мощности источника - джоули в секунду
+		powerdown_speed:2, // Скорость уменьшения мощности источника
+		capacitor:360000 // Емкость конденсатора
+
+	};
+	var shields_desc = {
+		"armor":[{
+			effective_impulse:300,
+			capacity:4000,
+			charge_rate:500
+			
+		}],
+		"shield":[{
+			size: 5000,
+			consumption: 40,
+			capacitor:10000,
+			charge_rate: 1000
+			
+		}],
+		thermal:[{
+			passive_dissipation:50,
+			performance: 0.5,
+			consumption: 1000,
+			adsobtion:200,
+			capacity:4000
+		}]
+	};
 	
+	engines = {
+		'rotation':{
+			'x+':{consumption:1000, performance:0.8 },
+			'x-':{consumption:1000, performance:0.8 },
+			
+			'y+':{consumption:1000, performance:0.8 },
+			'y-':{consumption:1000, performance:0.8 },
+			
+			'z+':{consumption:1000, performance:0.8 },
+			'z-':{consumption:1000, performance:0.8 }
+		},
+		'propulsion':{
+			'x+':{consumption:10, performance:0.8 },
+			'x-':{consumption:10, performance:0.8 },
+			
+			'y+':{consumption:10, performance:0.8 },
+			'y-':{consumption:10, performance:0.8 },
+			
+			'z+':{consumption:5000, performance:0.8 },
+			'z-':{consumption:5000, performance:0.8 }
+		}
+	}
 	var def_ship1 = {type:'ship',
 					 "ship_type":"Default",
 						 model_3d:'/models/StarCruiser.js',
@@ -36,9 +90,17 @@ var create_mission_json = function(  ){
 									},
 						"turrets":{
 							"front":{"type":"ballistic",
-									 "position": [0,0.5,0]},
+									 "position": [0,0.5,0],
+								 	 "magazine_capacity": 100,
+								 	 "turret_shoot_rate": 2000,
+									 "turret_reload_rate": 10000
+								 },
 							"back":{"type":"ballistic",
-									 "position": [0,0,2]}
+									 "position": [0,0,2],
+								 	 "magazine_capacity": 100,
+								 	 "turret_shoot_rate": 2000,
+									 "turret_reload_rate": 10000
+								 }
 
 						},
 						"workpoints":{
@@ -62,18 +124,10 @@ var create_mission_json = function(  ){
 						
 			
 								},
-						'engines':{
-							'rotation':{
-								'x+':1000,'x-':1000,
-								'y+':1000,'y-':1000,
-								'z+':1000,'z-':1000
-							},
-							'propulsion':{
-								'x+':1,'x-':1,
-								'y+':1,'y-':1,
-								'z+':5000,'z-':5000
-							}
-						},
+								"power_source":psource,
+								shields:shields_desc,
+								
+						'engines': engines ,
 						'mass': 10000,
 						'GUID':u.make_guid()
 					}
@@ -101,10 +155,16 @@ var create_mission_json = function(  ){
 									"turrets":{
 										"front":{"type":"ballistic",
 												 "position": [0,0.5,0],
-											 	 "magazine_capacity": 100},
+											 	 "magazine_capacity": 100,
+											 	 "turret_shoot_rate": 2000,
+												 "turret_reload_rate": 10000
+											 },
 		 								"back":{"type":"ballistic",
 		 										 "position": [0,0,2],
-											 	 "magazine_capacity": 100}
+											 	 "magazine_capacity": 100,
+											 	 "turret_shoot_rate": 2000,
+									 			"turret_reload_rate": 10000
+											}
 
 									},
 									"workpoints":{
@@ -128,18 +188,10 @@ var create_mission_json = function(  ){
 									
 						
 											},
-			 			'engines':{
-			 				'rotation':{
-			 					'x+':1000,'x-':1000,
-			 					'y+':1000,'y-':1000,
-			 					'z+':1000,'z-':1000
-			 				},
-			 				'propulsion':{
-			 					'x+':1,'x-':1,
-			 					'y+':1,'y-':1,
-			 					'z+':5000,'z-':5000
-			 				}
-			 			},
+											"power_source":psource,
+											shields:shields_desc,
+											'engines': engines ,
+						
 			 			'mass': 10000,
 						'GUID':u.make_guid()
 					}

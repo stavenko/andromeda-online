@@ -157,35 +157,60 @@ Cons.prototype = {
 		
 	},
 	init:function(){
+		
+		
+		
 		var self = this;
 		$('#create-mission').click(function(){
-			console.log("CM");
+			// console.log("CM");
 			self.socket.emit('create-mission')
 		})
 		
 		self.socket.on('player-missions', function(msg){
-			console.log('missions', msg);
+			// console.log('missions', msg);
 			self._my_missions = msg.missions;
 			self._redraw_missions();
 			
 			// console.log(msg);
 		})
 		self.socket.on('mission-positions', function(msg){
-			console.log(msg);
+			// console.log(msg);
 			self._draw_mission_positions(msg.MGUID, msg.positions);
 			
 			// console.log(msg);
 		})
 		self.socket.on('user-positions', function(msg){
 			self._draw_player_positions(msg.positions)
-			console.log("user-positions", msg)
+			//console.log("user-positions", msg)
 		})
 		self.socket.on('user-notify', function(msg){
 			// self._draw_player_positions(msg.positions)
 			// query_mission_positions:function(MGUID)
-			console.log("user-notify", msg)
+			//console.log("user-notify", msg)
 		})
 		
+		var PCC = $('#here-we-put-demos').css({"width":"400","height":50, "background-color":"hsla(205,100%,55%,1)"});
+		var pc = new PowerControlWidget({container:PCC[0], starting_percent:-0.5, end_percent:1.5,progress_value:1.2345,
+			slide:function(val){
+				console.log("V", val);
+			},
+			
+		});
+		
+		/*
+		
+		var val = prompt("qqq");
+		pc.set_progress_value(parseFloat(val));
+		
+		var val = prompt("qqq");
+		pc.set_progress_value(parseFloat(val));
+		
+		var val = prompt("qqq");
+		pc.set_progress_value(parseFloat(val));
+		
+		var val = prompt("qqq");
+		pc.set_progress_value(parseFloat(val));
+		*/
 		
 	},
 	

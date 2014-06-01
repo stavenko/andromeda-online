@@ -36,6 +36,9 @@ function StaticLogger(){
 }
 
 var SL = new StaticLogger();
+
+
+
 window.World.setup_scene = function(scene){
 	material = new THREE.MeshBasicMaterial({
 	   color: 0xff0000,
@@ -245,6 +248,7 @@ window.World.init = function(auth_hash, client_login){
 	})
 	document.addEventListener('keydown', function(e){
 		var code = e.keyCode;
+		// console.log(code);
 		self.Inputs.input( code, true)
 		
 		//if(code in self.actions){
@@ -521,6 +525,9 @@ window.World._init_vps = function(){
 	var mvp = this._viewports[this._main_viewport];
 	mvp.geom = {t:0, l:0, w:this.vp_width, h:this.vp_height};
 	mvp.three_camera = this.makeCamera(mvp)
+	_.each(mvp.UIS, function(ui){
+		ui.construct();
+	})
 	// this.
 	this.three_scenes[mvp.scene].add(this.cur);
 	this.initSpace(mvp);
@@ -567,7 +574,7 @@ window.World.sendAction=function(scene, action){
 	act.p = JSON.stringify(act.p);
 	
 	delete act.vector;
-	// console.log({s:scene,a:action})
+
 	this.socket.emit("user_actions", {s:scene,a:act})
 },
 window.World.syncTime = function(){
@@ -686,6 +693,9 @@ window.World.go = function(){
 			var geom = self._main_vp_geom
 			// console.log("RENDER");
 			self.render(mvp, geom);
+			_.each(mvp.UIS, function(ui){
+				ui.refresh();
+			})
 			self.mouse_projection_vec.set( ( self.mouse_x/ geom.w ) * 2 - 1, - ( self.mouse_y / geom.h ) * 2 + 1, 0.99 );
 		
 		    self.p.unprojectVector( self.mouse_projection_vec, mvp.three_camera );
