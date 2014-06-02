@@ -268,7 +268,9 @@ Controller.CPilotController = function(){
 					width:"100%",
 					height:"20px",
 					
-				}).text("S").appendTo(this.switches);
+				}).text("S").appendTo(this.switches).click(function(){
+					self._shields_dialog();
+				});;
 				
 				this.turret_keys = $("<div>").css({
 					width:"100%",
@@ -294,6 +296,67 @@ Controller.CPilotController = function(){
 					
 					
 				}
+				this._shields_dialog = function(){
+					var mesh = W.scenes[actor.scene].meshes[actor.control.object_guid];
+					var scene = W.scenes[actor.scene];
+					
+					var send_away = function(stype, snum, value){
+						var sett =  "s_" + stype+snum + "_power";
+						console.log(sett);
+						scene.makeActorSetting(actor, sett, value) // This one should go through networking
+						
+					}
+					var set_val = function(stype, snum, value){
+						var sett =  "s_" + stype+snum + "_power"
+						scene.addSettingToScene(actor, sett, value)
+						// mesh.saveWorkpointValue(actor.control.workpoint, sett, value);
+					}
+					cont = $('<div>').css({
+						'position':'absolute',
+						// 'border': '1px solid red',
+						'width': 400 + "px",
+						'height': '600px',
+						'top':40 + 100,
+						'left':50+300,
+						'padding': "10px",
+						'border-radius':'3px',
+						'border-width':'1px',
+						'border-style':'solid',
+						'border-color':'#aaa',
+						'background-color':'#222'}).appendTo('body');
+					var  cc = $('<div>').appendTo(cont).css({'width':"100%",height:20, 'padding-bottom': '30px'});
+					var  closer = $('<div>').appendTo(cont).css({'width':"20", height:20, 'background-color':'red', float:'right' }).click(function(){
+						cont.remove();
+					}).appendTo(cc);
+					
+					_.each(mesh.json.shields, function(s, i){
+						if (i === 'thermal'){return}
+						_.each(s, function(shield, num){
+							var e1 = $("<div>").css({
+								width:300,
+								height:40
+							}).appendTo(cont);
+								
+							$('<div>').css({'float':'left', 'color':'#bbb'}).width(40).text(i).appendTo(e1) 
+							var slc =  $('<div>').css({'float':'left', width:120,'margin-left':10}).appendTo(e1);
+						
+							var pc = new PowerControlWidget({container:slc[0], starting_percent:0, end_percent:1.5,progress_value:0,
+								change: function( val ) {
+									send_away(i, num, val);
+								},
+								slide:function(val){ 
+									set_val(i, num, val);
+								}
+								
+							});
+							var sett =  "s_" + i + num + "_power"
+							var cur_val = mesh.getWorkpointValue("Piloting", sett);
+							pc.set_value( cur_val );
+							
+						})
+					})
+					
+				};
 				
 				this._engines_dialog = function(){
 
@@ -310,13 +373,22 @@ Controller.CPilotController = function(){
 						// mesh.saveWorkpointValue(actor.control.workpoint, sett, value);
 					}
 					cont = $('<div>').css({
-						'position':'fixed',
+						'position':'absolute',
 						// 'border': '1px solid red',
-						'width': 300 + "px",
-						'height': '60px',
+						'width': 400 + "px",
+						'height': '600px',
 						'top':40 + 100,
 						'left':50+300,
-						'background-color':'white'}).appendTo('body');
+						'padding': "10px",
+						'border-radius':'3px',
+						'border-width':'1px',
+						'border-style':'solid',
+						'border-color':'#aaa',
+						'background-color':'#222'}).appendTo('body');
+						var  cc = $('<div>').appendTo(cont).css({'width':"100%",height:20, 'padding-bottom': '30px'});
+						var  closer = $('<div>').appendTo(cont).css({'width':"20", height:20, 'background-color':'red', float:'right' }).click(function(){
+							cont.remove();
+						}).appendTo(cc);;
 					
 					
 					_.each(mesh.json.engines, function(engines, engine_type){
@@ -331,32 +403,22 @@ Controller.CPilotController = function(){
 								height:40
 								}).appendTo(cont);
 						
-							$('<div>').css({'float':'left'}).text(ea).appendTo(e1) 
-					
-							var swc = $('<div>').css({'float':'left', width:30,'margin-left':10}).appendTo(e1);
-					
-							var sw = $('<input type="checkbox">').appendTo(swc);
-					
+							$('<div>').css({'float':'left', 'color':'#bbb'}).width(40).text(ea).appendTo(e1) 
 							var slc =  $('<div>').css({'float':'left', width:120,'margin-left':10}).appendTo(e1);
 							
-							var i;
-							var sl = $("<div>").slider({
-								change: function( event, ui ) {
-									send_away(engine_name, ui.value);
+							var pc = new PowerControlWidget({container:slc[0], starting_percent:0, end_percent:1.5,progress_value:0,
+								change: function( val ) {
+									send_away(engine_name, val);
 								},
-								slide:function(event, ui){ 
-									i.val(ui.value);
-									set_val(engine_name, ui.value);
-							}}).appendTo(slc);
-					
-							var ic =  $('<div>').css({'float':'left', width:40}).appendTo(e1) 
-							var i = $("<input>").css({'width':"100%"}).keyup(function(){
-								var i = parseInt($(this).val());
-								sl.slider('value',i);
-							}).change(function(){
-								set_val(engine_name, $(this).val());
-								send_away(engine_name,$(this).val());
-							}).appendTo(ic).val(0);
+								slide:function(val){ 
+									set_val(engine_name, val);
+								}
+									
+							});
+							var sett =  "eng_" + engine_name + "_power"
+							var cur_val = mesh.getWorkpointValue("Piloting", sett);
+							pc.set_value( cur_val );
+								
 						})
 					})
 				}
@@ -459,7 +521,7 @@ Controller.CPilotController = function(){
 			//console.log ("MM", mesh.workpoint_states,action.p, action.wp, "eng_" + engine_name + "_power");
 			var max_power = mesh.json.engines[et][ea].consumption;
 			var performance = mesh.json.engines[et][ea].performance;
-			var energy_consumption = percent_of_power* max_power/ 100 * action.delta;
+			var energy_consumption = percent_of_power* max_power * action.delta;
 			action.energy_consumption = energy_consumption;
 			
 			var capacitor_left = mesh.getWorkpointValue("Piloting", "capacitor");

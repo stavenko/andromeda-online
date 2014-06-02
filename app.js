@@ -358,7 +358,7 @@ io.on('connection', function(socket){
 		})
 		socket.on('request_scenes', function(scenes){
 			// var scs = {}
-			console.log( {user_id:user_id, scenes:scenes});
+			// console.log( {user_id:user_id, scenes:scenes});
 			simulator.send( {type:'request-scenes',user_id:user_id, scenes:scenes.scenes})
 			//_.each(scenes.scenes, function(guid){
 				// Надо собрать json-ы всех имеющихся сцен

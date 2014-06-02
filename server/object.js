@@ -51,19 +51,21 @@ function createObject(mat, geom){
 			},
 			"Piloting":{
 				"capacitor":0,
-				"eng_rotation_x+_power": 100,
-				"eng_rotation_y+_power": 100,
-				"eng_rotation_z+_power": 100,
-				"eng_rotation_x-_power": 100,
-				"eng_rotation_y-_power": 100,
-				"eng_rotation_z-_power": 100,
+				"eng_rotation_x+_power": 1,
+				"eng_rotation_y+_power": 1,
+				"eng_rotation_z+_power": 1,
+				"eng_rotation_x-_power": 1,
+				"eng_rotation_y-_power": 1,
+				"eng_rotation_z-_power": 1,
 
-				"eng_propulsion_x-_power": 100,
-				"eng_propulsion_y-_power": 100,
-				"eng_propulsion_z-_power": 100,
-				"eng_propulsion_x+_power": 100,
-				"eng_propulsion_y+_power": 100,
-				"eng_propulsion_z+_power": 100,
+				"eng_propulsion_x-_power": 1,
+				"eng_propulsion_y-_power": 1,
+				"eng_propulsion_z-_power": 1,
+				"eng_propulsion_x+_power": 1,
+				"eng_propulsion_y+_power": 1,
+				"eng_propulsion_z+_power": 1,
+				s_armor0_power:0.1,
+				s_shield0_power:0.1,
 
 				
 			}
