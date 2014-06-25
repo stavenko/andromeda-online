@@ -23,50 +23,59 @@ var create_mission_json = function(  ){
 		capacitor:360000 // Емкость конденсатора
 
 	};
-	var shields_desc = {
-		"armor":[{
-			effective_impulse:300,
-			capacity:4000,
-			charge_rate:500
-			
-		}],
-		"shield":[{
-			size: 5000,
-			consumption: 40,
-			capacitor:10000,
-			charge_rate: 1000
-			
-		}],
-		thermal:[{
-			passive_dissipation:50,
-			performance: 0.5,
-			consumption: 1000,
-			adsobtion:200,
-			capacity:4000
-		}]
+
+    devices = [
+    // Engines first
+    //0
+    {type:'engine', name:'x-', engine_type:'rotation', consumption:1000, performance:0.8, unit:[-1, 0, 0], actions:{impulse:{default_key:87}, power:{} } },
+    //1
+    {type:'engine', name:'x+', engine_type:'rotation', consumption:1000, performance:0.8, unit:[1, 0, 0], actions:{impulse:{default_key:83}, power:{} }},
+    
+    //2
+    {type:'engine', name:'y+', engine_type:'rotation', consumption:1000, performance:0.8, unit:[0, 1, 0], actions:{impulse:{default_key:65}, power:{} }},
+    //3
+    {type:'engine', name:'y-', engine_type:'rotation', consumption:1000, performance:0.8, unit:[0, -1, 0], actions:{impulse:{default_key:68}, power:{} }},
+    //4
+    
+    {type:'engine', name:'z+', engine_type:'rotation', consumption:1000, performance:0.8, unit:[0, 0, 1], actions:{impulse:{default_key:90}, power:{} }},
+    //5
+    {type:'engine', name:'z-', engine_type:'rotation', consumption:1000, performance:0.8, unit:[0, 0, -1], actions:{impulse:{default_key:67}, power:{} }},
+    
+    //6
+    {type:'engine', name:'z+', engine_type:'propulsion', consumption:5000, performance:0.8, unit:[0, 0, -1], actions:{impulse:{default_key:38}, power:{} }},
+    //7
+    {type:'engine', name:'z-', engine_type:'propulsion', consumption:5000, performance:0.8, unit:[0, 0, 1], actions:{impulse:{default_key:40}, power:{} }},
+    
+    // Shields & engine
+    //8
+    {type:'power',  name:'Power Source', powerup_speed:2, powerdown_speed:2, capacitor:360000, max_power:6000, min_power:0, actions:{power:{}} },
+    //9
+    {type:'shield', name:'Armor',shield_type:'armor', effective_impulse:300, capacity:4000, capacitor:4000, charge_rate:500, repair_rate:300, performance:0.5, actions:{power:{}, toggle:{is_switch:true} }},
+    //10
+    {type:'shield', name:'Shield',shield_type:'shield', capacity:5000, capacitor:10000, charge_rate:1000, setup_energy:3000, actions:{power:{}, toggle:{is_switch:true} }},
+    //11
+    {type:'shield', name:'Thermal',shield_type:'thermal', effective_impulse:300, actions:{power:{}, toggle:{is_switch:true} }},
+    
+    // turrets, bays, drones, launchers
+    //12
+    {type:'turret', name:"Front turret", position: [0,0.5,0], magazine_capacity: 100, turret_shoot_rate:2000, turret_reload_rate:10000, shoot_impulse:320, actions:{fire:{ default_key:'lmouse'}, reload:{default_key:82} } },
+    //13
+    {type:'turret', name:"back turret", position: [0,0,2], magazine_capacity: 100, turret_shoot_rate:2000, turret_reload_rate:10000, shoot_impulse:320, actions:{fire:{ default_key:'lmouse'}, reload:{default_key:82} } },
+    //14
+    {type:"virtual", name:"Foreign action virtual device", actions:{"process":{}}},
+    //15
+    {type:"hull", name:"Hull hp", shield_type:'hull', capacity:1000, actions:{}}
+    
+
+    ]
+	var shields = {
+		"armor":[9],
+		"shield":[10],
+		thermal:[]
 	};
-	
 	engines = {
-		'rotation':{
-			'x+':{consumption:1000, performance:0.8 },
-			'x-':{consumption:1000, performance:0.8 },
-			
-			'y+':{consumption:1000, performance:0.8 },
-			'y-':{consumption:1000, performance:0.8 },
-			
-			'z+':{consumption:1000, performance:0.8 },
-			'z-':{consumption:1000, performance:0.8 }
-		},
-		'propulsion':{
-			'x+':{consumption:10, performance:0.8 },
-			'x-':{consumption:10, performance:0.8 },
-			
-			'y+':{consumption:10, performance:0.8 },
-			'y-':{consumption:10, performance:0.8 },
-			
-			'z+':{consumption:5000, performance:0.8 },
-			'z-':{consumption:5000, performance:0.8 }
-		}
+		'rotation':[0,1,2,3,4,5],
+		'propulsion':[6,7],
 	}
 	var def_ship1 = {type:'ship',
 					 "ship_type":"Default",
@@ -103,31 +112,41 @@ var create_mission_json = function(  ){
 								 }
 
 						},
+                        devices:devices,
+                        power_source:8,
+                        foreign_processor:14,
+                        hull_device:15,
 						"workpoints":{
 							"Piloting":{
 									"views": ["front","back"],
 									"type":"pilot",
+                                    devices:[0,1,2,3,4,5,6,7,8,9,10,11]
 									},
 							"Front turret":
 									{
 									"views":["front"],
+                                    
 									"type":"turret",
-									"turret":"front"
+									"turret":"front",
+                                    
+                                    devices:[12]
 									},
 						
 							"Back turret":{
 									"views":["back"],
 									"type":"turret",
-									"turret":"back"
+									"turret":"back",
+                                    devices:[13]
+                                    
 						
 									},
 						
 			
 								},
-								"power_source":psource,
-								shields:shields_desc,
+								//"power_source":psource,
+								shields:shields,
 								
-						'engines': engines ,
+						 'engines': engines ,
 						'mass': 10000,
 						'GUID':u.make_guid()
 					}
@@ -167,30 +186,42 @@ var create_mission_json = function(  ){
 											}
 
 									},
-									"workpoints":{
-										"Piloting":{
-												"views": ["front","back"],
-												"type":"pilot",
-												},
-										"Front turret":
-												{
-												"views":["front"],
-												"type":"turret",
-												"turret":"front"
-												},
-									
-										"Back turret":{
-												"views":["back"],
-												"type":"turret",
-												"turret":"back"
-									
-												},
-									
+                                    devices:devices,
+                                    power_source:8,
+                                    foreign_processor:14,
+                                    hull_device:15,
+                                    
+            						"workpoints":{
+            							"Piloting":{
+            									"views": ["front","back"],
+            									"type":"pilot",
+                                                devices:[0,1,2,3,4,5,6,7,8,9,10,11]
+            									},
+            							"Front turret":
+            									{
+            									"views":["front"],
+                                    
+            									"type":"turret",
+            									"turret":"front",
+                                    
+                                                devices:[12]
+            									},
 						
-											},
-											"power_source":psource,
-											shields:shields_desc,
-											'engines': engines ,
+            							"Back turret":{
+            									"views":["back"],
+            									"type":"turret",
+            									"turret":"back",
+                                                devices:[13]
+                                    
+						
+            									},
+						
+			
+            								},
+
+											// "power_source":psource,
+            								shields:shields,
+											 'engines': engines ,
 						
 			 			'mass': 10000,
 						'GUID':u.make_guid()
@@ -285,14 +316,16 @@ Mission.prototype = {
 	getScene: function(){
 		return this._scene;
 	},
-	prepare_scene : function(){
+	prepare_scene : function(bcaster){
 	
 		// console.log(Scene);
 		if(! this._scene_loaded){
 			// console.log("DO PREP SCENE")
-			this._scene = new Scene(this.mission.coords[0],
-													this.mission.coords[1],
-													this.mission.coords[2] );
+            console.log("TTT",bcaster);
+			this._scene = new Scene(bcaster);
+            this._scene.gx = this.mission.coords[0];
+            this._scene.gy = this.mission.coords[1];
+            this._scene.gz = this.mission.coords[2];
 			//create_from_world(this.mission.coords[0],
 			//										this.mission.coords[1],
 			//										this.mission.coords[2] );

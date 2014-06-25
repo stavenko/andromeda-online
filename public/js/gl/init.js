@@ -59,6 +59,10 @@ window.World.setup_scene = function(scene){
 
 	this.three_scenes[scene.GUID].add( light );
 	this.initSun(scene)
+	
+	this.sceneActions[scene.GUID] = scene.getActions(); // Здесь будут все акции по всем сценам
+	// Где-то здесь можно привязать контроллы
+	
 }
 window.World.initGUI=function(){
 	
@@ -187,6 +191,9 @@ window.World.init = function(auth_hash, client_login){
 	this.vp_height = 400;//document.body.clientHeight;
 	this._main_viewport = 0
 	this._additional_vps = [];
+	this.sceneActions = {};
+	this._input_keymap = {};
+    this._uniform_updaters = {};
 	var ProtoBuf = dcodeIO.ProtoBuf;
 	this.protobufBuilder = ProtoBuf.loadProtoFile( "/js/gl/client_message.proto" );
 	//this._main_viewport_actors = [];
@@ -474,16 +481,19 @@ window.World.setupCameras = function(){
 	self._viewports = {}
 	self._viewport_amount = 0;
 	var is_first = true;
-	var cmap = Controller.ControllersActionMap();
+	// var cmap = Controller.ControllersActionMap();
 	
 	_.each(self.actors, function(actor){
 		//console.log(actor)
 		var wp = actor.control.workpoint;
 
-		var C = cmap[actor.control.type];
-		var UI = C.getUI(self, actor);
+		// var C = cmap[actor.control.type];
+		
+		// var UI = C.getUI(self, actor);
 		
 		var views = self.scenes[actor.scene].get_objects()[actor.control.object_guid].workpoints[wp].views
+		var mesh = self.scenes[actor.scene].meshes[actor.control.object_guid];
+		var uis = mesh.getUIForWP(wp);
 		
 		_.each(views, function(view){
 			var vp_hash = actor.scene + actor.control.object_guid + view;
@@ -492,12 +502,14 @@ window.World.setupCameras = function(){
 			}
 			// console.log(" show me ", actor);
 			if(!(vp_hash in self._viewports)){
-				var vp = {scene:actor.scene, object:actor.control.object_guid, camera: view, actors:[actor], UIS : [UI]}
+				var vp = {scene:actor.scene, object:actor.control.object_guid, camera: view, actors:[actor], UIS:uis}
 				self._viewports[vp_hash] = vp
 				self._viewport_amount +=1;
 			}else{
 				self._viewports[vp_hash].actors.push(actor);
-				self._viewports[vp_hash].UIS.push(UI);
+				var U = self._viewports[vp_hash].UIS;
+                // console.log( U, U.concat(uis), uis ) ;
+				self._viewports[vp_hash].UIS = U.concat(uis);
 				
 			}
 		})
@@ -523,12 +535,26 @@ window.World.get_main_viewport = function(){
 }
 window.World._init_vps = function(){
 	var mvp = this._viewports[this._main_viewport];
+	var self = this;
+	// console.log(mvp);
 	mvp.geom = {t:0, l:0, w:this.vp_width, h:this.vp_height};
 	mvp.three_camera = this.makeCamera(mvp)
 	_.each(mvp.UIS, function(ui){
 		ui.construct();
 	})
 	// this.
+	_.each(mvp.actors, function(actor){
+		// get actions for this actor
+		// console.log(self.sceneActions);
+		var total_actions = self.sceneActions[actor.scene][actor.control.object_guid][actor.control.workpoint];
+		_.each(total_actions, function(action){
+			if(action.default_key){
+				self._input_keymap[action.default_key] = action;
+			}
+		})
+		// console.log(total_actions);
+	})
+	
 	this.three_scenes[mvp.scene].add(this.cur);
 	this.initSpace(mvp);
 	
@@ -572,6 +598,7 @@ window.World.sendAction=function(scene, action){
 	var act = _.clone(action)
 	act.ts += this._time_diff; 
 	act.p = JSON.stringify(act.p);
+	console.log("act before sending", act.ident)
 	
 	delete act.vector;
 
@@ -647,7 +674,7 @@ window.World.redrawSky = function(vp){
 	
 }
 
-window.World.render=function(vp,geom){
+window.World.render = function(vp,geom){
 	this.redrawSun(vp)
 	// console.log(vp)
 	this.renderer.setViewport(geom.l, geom.t, geom.w, geom.h)
@@ -656,12 +683,20 @@ window.World.render=function(vp,geom){
 	if(this.scenes[vp.scene]._action_on_the_run_var){
 		console.log('render M');
 	}
+    this._cur_cam = vp.three_camera;
 	this.renderer.render( this.three_scenes[vp.scene], vp.three_camera );
 	
     //self.renderer.render(self.three_scene, self.camera);
 	
 	
 }
+window.World.addUniformUpdater = function(name, updfunc){
+    this._uniform_updaters[name] = updfunc;
+}
+window.World.removeUniformUpdater = function(name){
+    delete this._uniform_updaters[name];
+}
+
 window.World.go = function(){
 	var self = this;
 	var last_timestamp = false;
@@ -692,6 +727,10 @@ window.World.go = function(){
 			var mvp = self.get_main_viewport();
 			var geom = self._main_vp_geom
 			// console.log("RENDER");
+            // Before rendering let's update our uniforms;
+            _.each(self._uniform_updaters, function(f, name){
+                f();
+            })
 			self.render(mvp, geom);
 			_.each(mvp.UIS, function(ui){
 				ui.refresh();

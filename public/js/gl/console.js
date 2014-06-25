@@ -388,7 +388,7 @@ Cons.prototype = {
 			// query_mission_positions:function(MGUID)
 			//console.log("user-notify", msg)
 		})
-		___tmp()
+		// ___tmp()
 		
 		/*
 		var PCC = $('#here-we-put-demos').css({"width":"400","height":50, "background-color":"hsla(205,100%,55%,1)"});

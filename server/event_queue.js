@@ -24,10 +24,11 @@ var EventQueue = function(mesh_id){
 	
 	// this._stamps_ix
 }
-EventQueue.prototype.add = function( e, ts ){
+EventQueue.prototype.add = function( e, _ ){
 	//if(is_browser==false){
 	//	console.log("ADDING", e, ts);
 	//}
+	var ts = e.ident;
 	if(this._events[ts]){
 		this._events[ts].push(e);	
 	}else{
@@ -60,7 +61,7 @@ EventQueue.prototype.process = function(now, processor){
 	var processed_events = 0;
 	_.each(this._stamps, function(ts, ix){
 		
-		// console.log("crit", ts, self._remove_before);
+		// console.log("crit", ts, ix);
 		
 		if (ts <= self._remove_before){
 			removed_ixes.push(ix);
@@ -78,9 +79,12 @@ EventQueue.prototype.process = function(now, processor){
 			self._include_last_once = false;
 			_.each(self._events[ts], function(e){
 				if(!is_browser){
-					//console.log("processing", e.type)
+					console.log("processing", e.type)
 				}
-				processor(  e,ts )
+				
+				// console.log("q>>", self._last_processed, e.ident, now, e)
+				
+				processor(  e, ts )
 				processed_events += 1;
 			})
 			//console.log("last_proc was ", self._mesh_id, self._last_processed);
@@ -89,7 +93,7 @@ EventQueue.prototype.process = function(now, processor){
 			
 		}
 	})
-	//L.setValue("events "+ self._mesh_id, processed_events);
+	// L.setValue("events "+ self._mesh_id, processed_events);
 	
 	// console.log("E");
 	

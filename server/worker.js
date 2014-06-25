@@ -7,6 +7,9 @@ var sender = function(message){
 	// console.log("some send mes", message);
 	process.send(message)
 }
+
+
+
 var Sim = new Simulation(sender)
 Sim.start();
 
@@ -115,9 +118,9 @@ process.on('message', function(msg){
 		break;
 		
 	case 'client-actions':
-		//console.log("MSG DATA TO SERVER", msg.data);
+		// console.log("MSG DATA TO SERVER", msg);
 		Sim.performAction(msg.data, function(action, to_actors){
-			process.send({type:"player-inputs", action:action, to_actors:to_actors, from_actor:msg.data.a.actor})
+			process.send({type:"player-inputs", action:action, to_actors:to_actors, user_id: msg.user_id })
 			// callback with server returned action - need for sending it back to clients
 		});
 		break;

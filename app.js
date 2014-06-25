@@ -277,7 +277,7 @@ io.on('connection', function(socket){
 	// СИМУЛЯЦИЯ
 	socket.on("auth_hash", function(data){
 		//console.log(data)
-		var user_id = SocketAuthMap[data.auth];
+		var user_id = parseInt(SocketAuthMap[data.auth]);
 		
 		// console.log("AUTH_INFO", SOCKET_AUTH_MAP, data);
 		if (user_id === undefined){
@@ -287,7 +287,9 @@ io.on('connection', function(socket){
 			// var actors = Actors[user_id]
 			
 			// socket.emit("actors", actors ) // Сцену на этом этапе не грузим. Просто выдаем клиентам возможные варианты вьюпортов
+			//console.log("USER_ID", [user_id])
 			Sockets[user_id] = socket // one socket per login | several actors per socket
+			// console.log("SSSSSS", Sockets);
 			simulator.send({type:'request-actors', user_id: user_id} )
 			
 			//	
@@ -353,7 +355,7 @@ io.on('connection', function(socket){
 			// simulator.send({type:'client-actions',data:data, user_id:user_id})
 		})
 		socket.on('actor-joined', function(message){
-			console.log("actor-joined");
+			// console.log("actor-joined");
 			simulator.send({type:'actor-joined',user_id:user_id, message:message})
 		})
 		socket.on('request_scenes', function(scenes){
@@ -404,46 +406,66 @@ simulator.on('message', function(msg){
 	}
 	if(msg.type === "player-inputs"){
 		
-		//console.log("how to send back to USERS", msg);
-		var sender_user_id = msg.to_actors[msg.action.a.actor].user_id;
+		// console.log("how to send back to USERS", msg);
+		// FIRST get Scene of this message
+		//var scene  = undefined;
+		
+		var sender_user_id = msg.user_id;
 		_.each(msg.to_actors, function(ac){
-			var is_same_actor =  ac.GUID === msg.action.a.actor;
-			var is_same_user  =  ac.user_id === sender_user_id;
+			// var is_same_actor =  ac.GUID === msg.from_actor;
+			var is_same_user  =  parseInt(ac.user_id) === sender_user_id;
+			//console.log('USS', [ac.user_id, sender_user_id]);
+			if ( is_same_user   ) {
+				// console.log("the same");
+				return;
+			}
+			if(ac.user_id in Sockets){
 			
-			if ( is_same_user  ||  is_same_actor ) return;
-			
-			var socket = Sockets[ac.user_id]
-			// console.log("DO WE SEND INFO TO THE SAME PH OBJECT");
-			socket.emit('player-inputs', msg.action );
+				var socket = Sockets[ac.user_id]
+				// console.log("DO WE SEND INFO TO THE SAME PH OBJECT");
+				socket.emit('player-inputs', msg.action );
+				
+			}
 				
 			
 			
 		})
 	}
 	if(msg.type === "actor-joined"){
-		// console.log("AC_J", msg)
+		// console.log("AC_J", Sockets); 
+		
 		_.each(msg.to_actors, function(ac){
+			
 			if (ac.GUID !== msg.actor.GUID){
-				var socket = Sockets[ac.user_id]
-				//console.log(msg)
-				socket.emit('actor-joined', msg.actor );
+				if (ac.user_id in Sockets){
+					
+					var socket = Sockets[ac.user_id]
+				
+					socket.emit('actor-joined', msg.actor );
+				}
 				
 			}
 			
+		})
+	}
+	if(msg.type === "mesh-action"){
+		_.each(msg.to_actors, function(ac){
+			var socket = Sockets[ac.user_id];
+			socket.emit('player-inputs', msg.action);
 		})
 	}
 	
 	/// Сообщения ниже ни до кого не доберутся если они без пользователя
 	
 	
-	if (msg.user_id === undefined){
+	if (msg.user_id == undefined){
 		return;
 	}
-	
+	//console.log("WWW", msg);
 	if(msg.recv === 'world'){
 		var con_sock = Sockets[msg.user_id];
 	}else{
-		var con_sock = ConsoleSockets[msg.user_id]
+		var con_sock = ConsoleSockets[msg.user_id];
 	}
 	// console.log("BS", msg);
 	con_sock.emit(msg.type, msg);
@@ -542,7 +564,8 @@ app.get('/auth/logout/', function(req, res){
 
 app.get('/console/', ensureAuthenticated, function(req, res){
 	var user = req.user
-	SocketAuthMap[req.session.auth_hashes[user.id] ] = user.id // Грязный хак - обновляем состояние аутентификации из сессии
+	user.id = parseInt(user.id);
+	SocketAuthMap[req.session.auth_hashes[user.id] ] = user.id; // Грязный хак - обновляем состояние аутентификации из сессии
 	res.render('console', { 'user': req.user, auth_hash: req.session.auth_hashes[req.user.id]});
 })
 app.get('/', function(req, res){

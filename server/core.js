@@ -171,12 +171,18 @@ Simulation.prototype = {
 		}
 		
 	},
+    sceneBCaster:function(message_type, to_actors, data){
+        var scene_bcast = {"type":"mesh_action", data:data, to_actors:to_actors}
+        this.sender(scene_bcast);
+        
+    },
 	startMission:function(msg){
+        
 		if(msg.MGUID in this._missions){ 
 			var mis = this._missions[msg.MGUID]
-			mis.prepare_scene();
+			mis.prepare_scene(this.sceneBCaster);
 			mis.is_started = true;
-			console.log('start_mis');
+			// console.log('start_mis');
 			mis._scene.load();
 			this._scenes[mis._scene.GUID] = mis._scene;
 			this._updateActors();
@@ -187,7 +193,8 @@ Simulation.prototype = {
 	
 	
 	inject_scene : function(scene_json){
-		var sc = new Scene()
+        var self = this;
+		var sc = new Scene(this.sceneBCaster);
 		//console.log("make")
 		sc.set_from_json(scene_json)
 		//console.log("made")
@@ -231,6 +238,7 @@ Simulation.prototype = {
 		var self = this;
 		
 		// No checks for now
+        // console.log("in perform_action", actions_data);
 		if(self._scenes[actions_data.s] !== undefined){
 			self._scenes[actions_data.s].addNetworkMessage(actions_data.a)
 			var actors = self._scenes[actions_data.s].get_actors()
@@ -278,7 +286,7 @@ Simulation.prototype = {
 	start : function(){
 		var int_ = 1000/60;
 		var self = this;
-		console.log("SIM started");
+		// console.log("SIM started");
 		this.network_actor = Controller.NetworkActor(function(){ console.log("don't do anything" )})
 		this._interval_func = setInterval(function(){self.tick() }, int_)
 		this._sync_func = setInterval(function(){self.send_scene_sync() },1000)

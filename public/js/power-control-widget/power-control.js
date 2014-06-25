@@ -82,7 +82,7 @@ var PowerControlWidget = function(settings){
 		
 		self._percent_value = self._get_percent(self.value);
 		self.redraw();
-		self.onchange(self._percent_value, self.progress_value);
+		// self.onchange(self._percent_value, self.progress_value);
 		event.stopPropagation();
 		event.preventDefault();
 	    event.cancelBubble=true;

@@ -1,4 +1,4 @@
-var THR = require('./three.node');
+var THR = require('three');
 var Utils = require("./utils");
 var _     = require('underscore');
 ROTATE  = 10;
@@ -8,6 +8,58 @@ SHOOT = 13;
 HIT = 15;
 RELOAD_WEAPONS = 16;
 UI_SETTINGS = 1000;
+
+
+
+
+/*
+Актор привязан к мешу, меш к сцене.
+
+Необходимо:
+1 создавать акции из нажатий кнопок
+2 создавать акции из нажатий на контролы
+3 создавать акции из других акций автоматически - генератор акций должен быть доступен внутри классов реагирования.
+
+Созданные акции имеют все необходимые параметры для обработки внутри классов
+
+После генерации акции отправляются на сервер.
+В результате реагирования акции могут появиться на сервере - такие акции не пересылаются на сервер с клиента, а только наоборот
+
+
+
+
+Таким образом, необоходимо в интерфейс контроллера включать инстанс генератора акций.
+*/
+
+/*
+var newAction = function(type, wp, device, mesh_id, scene_id, actor_id, ts, tdiff){
+	return {type:type,
+			wp:wp,
+			device:device,
+			
+			mesh_id:mesh_id,
+			scene_id:scene_id,
+			actor_id:actor_id,
+			ts: ts,
+			tdiff: tdiff}
+}
+function curry(fn) {
+     var slice = Array.prototype.slice,
+        stored_args = slice.call(arguments, 1);
+     return function () {
+        var new_args = slice.call(arguments),
+              args = stored_args.concat(new_args);
+        return fn.apply(null, args);
+     };
+}
+
+
+var workpointsActionList = {
+	pilot: []
+}
+
+*/
+
 
 var Controller = {description:'controller'}
 
@@ -19,6 +71,7 @@ if(typeof window ==='undefined'){
 	var L = SL;
 	is_browser = true;
 }
+
 
 	
 Controller.NetworkActor =   function(onAct, W){
@@ -54,7 +107,7 @@ Controller.LocalInputActor = function(W, socket){
 		//self.actor_login = actor_login
 		self._default_actions={
 		
-			87: {type:ROTATE, controller:"pilot", p:{ a:0,d:-1}},
+			87: {type:ROTATE, controller:"pilot",  p:{ a:0,d:-1}},
 			83: {type:ROTATE, controller:"pilot",  p:{ a:0,d:1}},
 			
 			65: {type:ROTATE, controller:"pilot",  p:{ a:1,d:1}},
@@ -120,6 +173,7 @@ Controller.LocalInputActor = function(W, socket){
 			}
 		}
 		this.getLatestActions = function(scene, now){
+			var actions = [];
 			_.each(self._keycodes_in_action, function(k_action, keycode){
 				if(k_action.in_action){
 					var delta = now - k_action.ts
@@ -132,53 +186,22 @@ Controller.LocalInputActor = function(W, socket){
 					delete self._keycodes_in_action[keycode]
 				}
 				var action = _.clone(self.actions[keycode]);
-				
-				if(action){
-					_.each(action.p, function(item, k){
-						// console.log('a');
-						if (k[0] == '_'){
-							item(action.p,k)
-						}
-					})
-				
-					action.delta = delta / 1000; // come to seconds
-					action.ts = ts;
-					action.ident = action.ts;
-					// console.log("Lets check if we have this controller in map:", action.type, map);
-					var local_controller = map[action.controller] // Выбираем контроллер от типа действия
-					var actors = W.get_main_viewport().actors // Собираем акторов в этом вьюпорте
-				
-					_.each(actors, function(actor){
-						var S = W.scenes[actor.scene];
-						var obj = S.get_objects()[actor.control.object_guid];
-						var wp = obj.workpoints[actor.control.workpoint];
-						if (wp.type == local_controller.type){ // Если это действие принадлежит этому актору и это контроллеру 
-							//var a_clone = _.clone( action )
-							action.actor = actor.GUID;
-							var s = actor.scene
-							if(!(s in self.actions_by_scene)){
-								self.actions_by_scene[s] = []
-							}
-							self.actions_by_scene[s].push(action) // Генерируем акцию и складываем её в массив и передаем их для дальнейшей обработки
-							//local_controller.act(self.World.scenes[actor.scene], action, up_or_down, actor, onAct);
-							//a_clone.timestamp += W._time_diff;
-							//if (up_or_down){
-							// socket.emit('control_on', {action:a_clone, actor:actor});
-								//}else{
-							//	socket.emit('control_off', {action:a_clone, actor:actor});
-							//}
-						}
-					})
+				if(keycode in W._input_keymap){
+					// console.log("pressed", W._input_keymap[keycode] )
+					var act_desc  = W._input_keymap[keycode];
+					var new_action = {
+						mesh : act_desc.mesh,
+						dev : act_desc.device,
+						name: act_desc.name,
+						ts :ts,
+						ident: ts + W._time_diff,
+						delta:delta/1000,
+						wmouse:W.mouse_projection_vec.clone().toArray()
+					}
+					actions.push(new_action);
 				}
-					
 			});
-			//console.log("actions_by-Scene", this.actions_by_scene, ">>", scene)
-			var returnable = this.actions_by_scene[scene];
-			this.actions_by_scene[scene] = []
-			if(returnable === undefined){
-				return []
-			}
-			return returnable
+			return actions;
 					
 		}
 			
@@ -190,9 +213,20 @@ Controller.CSettingController = function(){
 	this.process = function(raw_action, mesh){
 		
 		// console.log("SETTING coNT READY", raw_action)
-		mesh.saveWorkpointValue(raw_action.wp, raw_action.name, raw_action.value);
+		if(raw_action.switch){
+			
+			mesh.alterWorkpointValue(raw_action.wp, raw_action.name, function(v){
+				console.log("Altering amount ", v);
+				return (! v)
+			});
+		}else{
+			mesh.saveWorkpointValue(raw_action.wp, raw_action.name, raw_action.value);
+		}
 	}
 }
+// TODO Контроллер для шилда
+
+
 
 Controller.CPilotController = function(){
 	
@@ -215,7 +249,69 @@ Controller.CPilotController = function(){
 						'height': '60px',
 						'top':40,
 						'left':50+300,
-						'background-color':'white'}).appendTo('body');
+						'background-color':'white'
+					}).appendTo('body');
+						
+					this.shield_cont = $('<div>').css({
+						position:'fixed',
+						left:0,
+						height:50,
+						bottom:50,
+						'background-color':'#f3f',
+						width:400
+						
+					}).appendTo('body');
+				var mesh = W.scenes[actor.scene].meshes[actor.control.object_guid];
+				var scene = W.scenes[actor.scene];
+				var self = this;
+				
+				self.shield_update_closures = []
+				_.each(mesh.json.shields, function(shields, type){
+					_.each(shields, function(shield_id){
+						var shield_dev = mesh.json.devices[shield_id];
+						
+						var d  = $('<div>').css({width:50, height:"100%", float:'left', 'margin-right':"10px"}).appendTo(self.shield_cont);
+						var sic = $('<div>').css({width:"100%", height:10 }).appendTo(d) // strenth indicator container
+						var l = shield_dev.shield_type.toLocaleUpperCase();
+						var b = $('<div>').css({width:"100%", height:30,
+												"text-align":'center',
+												'vertical-align': 'middle',
+												'line-height':'30px',
+												'background-color':'#333','color':"#F0F"})
+											.text(l).appendTo(d).click(function(){
+												
+												mesh.startDeviceAction(shield_id, "toggle",0);
+												
+											}) 
+						var cic = $('<div>').css({width:"100%", height:10}).appendTo(d) // capacitor indicator container
+						
+						var si = $('<div>').css({width:"100%", height:"100%", 'background-color':"blue" }).appendTo(sic);
+						var ci = $("<div>").css({width:"100%", height:"100%",'background-color':"yellow" }).appendTo(cic);
+						var closure = function(){
+							var reserve_cap_amount = mesh.getDeviceSetting(shield_id, "reserve_capacity");
+							var tot_cap_amount = shield_dev.capacitor;
+							var w = reserve_cap_amount/tot_cap_amount * 100;
+							ci.width( w + '%' );
+							
+							var is_on = mesh.getDeviceSetting(shield_id, 'state') ;
+							if (is_on){
+								b.css({color:'red', 'background-color':'white'});
+							}else{
+								b.css({'background-color':'#333','color':"#F0F"});
+							}
+							
+							var current_capacity = mesh.getDeviceSetting(shield_id, 'capacity');
+							var max_capacity = shield_dev.capacity;
+							var ww =( current_capacity / max_capacity * 100) + "%";
+							si.width(ww);
+							
+							// console.log("updating shield", shield, num);
+						}
+						self.shield_update_closures.push(closure);
+						
+					});
+				})
+					
 						
 									
 				this.indicators = $('<div>').css({
@@ -279,12 +375,18 @@ Controller.CPilotController = function(){
 				}).text("T").appendTo(this.switches);
 	
 				}
+				this._update_shield_indicator = function(){
+					_.each(this.shield_update_closures, function(cl){
+						cl();
+					})
+				}
 				this._update_fuel_indicator = function(){}
 				this._update_power_indicator = function(){}
 				this._update_capacitor_indicator = function(){
 					var mesh = W.scenes[actor.scene].meshes[actor.control.object_guid];
-					var total_cap = mesh.json.power_source.capacitor;
-					var current_cap = mesh.getWorkpointValue("Piloting", "capacitor");
+					var psd = mesh.json.devices[mesh.json.power_source];
+					var total_cap = psd.capacitor;
+					var current_cap = mesh.getDeviceSetting(mesh.json.power_source, "capacitor");
 					L.setValue("CUR CONS", current_cap);
 			
 					if(current_cap > total_cap){
@@ -300,17 +402,6 @@ Controller.CPilotController = function(){
 					var mesh = W.scenes[actor.scene].meshes[actor.control.object_guid];
 					var scene = W.scenes[actor.scene];
 					
-					var send_away = function(stype, snum, value){
-						var sett =  "s_" + stype+snum + "_power";
-						console.log(sett);
-						scene.makeActorSetting(actor, sett, value) // This one should go through networking
-						
-					}
-					var set_val = function(stype, snum, value){
-						var sett =  "s_" + stype+snum + "_power"
-						scene.addSettingToScene(actor, sett, value)
-						// mesh.saveWorkpointValue(actor.control.workpoint, sett, value);
-					}
 					cont = $('<div>').css({
 						'position':'absolute',
 						// 'border': '1px solid red',
@@ -331,7 +422,7 @@ Controller.CPilotController = function(){
 					
 					_.each(mesh.json.shields, function(s, i){
 						if (i === 'thermal'){return}
-						_.each(s, function(shield, num){
+						_.each(s, function(shield_id){
 							var e1 = $("<div>").css({
 								width:300,
 								height:40
@@ -342,15 +433,15 @@ Controller.CPilotController = function(){
 						
 							var pc = new PowerControlWidget({container:slc[0], starting_percent:0, end_percent:1.5,progress_value:0,
 								change: function( val ) {
-									send_away(i, num, val);
+									mesh.startDeviceAction(shield_id, "set_power", val);
+
 								},
 								slide:function(val){ 
-									set_val(i, num, val);
 								}
 								
 							});
-							var sett =  "s_" + i + num + "_power"
-							var cur_val = mesh.getWorkpointValue("Piloting", sett);
+							// var sett =  "s_" + i + num + "_power"
+							var cur_val = mesh.getDeviceSetting(shield_id, "power");
 							pc.set_value( cur_val );
 							
 						})
@@ -362,16 +453,7 @@ Controller.CPilotController = function(){
 
 					var mesh = W.scenes[actor.scene].meshes[actor.control.object_guid];
 					var scene = W.scenes[actor.scene];
-					var send_away = function(engine, value){
-						var sett =  "eng_" + engine + "_power"
-						scene.makeActorSetting(actor, sett, value) // This one should go through networking
-						
-					}
-					var set_val = function(engine, value){
-						var sett =  "eng_" + engine + "_power"
-						scene.addSettingToScene(actor, sett, value)
-						// mesh.saveWorkpointValue(actor.control.workpoint, sett, value);
-					}
+
 					cont = $('<div>').css({
 						'position':'absolute',
 						// 'border': '1px solid red',
@@ -393,30 +475,32 @@ Controller.CPilotController = function(){
 					
 					_.each(mesh.json.engines, function(engines, engine_type){
 						
-						_.each(engines, function(engine_props, en){
-							var et = engine_type;
-							var ea = en;
-							var engine_name = et + "_" + ea;
+						_.each(engines, function(engine_id){
+							
+							// var et = engine_type;
+							// var ea = en;
+							var en_dev = mesh.json.devices[engine_id];
 							
 							var e1 = $("<div>").css({
 								width:300,
 								height:40
 								}).appendTo(cont);
 						
-							$('<div>').css({'float':'left', 'color':'#bbb'}).width(40).text(ea).appendTo(e1) 
+							$('<div>').css({'float':'left', 'color':'#bbb'}).width(40).text(en_dev.name).appendTo(e1) 
 							var slc =  $('<div>').css({'float':'left', width:120,'margin-left':10}).appendTo(e1);
 							
 							var pc = new PowerControlWidget({container:slc[0], starting_percent:0, end_percent:1.5,progress_value:0,
 								change: function( val ) {
-									send_away(engine_name, val);
+									mesh.startDeviceAction(engine_id, "set_power", val);
+
 								},
 								slide:function(val){ 
-									set_val(engine_name, val);
+									// mesh.startDeviceAction(engine_id, "set_power", val);
 								}
 									
 							});
-							var sett =  "eng_" + engine_name + "_power"
-							var cur_val = mesh.getWorkpointValue("Piloting", sett);
+							// var sett =  "eng_" + engine_name + "_power"
+							var cur_val = mesh.getDeviceSetting(engine_id, "power" );
 							pc.set_value( cur_val );
 								
 						})
@@ -427,6 +511,7 @@ Controller.CPilotController = function(){
 					this._update_fuel_indicator();
 					this._update_power_indicator();
 					this._update_capacitor_indicator();
+					this._update_shield_indicator();
 				};
 				
 			}
@@ -451,7 +536,69 @@ Controller.CPilotController = function(){
 		
 		
 		}
-		this.process = function(raw_action, mesh){
+		this.process = function(action, mesh){
+			
+			if(action.name == 'set_power'){
+				console.log( "setting power of", action.dev, " to ", action.value)
+				mesh.setDeviceSetting(action.dev, 'power', action.value);
+				
+			}else{
+			
+				var T = Controller.T();
+			
+				var unit = new T.Vector3();
+				unit.fromArray(mesh.json.devices[action.dev].unit);
+				var engine_name = mesh.json.devices[action.dev].engine_type + "_" + mesh.json.devices[action.dev].name;
+				var percent_of_power = mesh.getDeviceSetting(action.dev, "power");
+				var engine_type = mesh.json.devices[action.dev].engine_type;
+			
+				var performance = mesh.json.devices[action.dev].performance;
+				var consumption = mesh.json.devices[action.dev].consumption;
+				var capacitor_left = mesh.getDeviceSetting(mesh.json.power_source, "capacitor");
+				var energy_consumption = percent_of_power* consumption * action.delta;
+			
+				if (capacitor_left < energy_consumption){
+					energy_consumption = capacitor_left;
+				}
+				//console.log("took energy", energy_consumption);
+				//L.setValue("NEW CONS", energy_consumption);
+			
+				var impulse = energy_consumption * performance;
+				console.log("we go with", impulse, percent_of_power);
+				unit.multiplyScalar(impulse);
+			
+				mesh.update_static_physical_data(action.ts)
+			
+				mesh.alterDeviceSetting(mesh.json.power_source, 'capacitor' ,function(value){
+					L.setValue("NEW CONSump1", energy_consumption);
+					var nv = value - energy_consumption;
+					if (nv < 0) {return 0}
+					else{ return nv }
+					
+				})
+			
+			
+				if (engine_type == 'rotation'){
+					mesh.angular_impulse.add(unit)
+				}else if(engine_type == 'propulsion'){
+				
+					var tug = unit.clone().applyQuaternion(mesh.quaternion);
+					mesh.impulse.add(tug);
+				
+				
+
+			
+				}	
+			}
+			
+			
+			
+			// var performance = mesh.json.devices[action.dev].performance;
+			//var performance = mesh.json.devices[action.dev].performance;
+		}
+		
+		/*
+		this.process_ = function(raw_action, mesh){
 			// console.log("On the server", action);
 			
 			var process = function(object_guid, action){
@@ -459,7 +606,7 @@ Controller.CPilotController = function(){
 				
 				
 				mesh.alterWorkpointValue("Piloting", 'capacitor' ,function(value){
-					L.setValue("NEW CONS1", raw_action.energy_consumption);
+					L.setValue("NEW CONSump1", raw_action.energy_consumption);
 					var nv = value - raw_action.energy_consumption;
 					if (nv < 0) {return 0}
 					else{ return nv }
@@ -509,7 +656,7 @@ Controller.CPilotController = function(){
 			var engine_name = et + "_" + ea
 			
 			var AX= action.p.a;
-			var ar = [0,0,0]
+			var ar = [0,0,0];
 			ar[AX] = action.p.d
 			
 			var vec = new T.Vector3();
@@ -528,11 +675,11 @@ Controller.CPilotController = function(){
 			if (capacitor_left < energy_consumption){
 				energy_consumption = capacitor_left;
 			}
-			console.log("took energy", energy_consumption);
-			L.setValue("NEW CONS", energy_consumption);
+			//console.log("took energy", energy_consumption);
+			//L.setValue("NEW CONS", energy_consumption);
 			
 			var impulse = energy_consumption * performance;
-			L.setValue("NEW IMPULSE", impulse);
+			//L.setValue("NEW IMPULSE", impulse);
 			
 			// var power = C.engines[et][ea];
 			// console.log(percent_of_power, max_power, energy_consumption, impulse);
@@ -561,6 +708,7 @@ Controller.CPilotController = function(){
 
 			
 		}
+		*/
 		// return this;
 	
 	};
@@ -697,14 +845,20 @@ Controller.CTurretController = function(){
 		// console.log("On the server", action);
 		
 		var process = function(object_guid, action){
+			console.log("CHO", action.type === SHOOT, action.type == SHOOT, action.type)
 			if(action.type == RELOAD_WEAPONS){
 				
-				console.log("REALODING:", action);
+				console.log("process > REALODING:", action);
 				mesh.saveWorkpointValue( action.wp, "is_reloading" , action.ts ); 
 				mesh.saveWorkpointValue( action.wp, 'magazine', action.new_capacity);
 			}
+			if(action.type === HIT){
+				console.log("process > HITED", action);
+			}
 			
 			if (action.type == SHOOT){
+				
+				
 				mesh.saveWorkpointValue(action.wp, "last_shot_time", action.ts);
 				var am = mesh.getWorkpointValue(action.wp, 'magazine');
 				if (am ){
@@ -731,7 +885,7 @@ Controller.CTurretController = function(){
 			var C = S.mesh_for(actor_guid);
 			
 			if (action.type === HIT){
-				console.log("we already processed  hit");
+				console.log("we already processed  hit", action);
 				
 				return;
 			}
@@ -787,14 +941,19 @@ Controller.CTurretController = function(){
 				var is_reloading = C.getWorkpointValue(actor.control.workpoint, "is_reloading"  ); 
 				var _mag = C.getWorkpointValue(actor.control.workpoint, "magazine")
 				
-				console.log("LOG TIMES", is_reloading, last_shot_time,  action.ts - is_reloading, action.ts - last_shot_time);
+				console.log("SERV act before", action);
+				// console.log("LOG TIMES", is_reloading, last_shot_time,  action.ts - is_reloading, action.ts - last_shot_time);
 				
 				if( (action.ts -  is_reloading) < C.json.turrets[wp.turret].turret_reload_rate){
 					return ;
 				}
+				console.log("SERV act - reloaded", action);
+				
 				if(_mag == 0){
 					return ;
 				}
+				console.log("SERV act full mag", action);
+				
 				if (last_shot_time){
 					// console.log("last shot time", last_shot_time,(action.ts - last_shot_time ) < C.json.turrets[wp.turret].turret_shoot_rate );
 					if((action.ts - last_shot_time ) < C.json.turrets[wp.turret].turret_shoot_rate){
@@ -802,6 +961,8 @@ Controller.CTurretController = function(){
 						return; // this turret cannot shoot now
 					}
 				}
+				console.log("SERV act shoot freely", action);
+				
 				// console.log("BOOOSH!");
 				
 				
@@ -863,7 +1024,7 @@ Controller.CTurretController = function(){
 				// 2. В случае попадания - отправить в будущее событие об изменении импульса и состояния цели.
 				
 				action.wp = actor.control.workpoint;
-				
+				console.log("checkout if we got it");
 				if (collidables.length > 0){
 					var col = _.sortBy(collidables, function(i){ return i.time})[0]
 					var  mesh_id = col.mesh
@@ -913,6 +1074,8 @@ Controller.ControllersActionMap= function(){
 			//this._ControllersActionMap[MOVE]= PilotController;
 			//this._ControllersActionMap[ROTATE]=PilotController;
 			this._ControllersActionMap['pilot']= PilotController;
+			this._ControllersActionMap['engine']= PilotController;
+			
 			this._ControllersActionMap['turret']= TurretController;
 			this._ControllersActionMap['settings'] = SettingsController;
 			
@@ -1126,6 +1289,692 @@ Controller.BasicBulletActor=function(S, id, coid){
 	
 	
 	};
+	
+var Controllers = function (){
+
+	var dev_con_proto = {
+		process : function(action){
+			mesh.setDeviceSetting(device.id, action.name, action.value);
+	
+		}
+	};
+	this.EngineController = function(mesh, device_id){
+		
+		this.getUI = function(W){
+			
+		}
+		
+		this.process = function(action){
+			var T = Controller.T();
+	
+			var unit = new T.Vector3();
+			unit.fromArray(mesh.json.devices[action.dev].unit);
+			var engine_name = mesh.json.devices[action.dev].engine_type + "_" + mesh.json.devices[action.dev].name;
+			var percent_of_power = mesh.getDeviceSetting(action.dev, "power");
+			var engine_type = mesh.json.devices[action.dev].engine_type;
+	
+			var performance = mesh.json.devices[action.dev].performance;
+			var consumption = mesh.json.devices[action.dev].consumption;
+			var capacitor_left = mesh.getDeviceSetting(mesh.json.power_source, "capacitor");
+			var energy_consumption = percent_of_power* consumption * action.delta;
+	
+			if (capacitor_left < energy_consumption){
+				energy_consumption = capacitor_left;
+			}
+			var impulse = energy_consumption * performance;
+			unit.multiplyScalar(impulse);
+			mesh.update_static_physical_data(action.ts)
+	
+			mesh.alterDeviceSetting(mesh.json.power_source, 'capacitor' ,function(value){
+				var nv = value - energy_consumption;
+				if (nv < 0) {return 0}
+				else{ return nv }
+			
+			})
+	
+	
+			if (engine_type == 'rotation'){
+				mesh.angular_impulse.add(unit)
+			}else if(engine_type == 'propulsion'){
+				var tug = unit.clone().applyQuaternion(mesh.quaternion);
+				mesh.impulse.add(tug);
+			}	
+		}
+	}
+	this.EngineController.device_types = "engine";
+	
+	this.ShieldController = function(mesh, device_id){
+		
+		this.process = function(action){
+			mesh.alterDeviceSetting(device_id, 'state', function(v){ return !v});
+		}
+		this.getUI = function(W){
+			var ui = function(){
+				this.construct = function(){
+					var shield_dev = mesh.json.devices[device_id];
+					
+					var my_ind = $("#shield_indicator_"+device_id);
+					console.log(my_ind.size());
+					if(my_ind.size() != 0){
+						my_ind.remove();
+					}
+			
+					var shc = $("#shields_holder_container")
+					if(shc.size() == 0){
+						shc = $('<div id="shields_holder_container">').css({
+							position:'fixed',
+							left:0,
+							height:50,
+							bottom:50,
+							'background-color':'#f3f',
+							width:400
+					
+						}).appendTo('body');
+					}
+					var d  = $('<div >').attr('id',"shield_indicator_"+device_id) .css({width:50, height:"100%", float:'left', 'margin-right':"10px"}).appendTo(shc);
+					var sic = $('<div>').css({width:"100%", height:10 }).appendTo(d) // strenth indicator container
+					var l = shield_dev.shield_type.toLocaleUpperCase();
+					var b = $('<div>').css({width:"100%", height:30,
+											"text-align":'center',
+											'vertical-align': 'middle',
+											'line-height':'30px',
+											'background-color':'#333','color':"#F0F"})
+										.text(l).appendTo(d).click(function(){
+									
+											mesh.startDeviceAction(device_id, "toggle",0);
+									
+										}) 
+					var cic = $('<div>').css({width:"100%", height:10}).appendTo(d) // capacitor indicator container
+			
+					var si = $('<div>').css({width:"100%", height:"100%", 'background-color':"blue" }).appendTo(sic);
+					var ci = $("<div>").css({width:"100%", height:"100%",'background-color':"yellow" }).appendTo(cic);
+					this._redraw_closure = function(){
+						var reserve_cap_amount = mesh.getDeviceSetting(device_id, "reserve_capacity");
+						var tot_cap_amount = shield_dev.capacitor;
+						var w = reserve_cap_amount/tot_cap_amount * 100;
+						ci.width( w + '%' );
+				
+						var is_on = mesh.getDeviceSetting(device_id, 'state') ;
+						if (is_on){
+							b.css({color:'red', 'background-color':'white'});
+						}else{
+							b.css({'background-color':'#333','color':"#F0F"});
+						}
+				
+						var current_capacity = mesh.getDeviceSetting(device_id, 'capacity');
+						var max_capacity = shield_dev.capacity;
+						var ww =( current_capacity / max_capacity * 100) + "%";
+						si.width(ww);
+				
+						// console.log("updating shield", shield, num);
+					}
+				}
+				this.refresh = function(){
+					this._redraw_closure();
+				}
+			}
+			return new ui();
+			
+			
+		}
+	}
+	this.ShieldController.device_types = "shield";
+	
+	this.EnergyCoreController = function(mesh, device_id){
+		
+		this.process = function(action){
+			mesh.setDeviceSetting(action.dev_id, action.name, action.value);
+		}
+		this.getUI = function(W){
+			var ui = function(){
+				this.indicators_length = 110;
+				this.total_width = 170;
+				
+				this.construct = function(){
+					this.cont = $('<div>').css({
+						'position':'fixed',
+						// 'border': '1px solid red',
+						'width': this.total_width + "px",
+						'height': '60px',
+						'top':40,
+						'left':50+300,
+						'background-color':'white'
+					}).appendTo('body');
+					
+					this.indicators = $('<div>').css({
+						"width": this.indicators_length,
+						"height":"100%",
+						"float": "left",
+						'background-color':'white'
+					}).appendTo(this.cont);
+
+					this.switches = $('<div>').css({
+						"width": this.total_width - this.indicators_length ,
+						"height":"100%",
+						"float": "left",
+						'background-color':'white'
+					}).appendTo(this.cont);
+				
+					this.fuel_indicator = $('<div>') .css({
+						"width": this.indicators_length ,
+						"height":"25%",
+						// "float": "left",
+						'background-color':'green'
+					}).appendTo(this.indicators);
+			
+					this.power_indicator = $('<div>') .css({
+						"width": this.indicators_length ,
+						"height":"25%",
+						// "float": "left",
+						'background-color':'red'
+					}).appendTo(this.indicators);
+				
+					this.capacitor_indicator = $('<div>') .css({
+						"width": this.indicators_length ,
+						"height":"50%",
+						// "float": "left",
+						'background-color':'yellow'
+					}).appendTo(this.indicators);
+					var self = this;
+					this.engines_key = $("<div>").css({
+						width:"100%",
+						height:"20px",
+					
+					}).text("E").appendTo(this.switches).click(function(){
+						self._engines_dialog();
+					});
+				
+					this.shield_key = $("<div>").css({
+						width:"100%",
+						height:"20px",
+					
+					}).text("S").appendTo(this.switches).click(function(){
+						self._shields_dialog();
+					});;
+				
+					this.turret_keys = $("<div>").css({
+						width:"100%",
+						height:"20px",
+					
+					}).text("T").appendTo(this.switches);
+			
+			
+				}
+				this._shields_dialog = function(){
+					//var mesh = W.scenes[actor.scene].meshes[actor.control.object_guid];
+					//var scene = W.scenes[actor.scene];
+					
+					cont = $('<div>').css({
+						'position':'absolute',
+						// 'border': '1px solid red',
+						'width': 400 + "px",
+						'height': '600px',
+						'top':40 + 100,
+						'left':50+300,
+						'padding': "10px",
+						'border-radius':'3px',
+						'border-width':'1px',
+						'border-style':'solid',
+						'border-color':'#aaa',
+						'background-color':'#222'}).appendTo('body');
+					var  cc = $('<div>').appendTo(cont).css({'width':"100%",height:20, 'padding-bottom': '30px'});
+					var  closer = $('<div>').appendTo(cont).css({'width':"20", height:20, 'background-color':'red', float:'right' }).click(function(){
+						cont.remove();
+					}).appendTo(cc);
+					
+					_.each(mesh.json.shields, function(s, i){
+						if (i === 'thermal'){return}
+						_.each(s, function(shield_id){
+							var e1 = $("<div>").css({
+								width:300,
+								height:40
+							}).appendTo(cont);
+								
+							$('<div>').css({'float':'left', 'color':'#bbb'}).width(40).text(i).appendTo(e1) 
+							var slc =  $('<div>').css({'float':'left', width:120,'margin-left':10}).appendTo(e1);
+						
+							var pc = new PowerControlWidget({container:slc[0], starting_percent:0, end_percent:1.5,progress_value:0,
+								change: function( val ) {
+									mesh.startDeviceAction(mesh.json.power_source, "power", val, {"dev_id": shield_id});
+
+								},
+								slide:function(val){ 
+								}
+								
+							});
+							// var sett =  "s_" + i + num + "_power"
+							var cur_val = mesh.getDeviceSetting(shield_id, "power");
+							pc.set_value( cur_val );
+							
+						})
+					})
+					
+				};
+				
+				this._engines_dialog = function(){
+
+					//var mesh = W.scenes[actor.scene].meshes[actor.control.object_guid];
+					//var scene = W.scenes[actor.scene];
+
+					cont = $('<div>').css({
+						'position':'absolute',
+						// 'border': '1px solid red',
+						'width': 400 + "px",
+						'height': '600px',
+						'top':40 + 100,
+						'left':50+300,
+						'padding': "10px",
+						'border-radius':'3px',
+						'border-width':'1px',
+						'border-style':'solid',
+						'border-color':'#aaa',
+						'background-color':'#222'}).appendTo('body');
+						var  cc = $('<div>').appendTo(cont).css({'width':"100%",height:20, 'padding-bottom': '30px'});
+						var  closer = $('<div>').appendTo(cont).css({'width':"20", height:20, 'background-color':'red', float:'right' }).click(function(){
+							cont.remove();
+						}).appendTo(cc);;
+					
+					
+					_.each(mesh.json.engines, function(engines, engine_type){
+						
+						_.each(engines, function(engine_id){
+							
+							// var et = engine_type;
+							// var ea = en;
+							var en_dev = mesh.json.devices[engine_id];
+							
+							var e1 = $("<div>").css({
+								width:300,
+								height:40
+								}).appendTo(cont);
+						
+							$('<div>').css({'float':'left', 'color':'#bbb'}).width(40).text(en_dev.name).appendTo(e1) 
+							var slc =  $('<div>').css({'float':'left', width:120,'margin-left':10}).appendTo(e1);
+							
+							var pc = new PowerControlWidget({container:slc[0], starting_percent:0, end_percent:1.5,progress_value:0,
+								change: function( val ) {
+									mesh.startDeviceAction(mesh.json.power_source, "power", val, {"dev_id": engine_id});
+
+								},
+								slide:function(val){ 
+									// mesh.startDeviceAction(engine_id, "set_power", val);
+								}
+									
+							});
+							// var sett =  "eng_" + engine_name + "_power"
+							var cur_val = mesh.getDeviceSetting(engine_id, "power" );
+							pc.set_value( cur_val );
+								
+						})
+					})
+				}
+				this._update_fuel_indicator = function(){}
+				this._update_power_indicator = function(){}
+				this._update_capacitor_indicator = function(){
+					// var mesh = W.scenes[actor.scene].meshes[actor.control.object_guid];
+					var psd = mesh.json.devices[mesh.json.power_source];
+					var total_cap = psd.capacitor;
+					var current_cap = mesh.getDeviceSetting(mesh.json.power_source, "capacitor");
+					
+					L.setValue("CUR CONS", current_cap);
+			
+					if(current_cap > total_cap){
+						percentage = 1;
+					}else{
+						percentage = current_cap / total_cap;
+					}
+					this.capacitor_indicator.width(percentage * this.indicators_length);
+					
+					
+				}
+				
+				this.refresh = function(){
+					this._update_fuel_indicator();
+					this._update_power_indicator();
+					this._update_capacitor_indicator();
+					
+				}
+			}
+			return new ui();
+			
+		}
+	}
+	this.EnergyCoreController.device_types = "power";
+	this.TurretController  = function(mesh, device_id){
+		this.process = function(action){
+			//console.log("CHO", action.type === SHOOT, action.type == SHOOT, action.type)
+			var turret = mesh.json.devices[device_id];
+			if(action.name == 'reload'){
+				
+				// console.log("process > REALODING:", action);
+				mesh.setDeviceSetting( device_id, "is_reloading" , action.ts ); 
+				mesh.setDeviceSetting( device_id, 'magazine', turret.magazine_capacity);
+			}
+			
+			if (action.name == 'fire'){
+				
+				
+				//console.log("FIRED");
+				
+				
+				var T = Controller.T();
+				
+				
+				var seed = Math.random() // Это зерно будет использоваться для вычисления вероятностей и оно должно быть записано в сообщение - чтобы позволить серверу вычислить параметры попадания детерминированно
+				// console.log(action)
+				// Теперь высляем вектор выстрела в мировых координатах
+				var shoot_vec = new T.Vector3();
+				shoot_vec.fromArray(action.wmouse);
+
+				//dist
+				// For all targets:
+				// calculate closest distance and time to that 
+				// console.log("ACTOR", actor);
+				
+				//var C = S.mesh_for(actor_guid);
+				//var object = C.json
+				//var actor = S.actors[actor_guid];
+				
+				
+				//var wp = object.workpoints[actor.control.workpoint];
+				
+				var last_shot_time = mesh.getDeviceSetting(device_id, "last_shot_time")
+				var is_reloading = mesh.getDeviceSetting(device_id, "is_reloading"  ); 
+				var _mag = mesh.getDeviceSetting(device_id, "magazine")
+				
+				// console.log("SERV act before", action);
+				// console.log("LOG TIMES", is_reloading, last_shot_time,  action.ts - is_reloading, action.ts - last_shot_time);
+				
+				if( (action.ts -  is_reloading) < mesh.json.devices[device_id].turret_reload_rate){
+					return ;
+				}
+				//console.log("SERV act - reloaded", action);
+				
+				if(_mag == 0){
+					return ;
+				}
+				//console.log("SERV act full mag", action);
+				
+				if (last_shot_time){
+					// console.log("last shot time", last_shot_time,(action.ts - last_shot_time ) < C.json.turrets[wp.turret].turret_shoot_rate );
+					if((action.ts - last_shot_time ) < mesh.json.devices[device_id].turret_shoot_rate){
+						// console.log('no shoot');
+						return; // this turret cannot shoot now
+					}
+				}
+				//console.log("SERV act shoot freely", action);
+				
+				//console.log("BOOOSH!");
+				var shoot_impulse = mesh.json.devices[device_id].shoot_impulse;
+				// TODO Применить выстрел к собственному импульсу - 
+				
+				
+				mesh.setDeviceSetting(device_id, "last_shot_time", action.ts);
+				mesh.alterDeviceSetting(device_id, 'magazine', function(v){
+                    console.log("mag");
+					return v - 1;
+				})
+				//console.log("Now let's see, did we get somebody");
+				
+				var turret = mesh.json.devices[ device_id ] ;
+				
+				var turret_position_vector = new T.Vector3();
+				turret_position_vector.fromArray( turret.position );
+				
+				var bullet_pos = mesh.position.clone()
+				bullet_pos.add(  turret_position_vector.clone() )
+
+				var BULLET_MASS = 1;
+				
+				shoot_vec.sub(bullet_pos.clone()) // Направление выстерла
+				shoot_vec.multiplyScalar( shoot_impulse / BULLET_MASS ); // скорость выстрела
+				
+				// Надо составить список мешей, через которые проходит луч траектории движения снаряда с учетом вероятности попадания
+				var collidables = [];
+				_.each(mesh._scene.meshes, function(tmesh, i){
+					if(i ==  mesh.json.GUID) return;
+					
+					var target_pos = tmesh.position.clone();
+					var target_impulse = tmesh.impulse.clone();
+					var target_velocity = target_impulse.multiplyScalar(1/tmesh.mass);
+					
+					// Увеличим скорость во много-много раз
+					target_pos.sub( bullet_pos );
+					target_velocity.sub( shoot_vec );
+					
+					var dot = target_pos.dot(target_velocity);
+					
+					
+					var cosp = dot/( target_pos.length() * target_velocity.length() )
+					var sinp = Math.sqrt(1 - cosp*cosp);
+					
+					var v = Math.abs(cosp) * target_velocity.length();
+					// console.log(v, target_pos.length());
+					var time = target_pos.length() / v 
+					var distance = sinp * target_pos.length(); // Максимальная дистанция, в которой пройдет снаряд от корабля
+					
+					//console.log("distance and time", distance, time);
+					
+					// Решение о попадании надо принимать здесь
+					//  distance Может уменьшиться в зависимости от скиллов игрока и характеристик оружия
+					
+					// Сравнение с геометрическими размерами тела:
+					var boundRadius = tmesh.geometry.boundingSphere;
+					// console.log("SPHERE", boundRadius.radius, distance);
+					//console.log(target_velocity.toArray(), shoot_vec.toArray());
+					if(distance < boundRadius.radius){
+						// hit 
+						collidables.push({time: time, mesh:tmesh, distance:distance})
+						
+					}
+					
+					
+					// Синус - это мера попадания. При умножении её на вектор позиции мы узнаем на какой дистанции пройдет снаряд от цели
+					// Косинус дает представление о времени  до контакта. Если косинус отрицательный - значит  
+					// console.log("sin and cos", target_pos.toArray(), mesh.position.toArray(), sinp, cosp);
+					
+				});
+				// Теперь, надо запихнуть это событие в очередь процессинга:
+				// 1. Событие - импульс на нас, которое может включать также измение состояний внутренних приборов - например количество патронов
+				// 2. В случае попадания - отправить в будущее событие об изменении импульса и состояния цели.
+				
+				if (collidables.length > 0){
+					var  col = _.sortBy(collidables, function(i){ return i.time})[0]
+					var  tmesh = col.mesh // Попали!
+					//console.log("We got your ASS");
+					
+					var action_processor = function(){
+						// console.log("here we will process the hit");
+						var shield_hp = shoot_impulse * 0.7;
+						var armor_hp  = shoot_impulse * 0.8;
+						var hull_hp = shoot_impulse * 1.05;
+						var sh_seq = tmesh.shields.concat(tmesh.armors)
+						sh_seq.push(tmesh.json.hull_device)
+						
+						var rec = function(seq){
+							if (seq.length == 0){return};
+							var f = seq[0];
+							var dev = mesh.json.devices[f]
+							
+							var tail = seq.slice(1);
+							var hp;
+							if (dev.shield_type == 'armor'){hp = shoot_impulse * 0.7}
+							if (dev.shield_type == 'shield'){hp = shoot_impulse * 0.8}
+							if (dev.shield_type == 'hull'){hp = shoot_impulse * 1.05}
+							
+							
+							tmesh.alterDeviceSetting(f, "capacity", function(v){
+								if (v <= 0){ rec(tail); return 0;}
+								var nv = v - hp;
+								if(nv <= 0){ return 0 }else{return nv};
+							})
+						}
+						//console.log('launch req');
+						rec(sh_seq);
+						//console.log("HERE's OUR RESULTS")
+						// DEBUG"
+						_.each(sh_seq, function(d){
+							var sh = tmesh.getDeviceSetting(d, "capacity")
+							var dev = tmesh.json.devices[d];
+							//console.log("DEBUGGING SHOTS", d, dev.name, sh);
+						})
+						//ENDOF DEBUG
+						
+						
+						
+						
+					}
+					tmesh.startVirtualDeviceAction(action_processor, action.ts + col.time, action.ident + col.time);
+					
+					
+					
+				}
+				
+			}
+			
+		}
+		this.getUI = function(W){
+    		var ui = function(){
+    			this.rules_height = 140
+                this.onAction = function(W, scene_guid, action){
+                    var three_scene = W.three_scenes[scene_guid];
+                    
+                    var expl = SpriteUtils.createExposionObject(
+                                    "#" + action.mesh + "_"+action.ident, 
+                                    action.ts, 
+                                    action.wmouse, 
+                                    10,
+                                    three_scene, 
+                                    W);
+                },
+                this.construct = function(){
+    				this.cont = $('<div>').css({'position':'fixed',
+    								// 'border': '1px solid red',
+    								'width':"66px",
+    								'height': '170px',
+    								'top':40,
+    								'left':50,
+    								'background-color':'white'}).appendTo('body');
+		
+    				var rul_cont = $('<div>').css({
+    					"width":  "100%",
+    					"height": this.rules_height + 'px',
+    					'background-color':'blue'
+
+    				}).appendTo(this.cont);
+
+    				var bul_cont = $('<div>').css({
+    					"width":  "100%",
+    					"height": (170 - this.rules_height) + "px",
+    					'background-color':'green'
+    				}).appendTo(this.cont);
+
+    				var auto_track_switch = $('<div>').css({'width':'22px',
+    														'height':'22px',
+    														'border-radius':'11px',
+    														'float':'left',
+    														'background-color':'white'}).appendTo(rul_cont);
+    				this.magazine_indicator = $('<div>').css(
+    					{'width':'22px',
+    					'height':  this.rules_height +  'px',
+    					'float':'left',
+    					'background-color':'red'}).appendTo(rul_cont);
+    				this.time_indicator = $('<div>').css(
+    					{'width':'22px',
+    					'height':  this.rules_height+  'px',
+    					'float':'left',
+    					'background-color':'red'}
+    				) .appendTo(rul_cont);
+
+    			}
+    			this._set_magazine_capacity = function(){
+    				// var O = W.scenes[actor.scene].meshes[actor.control.object_guid];
+    				//var wp = O.json.workpoints[actor.control.workpoint];
+    				var mag_cap = mesh.json.devices[device_id].magazine_capacity;
+    				var _mag    = mesh.getDeviceSetting(device_id, "magazine");
+    				if (! _mag) _mag = 0;
+		
+    				var percentage = _mag/ mag_cap;
+                    // console.log(this.magazine_indicator);
+    				if(_mag  == 0){
+    					this.magazine_indicator.height("1px");
+    					this.magazine_indicator.css('background-color','red')
+			
+    				}else{
+                        // console.log("hh", device_id, percentage * this.rules_height)
+    					this.magazine_indicator.height(percentage * this.rules_height);
+    					this.magazine_indicator.css('background-color','green')
+    				}
+		
+		
+		
+		
+    			}
+    			this._set_readiness_timer = function(){
+    				var rate = mesh.json.devices[device_id].turret_shoot_rate;
+    				var reload_rate = mesh.json.devices[device_id].turret_reload_rate;
+		
+    				var _ts  = mesh.getDeviceSetting(device_id, "last_shot_time");
+    				var ir_ts = mesh.getDeviceSetting(device_id, "is_reloading");
+    				var now  = new Date().getTime();
+                    // console.log(_ts, ir_ts, now);
+    				var ir_diff = now - ir_ts;
+    				if(ir_diff > reload_rate){
+    					var _mag    = mesh.getDeviceSetting(device_id, "magazine");
+		
+    					var diff = now - _ts;
+    					if(_mag === 0 ){
+    						percentage = 0;
+    					}else{
+    						if(diff > rate){
+    							var percentage = 1;
+    						} else{
+    							var percentage =  (diff / rate);
+    						}
+			
+    					}
+			
+    				}else{
+    					percentage = ir_diff/reload_rate;
+    				}
+		
+		
+    				this.time_indicator.height(percentage * this.rules_height);
+		
+		
+    			}
+    			this.refresh = function(){
+    				this._set_readiness_timer();
+    				this._set_magazine_capacity();
+    			}
+    		}
+
+    		var UI = new ui();
+    		return UI;
+		}
+	}
+	this.TurretController.device_types = "turret";
+	this.VirtualDeviceController = function(mesh, device_id){
+		this.getUI = function(){}
+		this.process = function(action){
+			// Call it;
+			// console.log("okey - we could do thing here",action);
+			
+			mesh._foreign_procs[action.ts]();
+		}
+	}
+	this.VirtualDeviceController.device_types = "virtual";
+	
+	var controllersMap = {}
+	for(i in this){
+		controllersMap[this[i].device_types] = this[i];
+	}
+	this.controllersMap = controllersMap;
+	// console.log(">>", this.controllersMap);
+
+}
+var cc = new Controllers();
+Controller.deviceControllers = cc;
 module.exports = Controller
 //var TurretController = new CTurretController()
 //CPilotController.prototype = {constructor:CPilotController}
