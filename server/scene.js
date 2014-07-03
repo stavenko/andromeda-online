@@ -95,22 +95,8 @@ Scene.update_from_world = function(){
 	this._scene.sunDirection = [0,1,0]
 	this._scene.sunLightColor = [Math.random(), 0.8, 0.9] // HSL
 	this._scene.coords =[ this.gx, this.gy, this.gz ]
-	// this._create();
 	
-	// creating scene
-	
-	// this._scene = {coords :[ globalx, globaly, globalz ], actors:{}, GUID: u.make_guid(), objects:{} } 
-	// this.GUID = this._scene.GUID;
-	
-	// prepare actors - all of them would control object_id = 0, viewports - each for each
-	
-	
-	// Injecting other objects
-	//var objects = {}
-	// objects[for_object.GUID] = for_object;
-	
-	// console.log(
-	// console.log( "CLOCK", this.clock);
+    
 	
 	return this
 	
@@ -133,13 +119,10 @@ Scene.get_objects_in = function(){
 Scene.join_object = function( object ){
 	this._scene.objects[object.GUID] = object
 	
-	// this._scene_obj_actors[object.GUID] = []
-	// console.log("PUT OBJ", object.GUID)
+
 }
 Scene.join_actor = function( actor ){
-	//if (this._scene.actors[actor.GUID]){
-	//	this._scene.actors[actor.GUID].push(actor)
-		//}else{
+
 			console.log("JOINING");
 	this._scene.actors[actor.GUID] = actor;
 	if(this._scene.actor_wp_ix === undefined){
@@ -227,15 +210,13 @@ Scene.load = function(onload, three_scene, W){
 			var m = object.model_3d.split('/')[2];
 			var model_path= "./public/models/" + m
 		}
-		// console.log(model_path);
+
 		
 		var rf = function(){
 			var with_geom_and_mat = function(geom, mat){
 				var m = new self.THREE.Matrix4()
 				m.identity()
 			
-				// var turret = object.turrets[objects.workpoints[actor.control.workpoint].turret] 
-				
 				
 				var mesh = AObject(self, geom, mat) ;//self.THREE.Mesh( geom, mat );
 				mesh.json = object;
@@ -336,9 +317,9 @@ Scene._model_loaded = function(ix){
 		if  (this._call_back){
 			this._call_back(this)
 		}
-		//console.log("DONE");
 	}else{
-		//console.log('not yet', this.loaded_objects_count , this.total_objects_count);
+
+
 	}
 }
 Scene.sync = function(sync){
@@ -429,32 +410,7 @@ Scene.tick = function(){
 					// Each action put to mesh queue and then, push to network queue
 					self._addToServerQueue(a);
 					self.meshes[a.mesh].eventManager.add(a);
-					/*
 					
-					self.controller_map[a.controller].act(self, a, a.actor, function(object_guid, action){
-						if( ! is_browser){
-							console.log("SERV>", action);
-					 	}
-						if ('MA' in action){ // Здесь будут отсеиваться Мастер-действия, которые порождают другие действия, в
-											 // лияющие на произвльных игроков. Такие сведения нужно сохранять в каждом 
-											 // меше - это будет нужно для того, чтобы валидировать Слейв-акции.
-											 // Но пока обойдемся тем, что просто будем их посылать на сервер. 
-											 // ------
-											 // Кстати, для того, чтобы не путать сервер, после валидации ненужные, неверные акции 
-											 // будем просто дропать, без возможности пересчитать.
-							self._addToServerQueue(action);
-							var mesh = self.meshes[object_guid];
-							mesh.eventManager.add(action, action.ts)
-							
-						}else{ // Это одиночное действие, не влияющее прямо на других игроков - только на собственное состояние
-							self._addToServerQueue(action);
-							var mesh = self.meshes[object_guid];
-							mesh.eventManager.add(action, action.ts)
-							
-						}
-				
-					})
-					*/
 				})
 			}
 			
@@ -501,18 +457,12 @@ Scene.tick = function(){
             }
 			
 		})
-		// console.log("DONE", mesh.eventManager._last_processed, self.meshes[i].workpoint_states['Piloting']['s_armor0_state'] );
+
 		if(! is_browser){
-			// console.log("MESH EQ:", i,": ", mesh.eventManager._last_processed );
+
 		}
 		
-		/*var current_state = {	ident: mesh.eventManager._last_processed , 
-								state:{	position: mesh.position.toArray(),
-										rotation: mesh.rotation.toArray(),
-										impulse:  mesh.impulse.toArray(),
-										angular_impulse: mesh.angular_impulse.toArray()
-									}
-							};
+
 		*/
 		if(! (self.localActions )){
 			
