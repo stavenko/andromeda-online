@@ -3,3 +3,5 @@ az-az.ru-0.0.1.tgz
 
 node_modules/*
 public/js/gl/main.js
+
+public/js/gl/engine.js

@@ -463,7 +463,7 @@ Scene.tick = function(){
 		}
 		
 
-		*/
+		
 		if(! (self.localActions )){
 			
 			self.mesh_last_states[i] = mesh.getState();

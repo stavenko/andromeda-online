@@ -7,19 +7,26 @@
     "jade": "0.35.0",
     "stylus": "*",
     "connect-flash": "*",
-	"nodemailer": "0.5.11",
-	"socket.io":"0.9.16",
-	"underscore":"1.5.2",
-	"passport":"0.1.17",
-	"passport-local":"0.1.6",
-	"connect-redis":"1.4.6",
-	"browserify-express" :"0.1.2",
-	"webworker-threads": "*",
-	"protobufjs":"*"
-	
-	
+    "nodemailer": "0.5.11",
+    "socket.io": "0.9.16",
+    "underscore": "1.5.2",
+    "passport": "0.1.17",
+    "passport-local": "0.1.6",
+    "connect-redis": "1.4.6",
+    "browserify-express": "0.1.2",
+    "webworker-threads": "*",
+    "protobufjs": "*"
   },
-  "engines":{
-	  "node":"0.10.x"
+  "engines": {
+    "node": "0.10.x"
+  },
+  "devDependencies": {
+    "del": "^0.1.1",
+    "gulp": "^3.8.6",
+    "gulp-browserify": "^0.5.0",
+    "gulp-concat": "^2.3.3",
+    "gulp-rename": "^1.2.0",
+    "gulp-sourcemaps": "^1.0.0",
+    "gulp-uglify": "^0.3.1"
   }
 }

@@ -141,18 +141,34 @@ app.configure(function(){
     app.use(passport.initialize());
     app.use(passport.session());
 	
-    var bundle = browserify_express({
+    
+    /*
+    
+    var engineBundle = browserify_express({
         entry: __dirname + '/server/entry.js',
 		ignore: ["./three.min.node.js", "./three.node.js"],
         watch: __dirname + '/server/',
-        mount: '/appjs/main.js',
+        mount: '/appjs/engine.js',
         verbose: true,
         minify: false,
         bundle_opts: { debug: true }, // enable inline sourcemap on js files 
-        write_file: __dirname + '/public/js/gl/main.js'
+        write_file: __dirname + '/public/js/gl/engine.js'
+    });
+    
+    app.use(engineBundle);
+    var clientBundle = browserify_express({
+        entry: __dirname + '/client/entry.js',
+		ignore: ["./three.min.node.js", "./three.node.js"],
+        watch: __dirname + '/client/',
+        mount: '/appjs/client.js',
+        verbose: true,
+        minify: false,
+        bundle_opts: { debug: true }, // enable inline sourcemap on js files 
+        write_file: __dirname + '/public/js/gl/client.js'
     });
 
-    app.use(bundle);
+    // app.use( clientBundle );
+    */
 	
     app.use(app.router);
 	
@@ -203,16 +219,7 @@ simulator = fork('./server/worker.js');
 
 simulator.send({'hi':'there'});
 
-/*
-var worker = new Worker(function(){
-	console.log("ok");
-	self.importScripts("./server/utils.js")
-	console.log("L")
-	//console.log('GOO', ">>" + typeof Simulation );
-	
-})
-worker.postMessage({"let's":"GO"})
-*/
+
 
 io.on('connection', function(socket){
 	socket.emit('connected',{})
@@ -281,7 +288,7 @@ io.on('connection', function(socket){
 		
 		// console.log("AUTH_INFO", SOCKET_AUTH_MAP, data);
 		if (user_id === undefined){
-			console.log("yep, undef")
+			// console.log("yep, undef")
 			socket.emit('server_fault', {})
 		}else{
 			// var actors = Actors[user_id]
@@ -301,13 +308,13 @@ io.on('connection', function(socket){
 			//console.log("AU", auth_info);
 			//if (auth_info)
 			var S = Scenes[action.actor.scene]
-			console.log("SENDING", S === undefined);
+			//console.log("SENDING", S === undefined);
 			// console.log("SCENE", S);
 			if (S === undefined){return;}
 			_.each(S.actors, function(a,aguid){
-				console.log("AA", a.user_id !== user_id, a.user_id != user_id);
+				//console.log("AA", a.user_id !== user_id, a.user_id != user_id);
 				if (a.user_id != user_id){
-					console.log("AB", a.user_id,  user_id);
+					//console.log("AB", a.user_id,  user_id);
 					var socket = Sockets[a.user_id]
 					if(socket === undefined) return;
 					if(on_off)socket.emit('player_controls_on', action)
@@ -478,25 +485,7 @@ simulator.on('message', function(msg){
 		
 	}
 
-	/*
-	switch(msg.type){
-	case "player-missions":
-		con_sock.emit("player-missions", msg)
-		break
-	case "mission-positions":
-		con_sock.emit("mission-positions", msg)
-		break
-	case "user-positions":
-		con_sock.emit('user-positions', msg)
-		break
-	case "user-notify":
-		con_sock.emit('user-notify', msg);
-		break;
-	case "actors":
-		con_sock.emit('actors', msg);
-		break;
-	
-	}*/
+
 		
 	
 })

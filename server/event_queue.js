@@ -79,7 +79,7 @@ EventQueue.prototype.process = function(now, processor){
 			self._include_last_once = false;
 			_.each(self._events[ts], function(e){
 				if(!is_browser){
-					console.log("processing", e.type)
+					// console.log("processing", e.type)
 				}
 				
 				// console.log("q>>", self._last_processed, e.ident, now, e)
