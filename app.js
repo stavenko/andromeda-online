@@ -1,4 +1,6 @@
 var app = require('express')()
+  , fs    = require('fs')
+
   , config= require('./config')
   , _     = require('underscore')
   , crypto = require('crypto')
@@ -128,6 +130,7 @@ app.configure(function(){
 		}
 	))
 	app.use(express.static(__dirname + '/public'))
+    app.use('/bower_components',  express.static(__dirname + '/bower_components'));
     
 	app.use(express.cookieParser());
 	app.use(express.bodyParser());
@@ -244,6 +247,7 @@ io.on('connection', function(socket){
 			socket.emit('server_fault', {})
 		}else{
 			ConsoleSockets[user_id] = socket // one socket per login | several actors per socket
+            console.log("user-connected");
 			simulator.send({type:'user-connected', user_id: user_id} )
 			
 		}
@@ -475,7 +479,8 @@ simulator.on('message', function(msg){
 		var con_sock = ConsoleSockets[msg.user_id];
 	}
 	// console.log("BS", msg);
-	con_sock.emit(msg.type, msg);
+	con_sock.emit("user-console", msg);
+    
 	if( msg.type ==='scenes'){ // Сцены какого-то игрока
 		// Кэшируем сцены напрямую - для того чтобы можно было прямо здесь отдавать всем желающим контролы других игроков - еще до того, 
 		// как они полетят в симуляцию
@@ -557,7 +562,24 @@ app.get('/console/', ensureAuthenticated, function(req, res){
 	SocketAuthMap[req.session.auth_hashes[user.id] ] = user.id; // Грязный хак - обновляем состояние аутентификации из сессии
 	res.render('console', { 'user': req.user, auth_hash: req.session.auth_hashes[req.user.id]});
 })
+
+app.get('/aconsole/', ensureAuthenticated, function(req, res){
+    fs.readFile("templates/aconsole.html", function(err, data){
+        res.end(data);
+        // fo.close();     
+    });
+	// , { 'user': req.user, auth_hash: req.session.auth_hashes[req.user.id]});
+})
+app.get('/my-auth-hash/', ensureAuthenticated, function(req, res){
+	var user = req.user
+	user.id = parseInt(user.id);
+	SocketAuthMap[req.session.auth_hashes[user.id] ] = user.id; // Грязный хак - обновляем состояние аутентификации из сессии
+	res.end( JSON.stringify({ hash: req.session.auth_hashes[req.user.id]}) );
+})
+
+
 app.get('/', function(req, res){
+    
 	res.render('index', {'missions':{}, 'user': req.user});
 })
 

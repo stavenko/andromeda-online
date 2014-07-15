@@ -1,20 +1,36 @@
 doctype html
 html
-	head
-		title Консоль управления 
-		script(type="text/javascript", src="/js/bootstrap.min.js")
-		script(type="text/javascript", src="/js/jstz.min.js")
-		script(src="/socket.io/socket.io.js")
+    head
+        title Консоль управления 
+        //- 
+           script(type="text/javascript", src="/js/bootstrap.min.js")
+        script(type="text/javascript", src="/js/jstz.min.js")
+        script(src="/socket.io/socket.io.js")
+        script(src="/js/angular.min.js")
+        script(src="/js/angular-tree-control.js")
         
-		block css
-			link(rel='stylesheet', href='/css/bootstrap.min.css')
-			link(rel='stylesheet', href='/css/bootstrap-glyphicons.css')
-			// link(href='http://fonts.googleapis.com/css?family=Ubuntu:300,400,500,400italic&subset=latin,cyrillic', rel='stylesheet', type='text/css')
-			link(rel='stylesheet', href='/css/style.css')
+        script(src="/js/user-console.min.js")
+    
+        script.
+            localStorage.setItem('AUTH_HASH', "#{auth_hash}");
+        block css
+          link(rel='stylesheet', href='/css/bootstrap.min.css')
+          link(rel='stylesheet', href='/css/bootstrap-glyphicons.css')
+          // link(href='http://fonts.googleapis.com/css?family=Ubuntu:300,400,500,400italic&subset=latin,cyrillic', rel='stylesheet', type='text/css')
+          link(rel='stylesheet', href='/css/style.css')
+         
 
-		script.
-			$(function(){
-				var C = new Cons("#{auth_hash}")
-				C.init();
-			})
-	body
+    body(ng-app="user-console")
+        .container
+            .row
+                .col-md-2
+                    treecontrol.tree-classic(tree-model="dataForTheTree", options="treeOptions", on-selection="showSelected(node)", selected-node="node1"
+                        employee: {{node.name}} age {{node.age}}
+
+    
+        div(ng-controller="userConstructionCont")
+            |State:
+            span 
+                {{ bookmarkedObjects }}
+        
+    

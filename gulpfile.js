@@ -9,7 +9,8 @@ var del = require('del');
 
 var paths = {
     engine_scripts: ["./server/entry.js"],
-    client_scripts: ["./client/*"]
+    client_scripts: ["./client/*"],
+    console_scripts:["./user-console/*"]
     
   // scripts: ['client/js/**/*.coffee', '!client/external/**/*.coffee'],
   
@@ -53,6 +54,19 @@ gulp.task('client_scripts', ['clean'], function() {
   .pipe(gulp.dest('public/js/gl/'));
 });
 
+gulp.task('console_scripts', ['clean'], function() {
+  // Minify and copy all JavaScript (except vendor scripts)
+  // with sourcemaps all the way down
+  return gulp.src(paths.console_scripts)
+  .pipe(sourcemaps.init())
+    //.pipe(coffee())
+    // .pipe(uglify())
+    .pipe(concat('user-console.min.js'))
+  .pipe(sourcemaps.write())
+  .pipe(gulp.dest('public/js/'));
+});
+
+
 // Copy all static images
 /*
 gulp.task('images', ['clean'], function() {
@@ -68,10 +82,12 @@ gulp.task('watch', function() {
   
   gulp.watch(paths.client_scripts, ['client_scripts']);
   
+  gulp.watch(paths.console_scripts, ['console_scripts']);
+  
   // gulp.watch(paths.images, ['images']);
 });
 
 // The default task (called when you run `gulp` from cli)
 // gulp.task('default', ['watch', 'scripts', 'images']);
 
-gulp.task('default', ['watch', 'engine_scripts', "client_scripts"]);
+gulp.task('default', ['watch', 'engine_scripts', "client_scripts", "console_scripts"]);

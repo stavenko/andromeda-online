@@ -1,0 +1,42 @@
+<html>
+    <head>
+        <title> Консоль управления </title>
+        <script src="/socket.io/socket.io.js"> </script>
+        <script src="/bower_components/angular/angular.js"></script>
+        <script src="/bower_components/angular-route/angular-route.min.js"></script>
+
+        <script src="/bower_components/angular-tree-control/angular-tree-control.js" ></script>
+        
+        
+        <script src="/js/user-console.min.js"> </script>
+        <link rel='stylesheet' href='/css/bootstrap.min.css' > 
+        <link rel='stylesheet' href='/css/bootstrap-glyphicons.css' > 
+        <link rel="stylesheet" type="text/css" href="/css/tree-control.css">
+        <!-- link for CSS when using the tree as an attribute -->
+        <link rel="stylesheet" type="text/css" href="/css/tree-control-attribute.css">
+    </head>
+    <body ng-app="user-console">
+        <div class="container" >
+            <div class="row" ng-controller="consoleBrowser ">
+                <div class="col-md-4" >
+                    
+                  
+                    <treecontrol class="tree-classic" 
+                                 tree-model="dataForTheTree"
+                                 options="treeOptions"
+                                 on-selection="showSelected(node)"
+                                 selected-node="selected_node">
+                         {{node.label}} 
+                    </treecontrol>
+                </div>
+                <div class="col-md-8" style="background-color:#eee">
+                    <div ng-view > a</div>
+
+                    
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
+        
+    

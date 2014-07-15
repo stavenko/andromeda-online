@@ -1,5 +1,6 @@
 var Cons = function(auth_hash){
 	var origin = window.location.origin
+    console.log("O", origin);
 	//console.log("What if I try to do it twice");
 	this.socket =  io.connect(origin);
 	this.auth_hash = auth_hash;

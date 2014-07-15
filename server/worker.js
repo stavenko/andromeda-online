@@ -29,6 +29,26 @@ process.on('message', function(msg){
 		process.send({type:'mission-positions', positions: ps, MGUID:msg.MGUID, user_id:msg.user_id });
 		
 	}
+    var sendBookmarkedObjects = function(){
+        var objs = [
+            { 
+                name: "Ship building plant",
+                type: "plant",
+                orbit: {}
+            },
+            { 
+                name: "Cute asteroid",
+                type: "rock",
+                orbit: {}
+            },
+            
+                
+        
+        ];
+        process.send({type:'bookmarked-objects', objects: objs, user_id:msg.user_id })
+        
+    }
+    
 	var send_user_positions = function(){
 		var user_positions = Sim.getUserPositions(msg.user_id);
 		// console.log("share");
@@ -63,11 +83,9 @@ process.on('message', function(msg){
 		})
 		break;
 	case 'user-connected':
-		send_player_missions();
-		send_user_positions();
-		//var user_positions = Sim.getUserPositions(msg.user_id);
-		//process.send({type:'user-positions', positions:user_positions, MGUID: msg.MGUID, user_id: msg.user_id })
-		
+        // Send him something, he waits:
+        sendBookmarkedObjects();
+        
 		break;
 	case 'get-mission-positions':
 		get_mission_positions()

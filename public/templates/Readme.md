@@ -1,0 +1,1 @@
+This directory contains Angular view templates
