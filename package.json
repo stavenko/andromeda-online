@@ -21,12 +21,15 @@
     "node": "0.10.x"
   },
   "devDependencies": {
+    "chai": "^1.9.1",
     "del": "^0.1.1",
     "gulp": "^3.8.6",
     "gulp-browserify": "^0.5.0",
     "gulp-concat": "^2.3.3",
+    "gulp-mocha": "^0.5.1",
     "gulp-rename": "^1.2.0",
     "gulp-sourcemaps": "^1.0.0",
-    "gulp-uglify": "^0.3.1"
+    "gulp-uglify": "^0.3.1",
+    "mocha": "^1.20.1"
   }
 }

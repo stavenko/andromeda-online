@@ -4,7 +4,8 @@ var concat = require('gulp-concat');
 var uglify = require('gulp-uglify');
 var sourcemaps = require('gulp-sourcemaps');
 var browserify = require('gulp-browserify');
-var rename = require('gulp-rename')
+var rename = require('gulp-rename');
+var mocha  = require('gulp-mocha');
 var del = require('del');
 
 var paths = {
@@ -23,6 +24,11 @@ gulp.task('clean', function(cb) {
   // You can use multiple globbing patterns as you would with `gulp.src`
   del(['build'], cb);
 });
+
+gulp.task('test', function(){
+    return gulp.src("./test/*")
+    .pipe(mocha({reporter:"nyan"}));
+})
 
 gulp.task('engine_scripts', ['clean'], function() {
   // Minify and copy all JavaScript (except vendor scripts)
@@ -90,4 +96,4 @@ gulp.task('watch', function() {
 // The default task (called when you run `gulp` from cli)
 // gulp.task('default', ['watch', 'scripts', 'images']);
 
-gulp.task('default', ['watch', 'engine_scripts', "client_scripts", "console_scripts"]);
+gulp.task('default', ['watch', 'test', 'engine_scripts', "client_scripts", "console_scripts"]);
