@@ -97,21 +97,7 @@ var create_mission_json = function(  ){
 										"direction":[0,0,1]
 										}
 									},
-						"turrets":{
-							"front":{"type":"ballistic",
-									 "position": [0,0.5,0],
-								 	 "magazine_capacity": 100,
-								 	 "turret_shoot_rate": 2000,
-									 "turret_reload_rate": 10000
-								 },
-							"back":{"type":"ballistic",
-									 "position": [0,0,2],
-								 	 "magazine_capacity": 100,
-								 	 "turret_shoot_rate": 2000,
-									 "turret_reload_rate": 10000
-								 }
 
-						},
                         devices:devices,
                         power_source:8,
                         foreign_processor:14,
@@ -171,21 +157,7 @@ var create_mission_json = function(  ){
 			 							"direction":[0,0,1]
 			 							}
 									},
-									"turrets":{
-										"front":{"type":"ballistic",
-												 "position": [0,0.5,0],
-											 	 "magazine_capacity": 100,
-											 	 "turret_shoot_rate": 2000,
-												 "turret_reload_rate": 10000
-											 },
-		 								"back":{"type":"ballistic",
-		 										 "position": [0,0,2],
-											 	 "magazine_capacity": 100,
-											 	 "turret_shoot_rate": 2000,
-									 			"turret_reload_rate": 10000
-											}
-
-									},
+									
                                     devices:devices,
                                     power_source:8,
                                     foreign_processor:14,
@@ -321,7 +293,7 @@ Mission.prototype = {
 		// console.log(Scene);
 		if(! this._scene_loaded){
 			// console.log("DO PREP SCENE")
-            console.log("TTT",bcaster);
+            // console.log("TTT",bcaster);
 			this._scene = new Scene(bcaster);
             this._scene.gx = this.mission.coords[0];
             this._scene.gy = this.mission.coords[1];

@@ -7,12 +7,18 @@ var EQ = require("./event_queue")
 
 var _     = require('underscore');
 
-var SceneObject = function(broadcaster){
+var SceneObject = function(threeScene, W){
 	this.description= "Scene routines"
 	this.GUID =  u.make_guid();
-	this.broadcaster = broadcaster;
-	console.log("thbc", this.broadcaster);
-	
+	// this.broadcaster = broadcaster;
+	// console.log("thbc", this.broadcaster);
+    this.use_client_rendering = false;
+    if(threeScene !== undefined && W !== undefined){
+    	this.W = W;
+    	this.three_scene = threeScene
+        this.use_client_rendering = true;
+    }
+    
 	this._create();
 	
 }
@@ -42,7 +48,7 @@ if(typeof window === 'undefined'){
 }
 
 Scene.get_actor = function(actor_guid){
-	return this.actors[actor_guid];
+	return this.get_actors()[actor_guid];
 }
 
 
@@ -53,7 +59,6 @@ Scene.mesh_for = function(actor_guid){
 
 Scene.create = function(){
 	this._create();
-	//console.log( "CLOCK", this.clock);
 	
 	return this;
 }
@@ -65,19 +70,28 @@ Scene._create = function(){
 	this._scene_object_cache = {}
 	this._scene_obj_actors={}
 	this._network_messages = [];
+    this._last_user_activity = new Date().getTime();
 	this._last_server_report = {}
+	this.loaded_objects_count = 0
+	this._model_cache = {}
+    
+    
+	this._server_sync_queue = [];
+	this._server_last_sended = 0;
+	this.meshes = {};
+    this.actors = {};
+	this.loader =  new this.THREE.JSONLoader();
+	this.total_objects_count = 0;
+	
 	this.mesh_last_states = {}
 	this.mesh_actions = {};
 	this._target_aq = 0.01; // seconds to get to sync target
 	this.is_loaded = false
 	this._d = false
-	this._scene ={actors:{}, GUID: this.GUID, objects:{}, coords:[this.gx, this.gy, this.gz]  } 
-	
-	
-	// this.simulation_runs = false
-	// console.log(this.clock);
+    
 	
 }
+/*
 Scene.update_from_world = function(){
 	// globalx-y-z - galaxy coords with 1 meter accuracy
 	var closest_scene_with_distance = this.get_closest_scene(this.gx, this.gy, this.gz);
@@ -101,12 +115,16 @@ Scene.update_from_world = function(){
 	return this
 	
 }
+*/
+
 Scene.get_actors = function(){
-	return this._scene.actors
+	return this.actors
 }
-Scene.get_objects = function(){
-	return this._scene.objects
+
+Scene.get_object = function(guid){
+	return this.meshes[guid].type;
 }
+
 Scene.get_json = function(){
 	return this._scene
 }
@@ -117,143 +135,111 @@ Scene.get_objects_in = function(){
 	return [];
 }
 Scene.join_object = function( object ){
-	this._scene.objects[object.GUID] = object
+    
+	this.load_object(object, object.GUID);
 	
 
 }
 Scene.join_actor = function( actor ){
 
-			console.log("JOINING");
-	this._scene.actors[actor.GUID] = actor;
-	if(this._scene.actor_wp_ix === undefined){
-		this._scene.actor_wp_ix = {}
+    // console.log("JOINING");
+	this.actors[actor.GUID] = actor;
+	if(this.actor_wp_ix === undefined){
+		this.actor_wp_ix = {}
 		
 	}else{
-		if (this._scene.actor_wp_ix[actor.control.object_guid] === undefined){
-			this._scene.actor_wp_ix[actor.control.object_guid] = {}
+		if (this.actor_wp_ix[actor.control.object_guid] === undefined){
+			this.actor_wp_ix[actor.control.object_guid] = {}
 		}else{
-			this._scene.actor_wp_ix[actor.control.object_guid][actor.wp] = actor;
+			this.actor_wp_ix[actor.control.object_guid][actor.wp] = actor;
 		}
 	}
-	
-	// console.log("GET OBJ",this._scene_obj_actors,  actor.control.object_guid)
-	
-	// this._scene_obj_actors[actor.control.object_guid].push(actor)
-	
 	return this
 	
-}
-Scene.set_from_json = function(object){
-	console.log(">>BC",this.broadcaster);
-	this._scene = object
-	
-	this.GUID = object.GUID
-	this.gx = object.coords[0]
-	this.gy = object.coords[1]
-	this.gz = object.coords[2]
-	this.update_from_world( )
-	
-	
+    
 }
 
-// Scene.controllable = function(login){
-	
-//	return this.meshes[this.actors[login].control.object_guid]
-// }
+
 Scene.addActions = function(mesh_guid, actions){
 	this.mesh_actions[mesh_guid] = actions
 }
 Scene.getActions = function(){
 	return this.mesh_actions;
 }
+
+Scene.load_object = function(object, ix){
+    
+    var self = this;
+	self.total_objects_count +=1;
+    
+	
+	if (! self.ajax_load_models){
+		var m = object.ship_type.model_3d.split('/')[2];
+		var model_path= "./public/models/" + m
+	}
+
+	
+	var rf = function(){
+		var with_geom_and_mat = function(geom, mat){
+			var m = new self.THREE.Matrix4()
+			m.identity()
+		
+			
+			var mesh = AObject(self, geom, mat) ;//self.THREE.Mesh( geom, mat );
+			mesh.json = object;
+			mesh.load_json();
+			var actions = mesh.getActionList();
+			// console.log("ACTIONS", object.GUID, actions);
+			self.addActions(object.GUID, actions);
+			
+			if (self.do_prepare_rendering){
+				if (object.type !=='static'){
+                    // console.log(">>>>");
+					var label = SpriteUtils.makeTextSprite("mesh: " + ix);
+					label.position = new self.THREE.Vector3(0,0,0);
+					mesh.add(label);
+					// console.log("added");
+				}
+				self.three_scene.add( mesh );
+		
+			}
+			
+			self.meshes[ object.GUID ] = mesh;
+			self.loaded_objects_count +=1;
+			self._model_loaded( ix )
+		}
+		
+		
+		if(self.ajax_load_models){
+			self._get_model(object.ship_type.model_3d,self._ajax_getter, with_geom_and_mat)
+		}else{
+			self._get_model(model_path, self._fs_getter, with_geom_and_mat)
+
+		}
+	}
+	setTimeout(rf,1);
+}
 Scene.load = function(onload, three_scene, W){
 	// three scene - is a param for adding meshes to
 	var self = this;
 	//console.log('loading');
 	// DEBUG THINGS
-	this._server_sync_queue = [];
-	this._server_last_sended = 0;
-	self.total = new self.THREE.Vector3();
-	self.total_t=0;
-	self.controller_map= Controller.ControllersActionMap()
+	//self.total = new self.THREE.Vector3();
+	//self.total_t=0;
+	//self.controller_map= Controller.ControllersActionMap()
+	self._call_back = onload;
 	
+    this._server_sync_queue = [];
+	this._server_last_sended = 0;
 	self.meshes = {}
 	self.loader =  new self.THREE.JSONLoader();
 	self.total_objects_count = 0;
-	self._call_back = onload;
 	
 	if(typeof window !== 'undefined'){
 		self.three_scene = three_scene
 		self.W = W;
 	}
 	
-
-	var json = this._scene
-	
-	
-	self.actors = json.actors;
-	
-	// self.automatic actors - run in loops
-	self.automatic_actors = {};
-	// console.log(self.actors)
-	
-	self.loaded_objects_count = 0
-	
-	// console.log(self.actors);
-	// console.log(json);
-	self._model_cache = {}
-	//console.log(this);
-	_.each(json.objects, function( object,ix ){
-		self.total_objects_count +=1;
-		
-		if (! self.ajax_load_models){
-			var m = object.model_3d.split('/')[2];
-			var model_path= "./public/models/" + m
-		}
-
-		
-		var rf = function(){
-			var with_geom_and_mat = function(geom, mat){
-				var m = new self.THREE.Matrix4()
-				m.identity()
-			
-				
-				var mesh = AObject(self, geom, mat) ;//self.THREE.Mesh( geom, mat );
-				mesh.json = object;
-				mesh.load_json();
-				var actions = mesh.getActionList();
-				
-				self.addActions(object.GUID, actions);
-				
-				if (self.do_prepare_rendering){
-					if (object.type !=='static'){
-                        console.log(">>>>");
-						var label = SpriteUtils.makeTextSprite("mesh: " + ix);
-						label.position = new self.THREE.Vector3(0,0,0);
-						mesh.add(label);
-						// console.log("added");
-					}
-					three_scene.add( mesh );
-			
-				}
-				
-				self.meshes[ object.GUID ] = mesh;
-				self.loaded_objects_count +=1;
-				self._model_loaded( ix )
-			}
-			
-			
-			if(self.ajax_load_models){
-				self._get_model(object.model_3d,self._ajax_getter, with_geom_and_mat)
-			}else{
-				self._get_model(model_path, self._fs_getter, with_geom_and_mat)
-	
-			}
-		}
-		setTimeout(rf,1);
-		
-	})
-			
 	
 	
 },
@@ -314,8 +300,8 @@ Scene._model_loaded = function(ix){
 	if (this.loaded_objects_count == this.total_objects_count){
 		// scene loaded
 		this.is_loaded = true;
-		if  (this._call_back){
-			this._call_back(this)
+		if  (this.onLoadCallback){
+			this.onLoadCallback(this)
 		}
 	}else{
 
@@ -339,7 +325,7 @@ Scene.get_almanach = function(){
 	
 }
 Scene.createSettingAction =function(actor, setting_name, setting_value, is_switch){
-	console.log("A", actor)
+	/// console.log("A", actor)
 	var action = {
 		type: 1000,
 		name:setting_name,
@@ -378,7 +364,10 @@ Scene.sendAction= function(actor, name, val, is_switch){
 	
 }
 
-
+Scene.unload = function(callback){
+    console.log("We must now save all object states and report with callback");
+    callback();
+}
 
 Scene.tick = function(){
 	var self = this;
@@ -388,6 +377,7 @@ Scene.tick = function(){
 		self.tick_num = 0;
 	}
 	var now = new Date().getTime();
+    
 	// console.log("tick");
 	// console.log('.');
 	//var time_inc = 0;
@@ -409,7 +399,17 @@ Scene.tick = function(){
 				_.each(new_actions, function(a){
 					// Each action put to mesh queue and then, push to network queue
 					self._addToServerQueue(a);
-					self.meshes[a.mesh].eventManager.add(a);
+                    console.log("ADDM",  a.ident, now, a.ident - self.W._time_diff, self.W._time_diff);
+					self.meshes[a.mesh].eventManager.add(a, a.ident  );
+                    
+                    //if(self.W !== undefined){
+                	// mesh.eventManager.add(action, action.ident - W._time_diff);
+            
+                        //}else{ // Если нету - значит на сервере - и значит строго
+                	//	mesh.eventManager.add(action, action.ident);
+            
+                    //}
+                    
 					
 				})
 			}
@@ -421,8 +421,16 @@ Scene.tick = function(){
 	}
 	var nm = self.getNetworkActions();
 	_.each(nm,function(action){
+        // Если у нас есть объект W - то мы должны исполнять акции по времени не учитывая время задержки
 		var mesh = self.meshes[action.mesh];
-		mesh.eventManager.add(action, action.ts);
+        
+        //if(self.W !== undefined){
+    		//mesh.eventManager.add(action, action.ident - W._time_diff);
+            
+            //}else{ // Если нету - значит на сервере - и значит строго
+    	mesh.eventManager.add(action, action.ident);
+            
+            //}
 	})
 
 	
@@ -443,12 +451,13 @@ Scene.tick = function(){
 		}
 		// console.log("GOING TO actions", self.meshes[i].workpoint_states['Piloting']['s_armor0_state'])
 		if(self.W){
-			var q_now =  now - self.W._time_diff;
+			var q_now =  now + self.W._time_diff;
 		}else{
 			var q_now = now;
 		}
 		// console.log("befproc", mesh.eventManager._stamps.length);
 		mesh.eventManager.process(q_now, function(event){
+            console.log("PROCESS EVENT", event);
 			mesh.controllers[event.dev].process(event);
             if(self.W){
                 if(mesh.uis[event.dev] && mesh.uis[event.dev].onAction){
@@ -476,6 +485,8 @@ Scene.tick = function(){
 		
 	})
 	self.last_ts = now
+    
+    
 	
 }
 Scene.getNetworkActions = function(){
@@ -488,7 +499,7 @@ Scene.getLocalActions = function(now){
 		if(this.GUID == this.W.get_main_viewport().scene){
 			var acts =this.W.Inputs.getLatestActions(this.GUID, now);  
 			if(acts.length > 0){
-				console.log("Actions, got by scene", acts);
+				// console.log("Actions, got by scene", acts);
 			}
 			return acts;
 			
@@ -510,7 +521,7 @@ Scene.makeSceneBroadcast = function(action){
 	}
 }
 Scene.removeObject = function (mesh) {
-    console.log("RENDR", this.do_prepare_rendering);
+    // console.log("RENDR", this.do_prepare_rendering);
     if (this.do_prepare_rendering) {
         this.createBlast( mesh );
         this.three_scene.remove(mesh);
@@ -547,6 +558,8 @@ Scene._flushServerQueue = function(){
 	return {scene:this.GUID, actions:ret};
 }
 Scene.addNetworkMessage = function(mes){
+    this._last_user_activity = new Date().getTime();
+    console.log("Added activity", mes);
 	this._network_messages.push(mes) // = this._network_messages.concat(mes)
 }
 

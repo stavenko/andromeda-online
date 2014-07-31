@@ -22,7 +22,7 @@ window.World.load_scene = function (scene_js, onload){
 window.World.initSun = function(scene){
 	
 	var flareColor = new THREE.Color( 0xffffff );
-	var sl = _.clone(scene._scene.sunLightColor);
+	var sl = _.clone([Math.random(), 0.8, 0.9]);
 	sl[2] += 0.5
 	flareColor.setHSL.apply(flareColor, sl);
 	
@@ -64,7 +64,7 @@ window.World.initSun = function(scene){
 
 	}
 	lensFlare.customUpdateCallback = lensFlareUpdateCallback;
-	lensFlare.position = new THREE.Vector3().fromArray(scene._scene.sunDirection).multiplyScalar(500)
+	lensFlare.position = new THREE.Vector3().fromArray([0,1,0]).multiplyScalar(500)
 	
 	
 	// this.sunBillboard = new THREE.Sprite(textureFlare0 )

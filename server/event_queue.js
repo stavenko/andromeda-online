@@ -24,11 +24,11 @@ var EventQueue = function(mesh_id){
 	
 	// this._stamps_ix
 }
-EventQueue.prototype.add = function( e, _ ){
+EventQueue.prototype.add = function( e, ts ){
 	//if(is_browser==false){
 	//	console.log("ADDING", e, ts);
 	//}
-	var ts = e.ident;
+	// var ts = e.ident;
 	if(this._events[ts]){
 		this._events[ts].push(e);	
 	}else{
@@ -61,21 +61,15 @@ EventQueue.prototype.process = function(now, processor){
 	var processed_events = 0;
 	_.each(this._stamps, function(ts, ix){
 		
-		// console.log("crit", ts, ix);
-		
 		if (ts <= self._remove_before){
 			removed_ixes.push(ix);
 			delete self._events[ts];
 			return;
 		}
-		// console.log("FFF", self._last_processed, ts, now );
 		var is_from = self._include_last_once? self._last_processed <= ts : self._last_processed < ts;
-
-		//L.setValue("IF" + self._mesh_id, is_from)
-		//L.setValue("Includeonce " + self._mesh_id, self._include_last_once)
+		console.log("FFF", [is_from,ts <= now], self._last_processed, ts, now, ts-now );
 		
 		if(is_from && ts <= now){
-			// console.log("NO ACTIONS? KIDDING?! ", self._events[ts] )
 			self._include_last_once = false;
 			_.each(self._events[ts], function(e){
 				if(!is_browser){

@@ -90,8 +90,6 @@ app.constant("moduleUrls", getUrls(uMap));
 app.constant("navTree", getUrlTree(getUrls(uMap) ) );
 
 app.config(["$routeProvider", "moduleUrlMap",  function($routeProvider, moduleUrlMap){
-    // $log.log(">>>");
-    // $routeScope['user-console-globals'] = {}
     
     var rp = $routeProvider;
     var map  = getUrls(moduleUrlMap);
@@ -101,18 +99,6 @@ app.config(["$routeProvider", "moduleUrlMap",  function($routeProvider, moduleUr
         rp =  rp.when(url, map[url].ang)
     }
     // rp.otherwise({redirectTo:"/"})
-    /*
-    $routeProvider
-    .when("/assets",{
-        controller:"UserAllAssets",
-        templateUrl:"/templates/UserAllAssets.html"
-    })
-    .when("/", {
-        controller: "rootCont",
-        templateUrl:"/templates/Root.html"
-        
-    })
-    .otherwise({redirectTo:"/"})
-    */
+
 }]);
 

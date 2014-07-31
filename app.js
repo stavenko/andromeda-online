@@ -145,33 +145,7 @@ app.configure(function(){
     app.use(passport.session());
 	
     
-    /*
-    
-    var engineBundle = browserify_express({
-        entry: __dirname + '/server/entry.js',
-		ignore: ["./three.min.node.js", "./three.node.js"],
-        watch: __dirname + '/server/',
-        mount: '/appjs/engine.js',
-        verbose: true,
-        minify: false,
-        bundle_opts: { debug: true }, // enable inline sourcemap on js files 
-        write_file: __dirname + '/public/js/gl/engine.js'
-    });
-    
-    app.use(engineBundle);
-    var clientBundle = browserify_express({
-        entry: __dirname + '/client/entry.js',
-		ignore: ["./three.min.node.js", "./three.node.js"],
-        watch: __dirname + '/client/',
-        mount: '/appjs/client.js',
-        verbose: true,
-        minify: false,
-        bundle_opts: { debug: true }, // enable inline sourcemap on js files 
-        write_file: __dirname + '/public/js/gl/client.js'
-    });
-
-    // app.use( clientBundle );
-    */
+   
 	
     app.use(app.router);
 	
@@ -190,13 +164,6 @@ server.listen(port)
 
 
 
-
-//var SCENES = {} // guid : scene
-//var MISSIONS= {} // guid : mission
-// var LOGINS = {} // login : [{object, scene, mission}] map
-//var LOGINS = {}// login_id: [{s:scene_guid}|{a:actor_guid}]
-//var ACTORS = {} // login: actor map (actor - is a repr of object, that controls some aspect of a object of some scene)
-// var SCENE_SOCKET_MAP = {} // SCENE_GUID: Socket
 var Scenes = {} 
 var Sockets = {} // login_guid: web-socket
 var ConsoleSockets = {} // login_guid: web-socket
@@ -204,10 +171,7 @@ var SocketAuthMap = {} // auth_hash: login  - This is for authencitation purpose
 
 
 var Globals = {
-//	Scenes:SCENES,
-//	Missions:MISSIONS,
-//	Actors:ACTORS,
-//	Sockets:SOCKET_MAP
+
 }
 
 
@@ -218,78 +182,78 @@ var Globals = {
 	// console.log(arguments);
 	//})
 	
-simulator = fork('./server/worker.js'); 
+var Database = require("./server/database")
 
+simulator = fork('./server/worker.js'); 
 simulator.send({'hi':'there'});
 
 
 
 io.on('connection', function(socket){
+    console.log("con")
 	socket.emit('connected',{})
-	
-	var newActortoSceneBcast = function(Scene, actor){
-		var new_actor = Scene.actors[actor]
-		_.each(SOCKET_MAP, function(s,k){
-			if (_(Scene.get_actors()).keys().indexOf(k) != -1){
-				s.emit("join_actor", new_actor)
-			}
-			
-		})
-	}
+    console.log("emit")
 	// КОНСОЛЬ УПРАВЛЕНИЯ
 	socket.on("auth_hash_console", function(data){
-		//console.log(data)
+		console.log("AHC", data)
 		var user_id = SocketAuthMap[data.auth];
 	
 		// console.log("AUTH_INFO", SOCKET_AUTH_MAP, data);
 		if (user_id === undefined){
-			console.log("yep, undef")
-			socket.emit('server_fault', {})
+			// console.log("yep, undef")
+			// socket.emit('server_fault', {})
 		}else{
 			ConsoleSockets[user_id] = socket // one socket per login | several actors per socket
-            console.log("user-connected");
-			simulator.send({type:'user-connected', user_id: user_id} )
+            // console.log("user-connected", user_id);
+            // SEND him his ID // W stands for Watcher
+            socket.emit("auth_completed", {})
+			
 			
 		}
-		
-		socket.on('create-mission', function(){
-			simulator.send({type:'create-mission', mission_type:1, user_id:user_id })
-			// res.redirect('/console/');
-			
-		})
-		socket.on('share-position', function(msg){
-			simulator.send({type:'share-position',  user_id:user_id, position:msg.position, share_type:msg.share_type, MGUID:msg.MGUID})
-			// res.redirect('/console/');
-			
-		})
-		
-		socket.on('get-mission-positions', function(msg){
-			msg.type='get-mission-positions';
-			msg.user_id = user_id;
-			simulator.send(msg);
-		})
-		
-		socket.on('join-position', function(msg){
-			msg.type = 'join-position';
-			msg.user_id = user_id;
-			simulator.send(msg);
-		})
-		
-		socket.on('start-mission', function(msg){
-			msg.type = 'start-mission';
-			msg.user_id = user_id;
-			simulator.send(msg);
-		})
-		
+        socket.on("Q", function(msg){
+            // console.log("QQQ", msg);
+            
+            if(msg.p['user_id'] === true){
+                msg.p.user_id = user_id;
+            }
+            Database.query(msg.T, msg.p, function(data){
+                var message = {cbix:msg.cbix, d:data};
+                //console.log("message on the way");
+                socket.emit("Q", message);
+                
+            });
+        })
+        
+        socket.on("R", function(msg){
+            if(msg.p['user_id'] === true){
+                msg.p.user_id = user_id;
+            }
+            msg.type = msg.T;
+            simulator.send(msg);
+            
+        })
+
 	})
 	
 	
 	
 	// СИМУЛЯЦИЯ
 	socket.on("auth_hash", function(data){
-		//console.log(data)
+        /*
+    	var newActortoSceneBcast = function(Scene, actor){
+    		var new_actor = Scene.actors[actor]
+        
+    		_.each(SOCKET_MAP, function(s,k){
+    			if (_(Scene.get_actors()).keys().indexOf(k) != -1){
+    				s.emit("join_actor", new_actor)
+    			}
+			
+    		})
+    	}
+	*/
+		console.log("AH", data);
 		var user_id = parseInt(SocketAuthMap[data.auth]);
-		
+		console.log(user_id);
 		// console.log("AUTH_INFO", SOCKET_AUTH_MAP, data);
 		if (user_id === undefined){
 			// console.log("yep, undef")
@@ -301,8 +265,43 @@ io.on('connection', function(socket){
 			//console.log("USER_ID", [user_id])
 			Sockets[user_id] = socket // one socket per login | several actors per socket
 			// console.log("SSSSSS", Sockets);
-			simulator.send({type:'request-actors', user_id: user_id} )
-			
+            socket.emit("auth_completed", {})
+            
+			// simulator.send({type:'request-contexts', user_id: user_id} )
+            console.log("sent");
+            
+            socket.on("Q", function(msg){
+                // console.log("QQQ", msg);
+            
+                if(msg.p['user_id'] === true){
+                    msg.p.user_id = user_id;
+                }
+                Database.query(msg.T, msg.p, function(data){
+                    var message = {cbix:msg.cbix, d:data};
+                    //console.log("message on the way");
+                    socket.emit("Q", message);
+                
+                });
+            })
+            socket.on("S", function(m){
+                var ts = new Date().getTime();
+                socket.emit('S', {d:{"ts":ts}, cbix:m.cbix})
+            })
+
+        
+            socket.on("R", function(msg){
+                if(msg.p['user_id'] === true){
+                    msg.p.user_id = user_id;
+                }
+                msg.type = msg.T;
+                simulator.send(msg);
+            
+            })
+            
+    		socket.on('A', function(message){
+    			simulator.send({type:'client-actions',data:message, user_id:user_id})
+    		})
+            
 			//	
 		}
 
@@ -325,140 +324,72 @@ io.on('connection', function(socket){
 					else socket.emit("player_controls_off", action)
 				}
 			})					
-				
-
-			
 		}
 		var applyAction = function(action_, on_off){
 			simulator.send({type:'action', user_id: user_id, action:action_, on_off:on_off})
-			//var action = action_.action;
-			//var actor = action_.actor
-			//var na = Controllers[login]
-			// console.log("acting", Controllers)
-			
-			//na.act(SCENES[actor.scene], action, on_off, actor)
 		}
-		
 		socket.on('user_actions', function(message){
-			/// var scene = message.scene;
-			/// var action = message.action;
-			// console.log("MESSAGE FROM CL", message); 
 			simulator.send({type:'client-actions',data:message, user_id:user_id})
-			
 		})
-		/*
-		socket.on('control_on', function(data){
-			// to_others = {login:login, action:data}
-			applyAction(data, true)
-			sendToSceneClients(data, true);
-			
-		})
-		socket.on('control_off', function(data){
-			//to_others = {login:login, action:data}
-			applyAction(data, false)
-			sendToSceneClients(data, false);
-		})
-		*/
 		socket.on("sync_request", function(data){
 			var ts = new Date().getTime();
 			socket.emit('clock_response', {"ts":ts})
-			// console.log("here some control data", data);
-			// simulator.send({type:'client-actions',data:data, user_id:user_id})
 		})
+        /*
 		socket.on('actor-joined', function(message){
-			// console.log("actor-joined");
 			simulator.send({type:'actor-joined',user_id:user_id, message:message})
 		})
 		socket.on('request_scenes', function(scenes){
-			// var scs = {}
-			// console.log( {user_id:user_id, scenes:scenes});
 			simulator.send( {type:'request-scenes',user_id:user_id, scenes:scenes.scenes})
-			//_.each(scenes.scenes, function(guid){
-				// Надо собрать json-ы всех имеющихся сцен
-				
-				//var sc = SCENES[guid] // Акторы уже здесь
-				//if (!sc.is_loaded){
-				//	sc.load()
-				//}
-				//scs[guid] = sc._scene 
-				//var na = Con.NetworkActor(SCENES, socket, function(){
-				
-					//})			
-				// Controllers[login] = na
-				
-				//})
-
-			// socket.emit('scenes', scs)
-			
-		})
-
+		})*/
 	})
 })
 
-// var Actors = {} // login_guid: [actor_guids]
-// 
-// var Controllers = {} // login: NetworkController
 
 simulator.on('message', function(msg){
-	// console.log("MSGG", msg);
-	//console.log('mmm', msg.type)
 	if ( msg.type === 'scene_sync' ){
-		//console.log("scene_sync", msg);
-		var scene_json = Scenes[msg.scene];
-		if (scene_json === undefined){
-			//console.log("no scene");
-			return;  // Незачен синхронизировать сцену для того, кто еще не подключился 
-		}
-		_.each(Scenes[msg.scene].actors, function(a){
-			var sock = Sockets[a.user_id];
-			if(sock) sock.emit(msg.type, {scene:msg.scene, almanach:msg.almanach });
+        // Рассылка состояний сцены всем её участникам
+		//var scene_json = Scenes[msg.scene];
+		//if (scene_json === undefined){
+		//	return;  // Незачен синхронизировать сцену для того, кто еще не подключился 
+		//}
+        //console.log("MESSAGE for sync", msg);
+        
+		_.each(msg.user_ids, function(uid){
+            if(uid in Sockets){
+    			var sock = Sockets[uid];
+                sock.emit("ALM", {scene:msg.scene, almanach:msg.almanach });
+            }
+			
 		})
 		return ;
 	}
-	if(msg.type === "player-inputs"){
-		
-		// console.log("how to send back to USERS", msg);
-		// FIRST get Scene of this message
-		//var scene  = undefined;
-		
+	if(msg.type === "F"){
+        //Расылка сообщений всем пользователям сцены
 		var sender_user_id = msg.user_id;
 		_.each(msg.to_actors, function(ac){
-			// var is_same_actor =  ac.GUID === msg.from_actor;
 			var is_same_user  =  parseInt(ac.user_id) === sender_user_id;
-			//console.log('USS', [ac.user_id, sender_user_id]);
 			if ( is_same_user   ) {
-				// console.log("the same");
 				return;
 			}
 			if(ac.user_id in Sockets){
-			
 				var socket = Sockets[ac.user_id]
-				// console.log("DO WE SEND INFO TO THE SAME PH OBJECT");
-				socket.emit('player-inputs', msg.action );
-				
+				socket.emit('F', msg.action );
 			}
-				
-			
-			
 		})
 	}
+    // Рассылка сообщений о приходе нового актора - сейчас не должно работать = неоттестировано
 	if(msg.type === "actor-joined"){
-		// console.log("AC_J", Sockets); 
-		
 		_.each(msg.to_actors, function(ac){
-			
 			if (ac.GUID !== msg.actor.GUID){
 				if (ac.user_id in Sockets){
-					
 					var socket = Sockets[ac.user_id]
-				
 					socket.emit('actor-joined', msg.actor );
 				}
-				
 			}
-			
 		})
 	}
+    // 
 	if(msg.type === "mesh-action"){
 		_.each(msg.to_actors, function(ac){
 			var socket = Sockets[ac.user_id];
@@ -468,18 +399,25 @@ simulator.on('message', function(msg){
 	
 	/// Сообщения ниже ни до кого не доберутся если они без пользователя
 	
+	console.log("WWW", msg);
 	
 	if (msg.user_id == undefined){
 		return;
 	}
-	//console.log("WWW", msg);
 	if(msg.recv === 'world'){
+        console.log( "which msg is here", msg );
 		var con_sock = Sockets[msg.user_id];
+        var t = msg.T;
+        
+        delete msg.user_id;
+        delete msg.recv;
+        con_sock.emit(t, msg);
 	}else{
 		var con_sock = ConsoleSockets[msg.user_id];
+    	con_sock.emit("user-console", msg);
+        
 	}
-	// console.log("BS", msg);
-	con_sock.emit("user-console", msg);
+	console.log("BS", msg);
     
 	if( msg.type ==='scenes'){ // Сцены какого-то игрока
 		// Кэшируем сцены напрямую - для того чтобы можно было прямо здесь отдавать всем желающим контролы других игроков - еще до того, 
@@ -495,40 +433,15 @@ simulator.on('message', function(msg){
 	
 })
 
-app.get('/webgl-test/', function(req,res){
-	res.render('webgl-test', {   })
-})
-
 
 
 app.get('/world/', ensureAuthenticated, function(req,res){
 	// console.log(req.session.auth_hashes);
-	res.render('world',{ 'user': req.user, auth_hash: req.session.auth_hashes[req.user.id]})
-})
-// Adding and joining missions
-// app.get('/missions/create/', ensureAuthenticated, function(req, res){
-//	simulator.send({type:'create_mission', mission_type:1, instantiator_id:req.user.id })
-// 	res.redirect('/console/');
-// })
-app.get('/missions/join/:m_id/', ensureAuthenticated, function(req, res){
-	var query = req.query;
-	
-	simulator.send({type:'join_to_mission', guid:req.params.m_id, user:req.user.id, command:query.command, object:query.object_guid, workpoint: query.workpoint})
-
-	res.redirect('/console/');
-})
-app.get('/missions/get_mission_state/:m_id/', ensureAuthenticated, function(req, res){
-	var M = MISSIONS[req.params.m_id]
-	res.end(JSON.stringify({ "is_ready": M.ready_to_start }));
-})
-
-app.get('/missions/get_positions/:m_id/', ensureAuthenticated, function(req, res){
-	var M = MISSIONS[req.params.m_id]
-	M.positions(function(poss){
-		res.end(JSON.stringify(poss));
-		
-	})
-	
+	// res.render('world',{ 'user': req.user, auth_hash: req.session.auth_hashes[req.user.id]})
+    fs.readFile("templates/aworld.html", function(err, data){
+        res.end(data);
+    });
+    
 })
 
 app.get('/auth/login/', function(req, res){
@@ -539,7 +452,6 @@ app.get('/auth/login/', function(req, res){
 
 app.post('/auth/login/',  passport.authenticate('local', { failureRedirect: '/auth/login/', failureFlash: true }),
 	function(req, res) {
-		console.log(req.session)
 		if (req.session.auth_hashes === undefined){
 			req.session.auth_hashes = {}; // Правильно будет хранить эти хэши в базе данных. Но пока так
 		}
@@ -556,27 +468,21 @@ app.get('/auth/logout/', function(req, res){
 	res.redirect('/');
 });
 
-app.get('/console/', ensureAuthenticated, function(req, res){
-	var user = req.user
-	user.id = parseInt(user.id);
-	SocketAuthMap[req.session.auth_hashes[user.id] ] = user.id; // Грязный хак - обновляем состояние аутентификации из сессии
-	res.render('console', { 'user': req.user, auth_hash: req.session.auth_hashes[req.user.id]});
-})
 
 app.get('/aconsole/', ensureAuthenticated, function(req, res){
     fs.readFile("templates/aconsole.html", function(err, data){
         res.end(data);
-        // fo.close();     
     });
-	// , { 'user': req.user, auth_hash: req.session.auth_hashes[req.user.id]});
 })
 app.get('/my-auth-hash/', ensureAuthenticated, function(req, res){
 	var user = req.user
 	user.id = parseInt(user.id);
+   // console.log("caching");
 	SocketAuthMap[req.session.auth_hashes[user.id] ] = user.id; // Грязный хак - обновляем состояние аутентификации из сессии
+//    console.log("e")
 	res.end( JSON.stringify({ hash: req.session.auth_hashes[req.user.id]}) );
+//    console.log("dr");
 })
-
 
 app.get('/', function(req, res){
     

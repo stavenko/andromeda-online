@@ -16,7 +16,9 @@ window.World.init = function(auth_hash, client_login){
 	this.p = new THREE.Projector();
 	this.three_scenes = {}
 	this.scenes = {};
-	this.flares = {}
+	this.flares = {};
+    this.actors = {};
+    this.actorScene = {};
 	//  = new THREE.Scene();
 	this.clock = new THREE.Clock();
 	//this.geometry = new THREE.CubeGeometry(200, 200, 200);
@@ -30,8 +32,8 @@ window.World.init = function(auth_hash, client_login){
 	this.sceneActions = {};
 	this._input_keymap = {};
     this._uniform_updaters = {};
-	var ProtoBuf = dcodeIO.ProtoBuf;
-	this.protobufBuilder = ProtoBuf.loadProtoFile( "/js/gl/client_message.proto" );
+	// var ProtoBuf = dcodeIO.ProtoBuf;
+	// this.protobufBuilder = ProtoBuf.loadProtoFile( "/js/gl/client_message.proto" );
 	//this._main_viewport_actors = [];
 	var h3 = this.vp_height/3
 	var w4 = this.vp_width/4
@@ -53,6 +55,7 @@ window.World.init = function(auth_hash, client_login){
 	self.pings = [];
 	self.pings_instability = [];
 	self._time_diffs = [];
+    self.latencities = [];
 	
 
 	

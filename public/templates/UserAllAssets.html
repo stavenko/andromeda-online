@@ -1,3 +1,23 @@
 <div>
-    this is ASSets {{hello}}
+    <div class="row">
+        <div class="col-md-6">
+            <table class="table">
+                <tr ng-repeat="ship in assets">
+                    <td>{{ ship.type }}</td>
+                    <td>{{ ship.location.g.orbit.C }}</td>
+                    <td> <a class="btn btn-primary" ng-click="shippositions(ship)"> Details </a> </td>
+                </tr>
+            </table>
+        </div>
+        <div class="col-md-6">
+            <table class="table">
+                <tr ng-repeat="position in positions">
+                    <td>{{ position.name }}</td>
+                    <td>{{ position.type }}</td>
+                    <td> <a class="btn btn-primary" ng-click="connect(position)"> connect </a> </td>
+                </tr>
+            </table>
+        </div>
+        
+    </div>
 </div>

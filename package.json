@@ -3,19 +3,20 @@
   "version": "0.0.1",
   "private": "true",
   "dependencies": {
+    "browserify-express": "0.1.2",
+    "connect-flash": "*",
+    "connect-redis": "1.4.6",
     "express": "3.4.5",
     "jade": "0.35.0",
-    "stylus": "*",
-    "connect-flash": "*",
     "nodemailer": "0.5.11",
-    "socket.io": "0.9.16",
-    "underscore": "1.5.2",
     "passport": "0.1.17",
     "passport-local": "0.1.6",
-    "connect-redis": "1.4.6",
-    "browserify-express": "0.1.2",
-    "webworker-threads": "*",
-    "protobufjs": "*"
+    "protobufjs": "*",
+    "q": "^1.0.1",
+    "socket.io": "0.9.16",
+    "stylus": "*",
+    "underscore": "1.5.2",
+    "webworker-threads": "*"
   },
   "engines": {
     "node": "0.10.x"
@@ -30,6 +31,7 @@
     "gulp-rename": "^1.2.0",
     "gulp-sourcemaps": "^1.0.0",
     "gulp-uglify": "^0.3.1",
+    "gulp-watch": "^0.6.8",
     "mocha": "^1.20.1"
   }
 }

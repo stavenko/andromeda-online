@@ -70,7 +70,26 @@ process.on('message', function(msg){
 	var bcast_notify = function(message){
 		process.send({type:'broadcast', message:message})
 	}
+    // console.log("msg.type", msg);
+    
 	switch(msg.type){
+    case "C":
+        Sim.connectRequest(msg.p, function(new_actor){
+            // 
+            console.log("created actor", new_actor);
+            
+        });
+        break;
+	case 'CTX':
+		var ctxs = Sim.getUserActiveContexts(msg.p.user_id);
+		//console.log("requested contexts", msg);
+		// process.send({'ownactors':ctxs, user_id:msg.user_id, type:"actors", recv:'world' })
+		//process.send({'contexts':ctxs, user_id:msg.user_id, type:"contexts", recv:'world' })
+        process.send({"T":"R",  d:{"contexts": ctxs}, cbix:msg.cbix, user_id:msg.p.user_id, recv:"world"})
+        
+		break;
+    
+        
 	case 'create-mission':
 		// console.log("CR");
 		Sim.newMissionInstance(msg.mission_type, msg.user_id, function(mission, this_user_missions){
@@ -82,6 +101,7 @@ process.on('message', function(msg){
 			process.send(bmsg);
 		})
 		break;
+        /*
 	case 'user-connected':
         // Send him something, he waits:
         sendBookmarkedObjects();
@@ -114,13 +134,9 @@ process.on('message', function(msg){
 			})
 		}
 		break;
-	case 'request-actors':
-		var as = Sim.getUserActors(msg.user_id);
-		//console.log("requested actors", as);
-		process.send({'actors':as, user_id:msg.user_id, type:"actors", recv:'world' })
-		break;
 	
 	case 'request-scenes':
+        console.log("requesting scenes");
 		var as = Sim.getScenes(msg.scenes);
 		process.send({'scenes':as, user_id:msg.user_id, type:"scenes", recv:'world' })
 		break;
@@ -134,11 +150,11 @@ process.on('message', function(msg){
 			
 		})
 		break;
-		
+	*/
 	case 'client-actions':
 		// console.log("MSG DATA TO SERVER", msg);
 		Sim.performAction(msg.data, function(action, to_actors){
-			process.send({type:"player-inputs", action:action, to_actors:to_actors, user_id: msg.user_id })
+			process.send({type:"F", action:action, to_actors:to_actors, user_id: msg.user_id })
 			// callback with server returned action - need for sending it back to clients
 		});
 		break;

@@ -157,6 +157,7 @@ Controller.LocalInputActor = function(W, socket){
 			
 			// Updating values in event:
 			
+            // console.log("SSSS");
 			
 			if(up_or_down) {// down == true
 				self._keycodes_in_action[keycode] = {in_action:true, ts:ts}
@@ -173,7 +174,11 @@ Controller.LocalInputActor = function(W, socket){
 			}
 		}
 		this.getLatestActions = function(scene, now){
-			var actions = [];
+			// console.log("GLA");
+            
+            
+            
+            var actions = [];
 			_.each(self._keycodes_in_action, function(k_action, keycode){
 				if(k_action.in_action){
 					var delta = now - k_action.ts
@@ -186,15 +191,16 @@ Controller.LocalInputActor = function(W, socket){
 					delete self._keycodes_in_action[keycode]
 				}
 				var action = _.clone(self.actions[keycode]);
+				console.log("pressed", W._time_diff, W )
+				
 				if(keycode in W._input_keymap){
-					// console.log("pressed", W._input_keymap[keycode] )
 					var act_desc  = W._input_keymap[keycode];
 					var new_action = {
 						mesh : act_desc.mesh,
 						dev : act_desc.device,
 						name: act_desc.name,
 						ts :ts,
-						ident: ts + W._time_diff,
+						ident: ts + W._time_diff + W.avg_latencity,
 						delta:delta/1000,
 						wmouse:W.mouse_projection_vec.clone().toArray()
 					}
@@ -266,9 +272,9 @@ Controller.CPilotController = function(){
 				var self = this;
 				
 				self.shield_update_closures = []
-				_.each(mesh.json.shields, function(shields, type){
+				_.each(mesh.type.shields, function(shields, type){
 					_.each(shields, function(shield_id){
-						var shield_dev = mesh.json.devices[shield_id];
+						var shield_dev = mesh.type.devices[shield_id];
 						
 						var d  = $('<div>').css({width:50, height:"100%", float:'left', 'margin-right':"10px"}).appendTo(self.shield_cont);
 						var sic = $('<div>').css({width:"100%", height:10 }).appendTo(d) // strenth indicator container
@@ -384,9 +390,9 @@ Controller.CPilotController = function(){
 				this._update_power_indicator = function(){}
 				this._update_capacitor_indicator = function(){
 					var mesh = W.scenes[actor.scene].meshes[actor.control.object_guid];
-					var psd = mesh.json.devices[mesh.json.power_source];
+					var psd = mesh.type.devices[mesh.type.power_source];
 					var total_cap = psd.capacitor;
-					var current_cap = mesh.getDeviceSetting(mesh.json.power_source, "capacitor");
+					var current_cap = mesh.getDeviceSetting(mesh.type.power_source, "capacitor");
 					L.setValue("CUR CONS", current_cap);
 			
 					if(current_cap > total_cap){
@@ -420,7 +426,7 @@ Controller.CPilotController = function(){
 						cont.remove();
 					}).appendTo(cc);
 					
-					_.each(mesh.json.shields, function(s, i){
+					_.each(mesh.type.shields, function(s, i){
 						if (i === 'thermal'){return}
 						_.each(s, function(shield_id){
 							var e1 = $("<div>").css({
@@ -473,13 +479,13 @@ Controller.CPilotController = function(){
 						}).appendTo(cc);;
 					
 					
-					_.each(mesh.json.engines, function(engines, engine_type){
+					_.each(mesh.type.engines, function(engines, engine_type){
 						
 						_.each(engines, function(engine_id){
 							
 							// var et = engine_type;
 							// var ea = en;
-							var en_dev = mesh.json.devices[engine_id];
+							var en_dev = mesh.type.devices[engine_id];
 							
 							var e1 = $("<div>").css({
 								width:300,
@@ -547,14 +553,14 @@ Controller.CPilotController = function(){
 				var T = Controller.T();
 			
 				var unit = new T.Vector3();
-				unit.fromArray(mesh.json.devices[action.dev].unit);
-				var engine_name = mesh.json.devices[action.dev].engine_type + "_" + mesh.json.devices[action.dev].name;
+				unit.fromArray(mesh.type.devices[action.dev].unit);
+				var engine_name = mesh.type.devices[action.dev].engine_type + "_" + mesh.type.devices[action.dev].name;
 				var percent_of_power = mesh.getDeviceSetting(action.dev, "power");
-				var engine_type = mesh.json.devices[action.dev].engine_type;
+				var engine_type = mesh.type.devices[action.dev].engine_type;
 			
-				var performance = mesh.json.devices[action.dev].performance;
-				var consumption = mesh.json.devices[action.dev].consumption;
-				var capacitor_left = mesh.getDeviceSetting(mesh.json.power_source, "capacitor");
+				var performance = mesh.type.devices[action.dev].performance;
+				var consumption = mesh.type.devices[action.dev].consumption;
+				var capacitor_left = mesh.getDeviceSetting(mesh.type.power_source, "capacitor");
 				var energy_consumption = percent_of_power* consumption * action.delta;
 			
 				if (capacitor_left < energy_consumption){
@@ -569,7 +575,7 @@ Controller.CPilotController = function(){
 			
 				mesh.update_static_physical_data(action.ts)
 			
-				mesh.alterDeviceSetting(mesh.json.power_source, 'capacitor' ,function(value){
+				mesh.alterDeviceSetting(mesh.type.power_source, 'capacitor' ,function(value){
 					L.setValue("NEW CONSump1", energy_consumption);
 					var nv = value - energy_consumption;
 					if (nv < 0) {return 0}
@@ -593,8 +599,8 @@ Controller.CPilotController = function(){
 			
 			
 			
-			// var performance = mesh.json.devices[action.dev].performance;
-			//var performance = mesh.json.devices[action.dev].performance;
+			// var performance = mesh.type.devices[action.dev].performance;
+			//var performance = mesh.type.devices[action.dev].performance;
 		}
 		
 		/*
@@ -666,8 +672,8 @@ Controller.CPilotController = function(){
 			// console.log(action.wp);
 			var percent_of_power = mesh.getWorkpointValue(action.wp, "eng_" + engine_name + "_power");
 			//console.log ("MM", mesh.workpoint_states,action.p, action.wp, "eng_" + engine_name + "_power");
-			var max_power = mesh.json.engines[et][ea].consumption;
-			var performance = mesh.json.engines[et][ea].performance;
+			var max_power = mesh.type.engines[et][ea].consumption;
+			var performance = mesh.type.engines[et][ea].performance;
 			var energy_consumption = percent_of_power* max_power * action.delta;
 			action.energy_consumption = energy_consumption;
 			
@@ -1308,14 +1314,14 @@ var Controllers = function (){
 			var T = Controller.T();
 	
 			var unit = new T.Vector3();
-			unit.fromArray(mesh.json.devices[action.dev].unit);
-			var engine_name = mesh.json.devices[action.dev].engine_type + "_" + mesh.json.devices[action.dev].name;
+			unit.fromArray(mesh.type.devices[action.dev].unit);
+			var engine_name = mesh.type.devices[action.dev].engine_type + "_" + mesh.type.devices[action.dev].name;
 			var percent_of_power = mesh.getDeviceSetting(action.dev, "power");
-			var engine_type = mesh.json.devices[action.dev].engine_type;
+			var engine_type = mesh.type.devices[action.dev].engine_type;
 	
-			var performance = mesh.json.devices[action.dev].performance;
-			var consumption = mesh.json.devices[action.dev].consumption;
-			var capacitor_left = mesh.getDeviceSetting(mesh.json.power_source, "capacitor");
+			var performance = mesh.type.devices[action.dev].performance;
+			var consumption = mesh.type.devices[action.dev].consumption;
+			var capacitor_left = mesh.getDeviceSetting(mesh.type.power_source, "capacitor");
 			var energy_consumption = percent_of_power* consumption * action.delta;
 	
 			if (capacitor_left < energy_consumption){
@@ -1325,7 +1331,7 @@ var Controllers = function (){
 			unit.multiplyScalar(impulse);
 			mesh.update_static_physical_data(action.ts)
 	
-			mesh.alterDeviceSetting(mesh.json.power_source, 'capacitor' ,function(value){
+			mesh.alterDeviceSetting(mesh.type.power_source, 'capacitor' ,function(value){
 				var nv = value - energy_consumption;
 				if (nv < 0) {return 0}
 				else{ return nv }
@@ -1351,7 +1357,7 @@ var Controllers = function (){
 		this.getUI = function(W){
 			var ui = function(){
 				this.construct = function(){
-					var shield_dev = mesh.json.devices[device_id];
+					var shield_dev = mesh.type.devices[device_id];
 					
 					var my_ind = $("#shield_indicator_"+device_id);
 					console.log(my_ind.size());
@@ -1522,7 +1528,7 @@ var Controllers = function (){
 						cont.remove();
 					}).appendTo(cc);
 					
-					_.each(mesh.json.shields, function(s, i){
+					_.each(mesh.type.shields, function(s, i){
 						if (i === 'thermal'){return}
 						_.each(s, function(shield_id){
 							var e1 = $("<div>").css({
@@ -1535,7 +1541,7 @@ var Controllers = function (){
 						
 							var pc = new PowerControlWidget({container:slc[0], starting_percent:0, end_percent:1.5,progress_value:0,
 								change: function( val ) {
-									mesh.startDeviceAction(mesh.json.power_source, "power", val, {"dev_id": shield_id});
+									mesh.startDeviceAction(mesh.type.power_source, "power", val, {"dev_id": shield_id});
 
 								},
 								slide:function(val){ 
@@ -1575,13 +1581,13 @@ var Controllers = function (){
 						}).appendTo(cc);;
 					
 					
-					_.each(mesh.json.engines, function(engines, engine_type){
+					_.each(mesh.type.engines, function(engines, engine_type){
 						
 						_.each(engines, function(engine_id){
 							
 							// var et = engine_type;
 							// var ea = en;
-							var en_dev = mesh.json.devices[engine_id];
+							var en_dev = mesh.type.devices[engine_id];
 							
 							var e1 = $("<div>").css({
 								width:300,
@@ -1593,7 +1599,7 @@ var Controllers = function (){
 							
 							var pc = new PowerControlWidget({container:slc[0], starting_percent:0, end_percent:1.5,progress_value:0,
 								change: function( val ) {
-									mesh.startDeviceAction(mesh.json.power_source, "power", val, {"dev_id": engine_id});
+									mesh.startDeviceAction(mesh.type.power_source, "power", val, {"dev_id": engine_id});
 
 								},
 								slide:function(val){ 
@@ -1612,9 +1618,9 @@ var Controllers = function (){
 				this._update_power_indicator = function(){}
 				this._update_capacitor_indicator = function(){
 					// var mesh = W.scenes[actor.scene].meshes[actor.control.object_guid];
-					var psd = mesh.json.devices[mesh.json.power_source];
+					var psd = mesh.type.devices[mesh.type.power_source];
 					var total_cap = psd.capacitor;
-					var current_cap = mesh.getDeviceSetting(mesh.json.power_source, "capacitor");
+					var current_cap = mesh.getDeviceSetting(mesh.type.power_source, "capacitor");
 					
 					L.setValue("CUR CONS", current_cap);
 			
@@ -1643,7 +1649,7 @@ var Controllers = function (){
 	this.TurretController  = function(mesh, device_id){
 		this.process = function(action){
 			//console.log("CHO", action.type === SHOOT, action.type == SHOOT, action.type)
-			var turret = mesh.json.devices[device_id];
+			var turret = mesh.type.devices[device_id];
 			if(action.name == 'reload'){
 				
 				// console.log("process > REALODING:", action);
@@ -1685,7 +1691,7 @@ var Controllers = function (){
 				// console.log("SERV act before", action);
 				// console.log("LOG TIMES", is_reloading, last_shot_time,  action.ts - is_reloading, action.ts - last_shot_time);
 				
-				if( (action.ts -  is_reloading) < mesh.json.devices[device_id].turret_reload_rate){
+				if( (action.ts -  is_reloading) < mesh.type.devices[device_id].turret_reload_rate){
 					return ;
 				}
 				//console.log("SERV act - reloaded", action);
@@ -1697,7 +1703,7 @@ var Controllers = function (){
 				
 				if (last_shot_time){
 					// console.log("last shot time", last_shot_time,(action.ts - last_shot_time ) < C.json.turrets[wp.turret].turret_shoot_rate );
-					if((action.ts - last_shot_time ) < mesh.json.devices[device_id].turret_shoot_rate){
+					if((action.ts - last_shot_time ) < mesh.type.devices[device_id].turret_shoot_rate){
 						// console.log('no shoot');
 						return; // this turret cannot shoot now
 					}
@@ -1705,7 +1711,7 @@ var Controllers = function (){
 				//console.log("SERV act shoot freely", action);
 				
 				//console.log("BOOOSH!");
-				var shoot_impulse = mesh.json.devices[device_id].shoot_impulse;
+				var shoot_impulse = mesh.type.devices[device_id].shoot_impulse;
 				// TODO Применить выстрел к собственному импульсу - 
 				
 				
@@ -1716,7 +1722,7 @@ var Controllers = function (){
 				})
 				//console.log("Now let's see, did we get somebody");
 				
-				var turret = mesh.json.devices[ device_id ] ;
+				var turret = mesh.type.devices[ device_id ] ;
 				
 				var turret_position_vector = new T.Vector3();
 				turret_position_vector.fromArray( turret.position );
@@ -1732,7 +1738,7 @@ var Controllers = function (){
 				// Надо составить список мешей, через которые проходит луч траектории движения снаряда с учетом вероятности попадания
 				var collidables = [];
 				_.each(mesh._scene.meshes, function(tmesh, i){
-					if(i ==  mesh.json.GUID) return;
+					if(i ==  mesh.GUID) return;
 					
 					var target_pos = tmesh.position.clone();
 					var target_impulse = tmesh.impulse.clone();
@@ -1789,12 +1795,12 @@ var Controllers = function (){
 						var armor_hp  = shoot_impulse * 0.8;
 						var hull_hp = shoot_impulse * 1.05;
 						var sh_seq = tmesh.shields.concat(tmesh.armors)
-						sh_seq.push(tmesh.json.hull_device)
+						sh_seq.push(tmesh.type.hull_device)
 						
 						var rec = function(seq){
 							if (seq.length == 0){return};
 							var f = seq[0];
-							var dev = mesh.json.devices[f]
+							var dev = mesh.type.devices[f]
 							
 							var tail = seq.slice(1);
 							var hp;
@@ -1815,7 +1821,7 @@ var Controllers = function (){
 						// DEBUG"
 						_.each(sh_seq, function(d){
 							var sh = tmesh.getDeviceSetting(d, "capacity")
-							var dev = tmesh.json.devices[d];
+							var dev = tmesh.type.devices[d];
 							//console.log("DEBUGGING SHOTS", d, dev.name, sh);
 						})
 						//ENDOF DEBUG
@@ -1890,7 +1896,7 @@ var Controllers = function (){
     			this._set_magazine_capacity = function(){
     				// var O = W.scenes[actor.scene].meshes[actor.control.object_guid];
     				//var wp = O.json.workpoints[actor.control.workpoint];
-    				var mag_cap = mesh.json.devices[device_id].magazine_capacity;
+    				var mag_cap = mesh.type.devices[device_id].magazine_capacity;
     				var _mag    = mesh.getDeviceSetting(device_id, "magazine");
     				if (! _mag) _mag = 0;
 		
@@ -1911,8 +1917,8 @@ var Controllers = function (){
 		
     			}
     			this._set_readiness_timer = function(){
-    				var rate = mesh.json.devices[device_id].turret_shoot_rate;
-    				var reload_rate = mesh.json.devices[device_id].turret_reload_rate;
+    				var rate = mesh.type.devices[device_id].turret_shoot_rate;
+    				var reload_rate = mesh.type.devices[device_id].turret_reload_rate;
 		
     				var _ts  = mesh.getDeviceSetting(device_id, "last_shot_time");
     				var ir_ts = mesh.getDeviceSetting(device_id, "is_reloading");

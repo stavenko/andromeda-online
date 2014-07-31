@@ -5,7 +5,7 @@ var Controller = require("./controller");
 
 
 
-// console.log(THR, THREE);
+// // CL(THR, THREE);
 if(typeof window === 'undefined'){
 	// var AObject = {}; THR.Mesh;
 	
@@ -24,20 +24,20 @@ if(typeof window === 'undefined'){
 	}
 	var L = SL;
 	
-	// console.log('loaded', THREE )
+	// // CL('loaded', THREE )
 	//var AObject =  THREE.Mesh;
 	// AObject.prototype.THREE = THREE
 	//AObject.prototype.do_prepare_rendering = true;
 	
 }
 
-// console.log("Holy crap", AObject)
+// // CL("Holy crap", AObject)
 
 
 function createObject(scene, mat, geom){
 	
 	var THREE = get_three();
-	// console.log("WWW", TH, THR);
+	// // CL("WWW", TH, THR);
 	var m = THREE.Mesh;
 	m.prototype._scene = scene;
 	m.prototype.some_counter = 0;
@@ -46,6 +46,7 @@ function createObject(scene, mat, geom){
 	
 	m.prototype.reload_saved_state= function(){
 		// Здесь мы возвращаем сохраненное ранее состояние - состояние, которое было с этим объектом когда-то давно
+        /*
 		prev_state___ = {workpoints:{
 			"Front turret": {
 				"magazine": 30,
@@ -54,7 +55,7 @@ function createObject(scene, mat, geom){
 			"Back turret": {
 				"magazine": 50,
 				"last_shot_time":0,
-			},
+			}
 			"Piloting":{
 				"capacitor":0,
 				"eng_rotation_x+_power": 1,
@@ -88,6 +89,13 @@ function createObject(scene, mat, geom){
 		}};
 		
 		prev_state = {
+			world:{	
+				position: this.position.toArray(),
+				rotation: this.rotation.toArray(),
+				impulse:  this.impulse.toArray(),
+				angular_impulse: this.angular_impulse.toArray()
+            },
+            
 			devices:[
 				{power:1},
 				{power:1},
@@ -112,13 +120,16 @@ function createObject(scene, mat, geom){
 				{capacity:200}
 			]	
 		};
-		this.restoreState(prev_state);
+        */
+        
+        // // CL("TTTTTTTTTTTTTT",this.type)
+		this.restoreState(this.json.last_state);
 		
 	}
 	/*
 	m.prototype.getState = function(){
 		if(this.some_counter < 100){
-			// console.log("Last Process while state" + this.eventManager._mesh_id, this.eventManager._last_processed);
+			// // CL("Last Process while state" + this.eventManager._mesh_id, this.eventManager._last_processed);
 			this.some_counter +=1;
 		}
 		var current_state = {	
@@ -149,7 +160,7 @@ function createObject(scene, mat, geom){
 				position: this.position.toArray(),
 				rotation: this.rotation.toArray(),
 				impulse:  this.impulse.toArray(),
-				angular_impulse: this.angular_impulse.toArray()},};
+				angular_impulse: this.angular_impulse.toArray()}};
 							
 		if (this.devices){
 			current_state.devices = {}
@@ -165,12 +176,18 @@ function createObject(scene, mat, geom){
 	m.prototype.restoreState = function(state){
 		var self = this;
 		for(v in state.world){
+            if(this[v] === undefined){
+               this[v] = new THREE.Vector3(); 
+            }
 			this[v].fromArray(state.world[v]);
 		}
 		if(state.devices){
+            
 			_.each(state.devices, function(dev_st, ix){
+                if(self.devices[ix] === undefined){
+                    self.devices[ix] = {};
+                }
 				_.each(dev_st, function(val, name){
-					// console.log(state, dev_st, ix, val, name);
 					self.devices[ix][name]=val;
 				
 				})
@@ -204,7 +221,7 @@ function createObject(scene, mat, geom){
 		this.devices[dev][name] = value;
 	}
 	m.prototype.getDeviceSetting = function(dev, name){
-        
+        // CL(this.devices, dev, name);
 		return this.devices[dev][name] ;
 	}
 	m.prototype.alterDeviceSetting = function(dev, name, callback){
@@ -239,7 +256,7 @@ function createObject(scene, mat, geom){
 			value = this.workpoint_states[wp][param];
 			new_value = modifier(value);
 			if (new_value !== undefined){
-				L.setValue(" set " + param, new_value );
+				// L.setValue(" set " + param, new_value );
 				
 				this.workpoint_states[wp][param] = new_value;
 			}
@@ -253,22 +270,15 @@ function createObject(scene, mat, geom){
 		this.restoreState(state);
 		
 		current_ts = last_ts // - time_diff;
-		// console.log("MARK", current_ts);
-		// console.log(this.eventManager._last_processed)
-		// console.log("CHANGING LAST P", current_ts, last_ts);
 		if (last_ts !== 0){
 			this.eventManager.set_last_processed(current_ts);
 			this.eventManager.remove(current_ts);
-			
 		}
-		// console.log(this.eventManager._last_processed)
-		
-			
 	};
 	
 	m.prototype.update_static_physical_data = function(till_time){
 		var time_left = (till_time - this.last_processed_timestamp) / 1000 // to seconds;
-		// console.log(time_left);
+		// // CL(time_left);
 		var um = 1 / this.mass;
 		var umt = time_left * um
 
@@ -277,22 +287,22 @@ function createObject(scene, mat, geom){
 
 		// mesh.vel = mesh.impulse.clone().multiplyScalar(um);
 
-		// console.log("statics ",rots.toArray(), poses.toArray());
+		// // CL("statics ",rots.toArray(), poses.toArray());
 		this.rotateX(rots.x)
 		this.rotateY(rots.y)
 		this.rotateZ(rots.z);
 
 		this.position.add(poses);
 		
-		var power_plant_current_power = this.getDeviceSetting(this.json.power_source, 'power');
-		var psource_dev = this.json.devices[this.json.power_source]
+		var power_plant_current_power = this.getDeviceSetting(this.type.power_source, 'power');
+		var psource_dev = this.type.devices[this.type.power_source]
 		var max_power = psource_dev.max_power;
 		var power_produced = (max_power * power_plant_current_power)  * time_left ;
 		var max_capacitor = psource_dev.capacitor
 		// L.setValue("POWER PRODUCED", power_produced);
 		// L.setValue("TIME ", time_left);
 		
-		this.alterDeviceSetting(this.json.power_source, "capacitor", function(value){
+		this.alterDeviceSetting(this.type.power_source, "capacitor", function(value){
 			if (value < max_capacitor){
 				
 				return value + power_produced;
@@ -302,16 +312,16 @@ function createObject(scene, mat, geom){
 		})
 		
 		var self = this;
-		_.each(this.json.shields, function(shields, type){
+		_.each(this.type.shields, function(shields, type){
 			_.each(shields, function(shield_id){
 				// СНАЧАЛА ЗАРЯЖАЕМ ИХ КАПАСИТОРЫ
-				var shield_dev = self.json.devices[shield_id]
+				var shield_dev = self.type.devices[shield_id]
 				var performance = 1;
 				var charge_power = self.getDeviceSetting(shield_id, 'power');
 				var reserve_cap_amount = self.getDeviceSetting(shield_id, 'reserve_capacity');
 				var max_rcap_amount = shield_dev.capacitor;
 				var charge_nominal = shield_dev.charge_rate * charge_power * time_left;
-				var cap = self.getDeviceSetting(self.json.power_source, "capacitor");
+				var cap = self.getDeviceSetting(self.type.power_source, "capacitor");
 				if( reserve_cap_amount < max_rcap_amount  ){
 					var consumed = charge_nominal;
 					if(cap >= consumed){
@@ -320,7 +330,7 @@ function createObject(scene, mat, geom){
 							return val + added;
 							
 						});
-						self.alterDeviceSetting(self.json.power_source, "capacitor", function(val){
+						self.alterDeviceSetting(self.type.power_source, "capacitor", function(val){
 							return val - consumed;
 						});
 						
@@ -372,7 +382,7 @@ function createObject(scene, mat, geom){
 							})
 							
 							// Теперь надо выключить, проведя по системе сообщений
-							// console.log("MESH ACTORS", self.actors)
+							// // CL("MESH ACTORS", self.actors)
 							self.autoMessage(shield_id, "toggle", 0) ;// This one should go through networking
 							// self._scene.addSettingToScene(actor, sett, undefined, true);
 
@@ -385,10 +395,10 @@ function createObject(scene, mat, geom){
 		})
 		
 		
-		var curr_hull = this.getDeviceSetting(this.json.hull_device, "capacity");
+		var curr_hull = this.getDeviceSetting(this.type.hull_device, "capacity");
 		if(curr_hull <=0){
             
-			// console.log("DESTROYED");
+			// // CL("DESTROYED");
             scene.removeObject(self);
             
 		}
@@ -398,11 +408,11 @@ function createObject(scene, mat, geom){
 		
 	}
 	m.prototype.createDeviceAction = function(dev,name, val, add_params){
-		var action = this.json.devices[dev].actions[name];
-		
+		var action = this.type.devices[dev].actions[name];
+		console.log("GUID", this.GUID, this.type.GUID )
 		if(action.is_switch){
 			var act = {
-				mesh : this.json.GUID,
+				mesh : this.GUID,
 				dev : dev,
 				name: name,
 				ts :new Date().getTime(),
@@ -410,7 +420,7 @@ function createObject(scene, mat, geom){
 			
 		}else{
 			var act = {
-				mesh : this.json.GUID,
+				mesh : this.GUID,
 				dev : dev,
 				name: name,
 				ts :new Date().getTime(),
@@ -434,8 +444,8 @@ function createObject(scene, mat, geom){
 		return act
 	}
 	m.prototype.startDeviceAction = function(dev, name, val, add_params){
-		var act = this.createDeviceAction(dev,name, val, add_params);
-		// console.log("this is a createde action", act)
+		var act = this.createDeviceAction(dev, name, val, add_params);
+		// // CL("this is a createde action", act)
 		this.eventManager.add(act, act.ts)
 		this._scene._addToServerQueue(act)
 		
@@ -443,7 +453,7 @@ function createObject(scene, mat, geom){
 	m.prototype.startVirtualDeviceAction = function(proc, ts, ident){
 		this._foreign_procs[ts] = proc;
 		var act = {
-			dev : this.json.foreign_processor,
+			dev : this.type.foreign_processor,
 			name: 'process',
 			ts :ts,
 			ident:ident,
@@ -470,7 +480,7 @@ function createObject(scene, mat, geom){
 			value:value,
 			wp : wp,
 			actor: this.actors[wp].GUID,
-			object_guid: this.json.GUID,
+			object_guid: this.GUID,
 			scene: this._scene.GUID,
 			ts: new Date().getTime(),
 			controller: "settings"
@@ -496,8 +506,9 @@ function createObject(scene, mat, geom){
 		var self = this;
 	
 		var object = self.json
+        self.GUID = self.json.GUID;
 	
-		// console.log("Loading", )
+		// // CL("Loading", )
 	
 		self.eventManager = new EQ( object.GUID );
 		self.pending_actions = [];
@@ -507,16 +518,17 @@ function createObject(scene, mat, geom){
 		self._previous_states = []
 		self._previous_states_index = {}
 		self.total_angular_impulses = [];
-				// console.log(i, mesh.total_torques, mesh.total_powers)
-		self.type=object.type
-		var object_rotated = false
+				// // CL(i, mesh.total_torques, mesh.total_powers)
+		self.type=object.ship_type
+		//var object_rotated = false
 		// Setting defaults 
-		self.avel = new THREE.Vector3(0,0,0)
-		self.aacc = new THREE.Vector3(0,0,0)
-		self.vel = new THREE.Vector3(0,0,0)
-		self.acc = new THREE.Vector3(0,0,0)
+		//self.avel = new THREE.Vector3(0,0,0)
+		//self.aacc = new THREE.Vector3(0,0,0)
+		//self.vel = new THREE.Vector3(0,0,0)
+		//self.acc = new THREE.Vector3(0,0,0)
 	
-	
+      
+	    /*
 		if ( object.physical ){
 			for(i in object.physical){
 				
@@ -547,26 +559,28 @@ function createObject(scene, mat, geom){
 			self.rot = new THREE.Vector3(Math.random() * pi2, Math.random() * pi2, Math.random() * pi2);
 			
 		}
-		
+        */
+		/*
 		self.position = self.pos;
 		if (! object_rotated &&  'rot' in self){
 			
 			var uel = new self.THREE.Euler(self.rot.x, self.rot.y, self.rot.z);
 			self.rotation = uel;
 		}
-		// console.log(mesh.position)
-		self.cameras = object.cameras;
-		self.engines = object.engines;
-		self.has_engines = object.engines !== undefined;
-		if (self.has_engines){
-			self.on_engines_rotation = [];
-			self.on_engines_propulsion = [];
-		}
+        */
+		// // CL(mesh.position)
+		self.cameras = self.type.cameras;
+		//self.engines = object.engines;
+		//self.has_engines = object.engines !== undefined;
+		//if (self.has_engines){
+		//	self.on_engines_rotation = [];
+		//	self.on_engines_propulsion = [];
+		//}
 		// mesh.put_off = put_off;
 		// mesh.put_on  = put_on;
-		self.mass = object.mass;
-		self.angular_impulse = self.avel.clone().multiplyScalar(object.mass)
-		self.impulse = self.vel.clone().multiplyScalar(object.mass)
+		self.mass = self.type.mass;
+		// self.angular_impulse = self.avel.clone().multiplyScalar(object.mass)
+		// self.impulse = self.vel.clone().multiplyScalar(object.mass)
 		
 
 		
@@ -589,7 +603,8 @@ function createObject(scene, mat, geom){
 		self.armors = [];
 		self.shields = [];
 		self.uis = [];
-		_.each(self.json.devices, function(dev,ix){
+        // CL("loading devices", self.type.devices);
+		_.each(self.type.devices, function(dev,ix){
 			self.devices.push({});
 			if (dev.type == 'shield'){
 				if(dev.shield_type == 'shield'){ self.shields.push(ix)}
@@ -606,6 +621,7 @@ function createObject(scene, mat, geom){
 				}
 			}
 		})
+        
 		self.reload_saved_state();
 		
 		
@@ -614,7 +630,7 @@ function createObject(scene, mat, geom){
 	m.prototype.getUIForWP=function(wp){
 		var self =this;
 		var ui_list=[];
-        var _wp = this.json.workpoints[wp];
+        var _wp = this.type.workpoints[wp];
 		_.each(_wp.devices, function(d_id){
 			var  ui = self.uis[d_id]
 			if (ui){
@@ -631,19 +647,19 @@ function createObject(scene, mat, geom){
 		//  {wp: [actions] }
 		var self = this;
 		var obj = {}
-		_.each(this.json.workpoints, function(wp, wp_name){
+		_.each(this.type.workpoints, function(wp, wp_name){
 			av_act_list = []
 			_.each(wp.devices, function(dev_ix){
-				var dev  = self.json.devices[dev_ix];
+				var dev  = self.type.devices[dev_ix];
 				_.each(dev.actions, function(act, act_name){
-					var a = {mesh:self.json.GUID, device: dev_ix, name:act_name};
+					var a = {mesh:self.GUID, device: dev_ix, name:act_name};
 					if (act.default_key){
 						a.default_key = act.default_key;
 					}
 					av_act_list.push(a);
 					
 				})
-				// console.log("AA",wp_name, dev.type,  dev.actions)
+				// // CL("AA",wp_name, dev.type,  dev.actions)
 			})
 			obj[ wp_name ] = av_act_list;
 			

@@ -53,7 +53,8 @@ window.World._init_vps = function(){
 	_.each(mvp.actors, function(actor){
 		// get actions for this actor
 		// console.log(self.sceneActions);
-		var total_actions = self.sceneActions[actor.scene][actor.control.object_guid][actor.control.workpoint];
+        var scene_guid = self.actorScene[actor.GUID];
+		var total_actions = self.sceneActions[scene_guid][actor.control.object_guid][actor.control.workpoint];
 		_.each(total_actions, function(action){
 			if(action.default_key){
 				self._input_keymap[action.default_key] = action;
@@ -88,27 +89,24 @@ window.World.setupCameras = function(){
 	self._viewport_amount = 0;
 	var is_first = true;
 	// var cmap = Controller.ControllersActionMap();
-	
+	console.log("setting up cameras with", self.actors);
 	_.each(self.actors, function(actor){
 		//console.log(actor)
 		var wp = actor.control.workpoint;
-
-		// var C = cmap[actor.control.type];
-		
-		// var UI = C.getUI(self, actor);
-		
-		var views = self.scenes[actor.scene].get_objects()[actor.control.object_guid].workpoints[wp].views
-		var mesh = self.scenes[actor.scene].meshes[actor.control.object_guid];
+        var scene_guid = self.actorScene[actor.GUID];
+		console.log("scenes", self.scenes, scene_guid);
+		var views = self.scenes[scene_guid].get_object(actor.control.object_guid).workpoints[wp].views
+		var mesh = self.scenes[scene_guid].meshes[actor.control.object_guid];
 		var uis = mesh.getUIForWP(wp);
 		
 		_.each(views, function(view){
-			var vp_hash = actor.scene + actor.control.object_guid + view;
+			var vp_hash = scene_guid + actor.control.object_guid + view;
 			if (is_first){
 				self._main_viewport = vp_hash;
 			}
 			// console.log(" show me ", actor);
 			if(!(vp_hash in self._viewports)){
-				var vp = {scene:actor.scene, object:actor.control.object_guid, camera: view, actors:[actor], UIS:uis}
+				var vp = {scene:scene_guid, object:actor.control.object_guid, camera: view, actors:[actor], UIS:uis}
 				self._viewports[vp_hash] = vp
 				self._viewport_amount +=1;
 			}else{
@@ -141,7 +139,7 @@ window.World.setupCameras = function(){
 window.World.redrawSun = function(vp){
 	var m = this.scenes[vp.scene].meshes[vp.object]
 	
-	var sd = new THREE.Vector3().fromArray(this.scenes[vp.scene]._scene.sunDirection).multiplyScalar(10); 
+	var sd = new THREE.Vector3().fromArray([0,1,0]).multiplyScalar(10); 
 	//console.log(sd, this.scenes[vp.scene]._scene.sunDirection);
 	
 	this.flares[vp.scene].position = m.position.clone().add(sd)
@@ -161,7 +159,7 @@ window.World.makeCamera = function(vp ){
 	var object_id = vp.object
 	var port = vp.camera
 	var mesh = self.scenes[scene].meshes[object_id]
-	var object = self.scenes[scene].get_objects()[object_id]
+	var object = self.scenes[scene].get_object(object_id)
 	
 	var camera = new THREE.PerspectiveCamera(45, vp.geom.w / vp.geom.h, 1, 1000);
 	
@@ -199,7 +197,7 @@ window.World.setup_scene = function(scene){
 	});
 	// console.log(scene._scene)
 	
-	var sunDirection = new THREE.Vector3().fromArray(scene._scene.sunDirection) ;
+	var sunDirection = new THREE.Vector3().fromArray([0,1,0]) ;
 	//this.sunLightColor = [0.1, 0.7, 0.5];
 	
 	var ambientLight = new THREE.AmbientLight(0x010101);
@@ -207,7 +205,7 @@ window.World.setup_scene = function(scene){
 
 	var light = new THREE.DirectionalLight( 0xFFFFee, 1 );
 	// console.log("COLOR",scene._scene.sunLightColor);
-	light.color.setHSL.apply(light.color, scene._scene.sunLightColor);
+	light.color.setHSL.apply(light.color, [Math.random(), 0.8, 0.9] );
 	light.position = sunDirection
 
 	this.three_scenes[scene.GUID].add( light );
@@ -246,7 +244,7 @@ window.World.go = function(){
 	
 	// var _time_interv = 
 	
-	var updatePositions = function(){
+	var makeTicks = function(){
 		_.each(self.scenes, function(s, g){
 			//console.log("recount ",g);
 			s.tick()
@@ -256,33 +254,34 @@ window.World.go = function(){
 	
 	
     var animate = function(){
-		if (self.total_objects_count === self.loaded_objects_count){
-			updatePositions();
-			//console.log(self._viewports)
-			var mvp = self.get_main_viewport();
-			var geom = self._main_vp_geom
-			// console.log("RENDER");
-            // Before rendering let's update our uniforms;
-            _.each(self._uniform_updaters, function(f, name){
-                f();
-            })
-			self.render(mvp, geom);
-			_.each(mvp.UIS, function(ui){
-				ui.refresh();
-			})
-			self.mouse_projection_vec.set( ( self.mouse_x/ geom.w ) * 2 - 1, - ( self.mouse_y / geom.h ) * 2 + 1, 0.99 );
-		
-		    self.p.unprojectVector( self.mouse_projection_vec, mvp.three_camera );
-			
-		    self.cur.position.copy( self.mouse_projection_vec );
-			//console.log(self.mouse_projection_vec);
-			
-			
-			_.each(self._additional_vps, function(vp_name, i){
-				var vp = self._viewports[vp_name];
-				self.render(vp, self._additional_vps_geom[i])
-			})
-		}
+        // if (self.total_objects_count === self.loaded_objects_count){
+        makeTicks();
+        //console.log(self._viewports)
+        var mvp = self.get_main_viewport();
+        var geom = self._main_vp_geom
+        // console.log("RENDER");
+        // Before rendering let's update our uniforms;
+        _.each(self._uniform_updaters, function(f, name){
+            f();
+        })
+        self.render(mvp, geom);
+        _.each(mvp.UIS, function(ui){
+        	ui.refresh();
+        })
+        self.mouse_projection_vec.set( ( self.mouse_x/ geom.w ) * 2 - 1, - ( self.mouse_y / geom.h ) * 2 + 1, 0.99 );
+
+        self.p.unprojectVector( self.mouse_projection_vec, mvp.three_camera );
+
+        self.cur.position.copy( self.mouse_projection_vec );
+        //console.log(self.mouse_projection_vec);
+
+
+        _.each(self._additional_vps, function(vp_name, i){
+            var vp = self._viewports[vp_name];
+            self.render(vp, self._additional_vps_geom[i])
+        })
+        //}
+            
 		SL.redraw();
     
 		requestAnimationFrame(animate)

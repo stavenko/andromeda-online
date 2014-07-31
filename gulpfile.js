@@ -6,6 +6,7 @@ var sourcemaps = require('gulp-sourcemaps');
 var browserify = require('gulp-browserify');
 var rename = require('gulp-rename');
 var mocha  = require('gulp-mocha');
+var watch = require('gulp-watch');
 var del = require('del');
 
 var paths = {
@@ -34,6 +35,8 @@ gulp.task('engine_scripts', ['clean'], function() {
   // Minify and copy all JavaScript (except vendor scripts)
   // with sourcemaps all the way down
   return gulp.src(paths.engine_scripts)
+  //.pipe(watch())
+  
     //.pipe(sourcemaps.init())
       //.pipe(coffee())
       .pipe(browserify({
@@ -52,6 +55,8 @@ gulp.task('client_scripts', ['clean'], function() {
   // Minify and copy all JavaScript (except vendor scripts)
   // with sourcemaps all the way down
   return gulp.src(paths.client_scripts)
+  //.pipe(watch())
+  
   .pipe(sourcemaps.init())
     //.pipe(coffee())
     .pipe(uglify())
@@ -64,6 +69,7 @@ gulp.task('console_scripts', ['clean'], function() {
   // Minify and copy all JavaScript (except vendor scripts)
   // with sourcemaps all the way down
   return gulp.src(paths.console_scripts)
+  // .pipe(watch())
   .pipe(sourcemaps.init())
     //.pipe(coffee())
     // .pipe(uglify())
@@ -83,6 +89,7 @@ gulp.task('images', ['clean'], function() {
 });
 */
 // Rerun the task when a file changes
+/*
 gulp.task('watch', function() {
   gulp.watch(paths.engine_scripts, ['engine_scripts']);
   
@@ -92,8 +99,9 @@ gulp.task('watch', function() {
   
   // gulp.watch(paths.images, ['images']);
 });
+*/
 
 // The default task (called when you run `gulp` from cli)
 // gulp.task('default', ['watch', 'scripts', 'images']);
 
-gulp.task('default', ['watch', 'test', 'engine_scripts', "client_scripts", "console_scripts"]);
+gulp.task('default', ['test', 'engine_scripts', "client_scripts", "console_scripts"]);
