@@ -148,6 +148,7 @@ window.World.init_socket = function(){
         var total_scenes  = 0;
         var loaded_scenes = 0;
         _.each(ctx.contexts, function(scene_desc, actor_guid){
+            console.log("CTXes", scene_desc, actor_guid)
             var scene_guid = scene_desc.GUID;
             if(scenes_in_process.indexOf( scene_guid  ) !== -1){
                 return;
@@ -182,7 +183,7 @@ window.World.init_socket = function(){
             	var scene = new Scene(self.three_scenes[scene_guid], self)
                 scene.GUID = scene_guid;
                 scene.onLoadCallback = function(){
-                    console.log("onload");
+
                     self.setup_scene(scene);
                     loaded_scenes +=1;
                     if(loaded_scenes === total_scenes ){
@@ -192,7 +193,7 @@ window.World.init_socket = function(){
                 }
                 
             	self.scenes[scene_guid] = scene;
-                console.log("creating my actors", scene_actors, actor_guid)
+
                 
                 _.each(scene_actors, function(act){
                     
@@ -353,36 +354,18 @@ window.World.syncTime = function(){
 		var ping = recv_ts - self._sync_timestamp
         
         
-		console.log("P", ping);
+
 		self.latencities.push(ping/2);
 		
-		//if (self.pings.length > ping_statistics_length ){self.pings.splice(0,1)};
-		//var avg_ping = _.reduce(self.pings, function(a,b){return a+b},0)/ self.pings.length;
-		//self.pings_instability.push(Math.abs(avg_ping - ping))
-		//if (self.pings_instability.length > ping_statistics_length){self.pings_instability.splice(0,1)};
-		//var avg_ping_instab = _.reduce(self.pings_instability, function(a,b){return a>=b?a:b},0)
-		
-		//var lat = ping / 2;
-        self.avg_latencity = Math.floor(_.reduce(self.latencities, function(a,b){return a+b},0)/self.latencities.length)
+		self.avg_latencity = Math.floor(_.reduce(self.latencities, function(a,b){return a+b},0)/self.latencities.length)
         
 		var _time_diff = data.ts - self._sync_timestamp; // - lat
 		self._time_diffs.push(_time_diff)
 		if(self._time_diffs.length > diff_statistics_length){self._time_diffs.splice(0,1) }
 		self._time_diff = Math.floor(_.reduce(self._time_diffs, function(a,b){return a+b},0)/self._time_diffs.length)
-        console.log("S", self.avg_latencity, self._time_diff);
-		//if(self._time_diff < 0){
-		//	self._time_diff = 0;
-		//}
-		// self.average_ping_instability = avg_ping_instab;
+
 		self.max_ping = _.max(self.pings);
-		
-		// console.log("T", self._time_diff)
-		//console.log("TIMES", self._time_diff, data.ts - self._sync_timestamp, lat)
-		
-		// var to = 100 / (avg_ping/1000)
-		// var instab_per  =  avg_ping_instab / avg_ping * 100;
-		//console.log("INSTV",to, avg_ping, avg_ping_instab, instab_per);
-		// console.log("Heh?");
+
 		setTimeout(function(){
             // console.log("TO");
             self.syncTime()
@@ -439,7 +422,7 @@ window.World.sendAction=function(scene, action){
 	var act = _.clone(action)
 	act.ts += this._time_diff; 
 	act.p = JSON.stringify(act.p);
-	// console.log("act before sending", act.ident)
+
 	
 	delete act.vector;
 

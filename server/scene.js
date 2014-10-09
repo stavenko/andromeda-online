@@ -11,7 +11,8 @@ var SceneObject = function(threeScene, W){
 	this.description= "Scene routines"
 	this.GUID =  u.make_guid();
 	// this.broadcaster = broadcaster;
-	// console.log("thbc", this.broadcaster);
+
+
     this.use_client_rendering = false;
     if(threeScene !== undefined && W !== undefined){
     	this.W = W;
@@ -142,7 +143,8 @@ Scene.join_object = function( object ){
 }
 Scene.join_actor = function( actor ){
 
-    // console.log("JOINING");
+
+
 	this.actors[actor.GUID] = actor;
 	if(this.actor_wp_ix === undefined){
 		this.actor_wp_ix = {}
@@ -189,16 +191,17 @@ Scene.load_object = function(object, ix){
 			mesh.json = object;
 			mesh.load_json();
 			var actions = mesh.getActionList();
-			// console.log("ACTIONS", object.GUID, actions);
+
+
 			self.addActions(object.GUID, actions);
 			
 			if (self.do_prepare_rendering){
 				if (object.type !=='static'){
-                    // console.log(">>>>");
+
 					var label = SpriteUtils.makeTextSprite("mesh: " + ix);
 					label.position = new self.THREE.Vector3(0,0,0);
 					mesh.add(label);
-					// console.log("added");
+
 				}
 				self.three_scene.add( mesh );
 		
@@ -222,7 +225,7 @@ Scene.load_object = function(object, ix){
 Scene.load = function(onload, three_scene, W){
 	// three scene - is a param for adding meshes to
 	var self = this;
-	//console.log('loading');
+
 	// DEBUG THINGS
 	//self.total = new self.THREE.Vector3();
 	//self.total_t=0;
@@ -244,7 +247,7 @@ Scene.load = function(onload, three_scene, W){
 	
 },
 Scene._ajax_getter=function(name, cb) {
-	//console.log(this);
+
 	var self = this;
 	self.loader.load( name, function(geom, mat){
 		
@@ -257,7 +260,7 @@ Scene._ajax_getter=function(name, cb) {
 Scene._fs_getter=function(name, cb){
 	var self = this;
 	fs.readFile(name, function(err,data){
-		//console.log("start loading");
+
 		if(err) throw err;
 		var json = JSON.parse(data)
         var result = self.loader.parse( json, '' );
@@ -296,7 +299,7 @@ Scene._delete_object = function(guid){
 	
 }
 Scene._model_loaded = function(ix){
-	//console.log("LLL");
+
 	if (this.loaded_objects_count == this.total_objects_count){
 		// scene loaded
 		this.is_loaded = true;
@@ -310,22 +313,21 @@ Scene._model_loaded = function(ix){
 }
 Scene.sync = function(sync){
 	var self = this;
-	// console.log ("syncing pulse recv", sync)
+
 	self._last_server_report = sync
-	//self.targets = {};
+
 
 }
 Scene.get = function(){
 	return this._scene
 }
 Scene.get_almanach = function(){
-	// var self = this;
-	// console.log(this.mesh_last_states);
+
 	return this.mesh_last_states
 	
 }
 Scene.createSettingAction =function(actor, setting_name, setting_value, is_switch){
-	/// console.log("A", actor)
+
 	var action = {
 		type: 1000,
 		name:setting_name,
@@ -378,9 +380,7 @@ Scene.tick = function(){
 	}
 	var now = new Date().getTime();
     
-	// console.log("tick");
-	// console.log('.');
-	//var time_inc = 0;
+
 	var time_left = self.clock.getDelta();
 	self.time_inc += time_left;
 	
@@ -397,18 +397,12 @@ Scene.tick = function(){
 			if(new_actions.length > 0){
 				
 				_.each(new_actions, function(a){
-					// Each action put to mesh queue and then, push to network queue
+
 					self._addToServerQueue(a);
-                    console.log("ADDM",  a.ident, now, a.ident - self.W._time_diff, self.W._time_diff);
+
 					self.meshes[a.mesh].eventManager.add(a, a.ident  );
                     
-                    //if(self.W !== undefined){
-                	// mesh.eventManager.add(action, action.ident - W._time_diff);
-            
-                        //}else{ // Если нету - значит на сервере - и значит строго
-                	//	mesh.eventManager.add(action, action.ident);
-            
-                    //}
+
                     
 					
 				})
@@ -439,25 +433,24 @@ Scene.tick = function(){
 		
 		if (mesh.type == 'static') return;
 		if(self.localActions && (i in self._last_server_report) ){
-			//console.log("REPORT TS", self._last_server_report[i].server_ts)
-			// console.log("BEFORE", self.meshes[i].workpoint_states['Piloting']['s_armor0_state'])
+
 			
 			mesh.recalculate_till_server_report(self._last_server_report[i] , self.W._time_diff);
-			// console.log("AFTER", self.meshes[i].workpoint_states['Piloting']['s_armor0_state'])
+
 			
 			delete self._last_server_report[i]; 
 			
 			
 		}
-		// console.log("GOING TO actions", self.meshes[i].workpoint_states['Piloting']['s_armor0_state'])
+
 		if(self.W){
 			var q_now =  now + self.W._time_diff;
 		}else{
 			var q_now = now;
 		}
-		// console.log("befproc", mesh.eventManager._stamps.length);
+
 		mesh.eventManager.process(q_now, function(event){
-            console.log("PROCESS EVENT", event);
+
 			mesh.controllers[event.dev].process(event);
             if(self.W){
                 if(mesh.uis[event.dev] && mesh.uis[event.dev].onAction){
@@ -495,21 +488,18 @@ Scene.getNetworkActions = function(){
 	return ret;
 }
 Scene.getLocalActions = function(now){
-	//if (this.localActions){
+
 		if(this.GUID == this.W.get_main_viewport().scene){
 			var acts =this.W.Inputs.getLatestActions(this.GUID, now);  
 			if(acts.length > 0){
-				// console.log("Actions, got by scene", acts);
+
 			}
 			return acts;
 			
 		}else{
 			return[];
 		}
-		//}else{var locals = []}
-	// var networks = this._network_messages
-	// var ret = locals// .concat(networks) // network messages will follow local messages- easier to find final processed message id
-	//return ret;
+
 	
 	
 	
@@ -521,7 +511,7 @@ Scene.makeSceneBroadcast = function(action){
 	}
 }
 Scene.removeObject = function (mesh) {
-    // console.log("RENDR", this.do_prepare_rendering);
+
     if (this.do_prepare_rendering) {
         this.createBlast( mesh );
         this.three_scene.remove(mesh);
@@ -534,7 +524,7 @@ Scene.removeObject = function (mesh) {
 
 Scene.createBlast = function (mesh) {
     var ts = new Date().getTime();
-    // console.log("BS", mesh.geometry.boundingSphere.)
+
     SpriteUtils.createExposionObject(
         "#" + mesh.json.GUID + "_" + ts , 
         ts, 
@@ -553,13 +543,13 @@ Scene._addToServerQueue = function(action){
 Scene._flushServerQueue = function(){
 	var size = this._server_sync_queue.length ;
 	var ret = this._server_sync_queue.slice(this._server_last_sended);
-	//console.log("ffl", size, ret)
+
 	this._server_last_sended = size;
 	return {scene:this.GUID, actions:ret};
 }
 Scene.addNetworkMessage = function(mes){
     this._last_user_activity = new Date().getTime();
-    console.log("Added activity", mes);
+
 	this._network_messages.push(mes) // = this._network_messages.concat(mes)
 }
 

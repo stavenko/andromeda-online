@@ -11,20 +11,19 @@ window.World.init = function(auth_hash, client_login){
 	this.auth_hash = auth_hash;
 	this.login = client_login;
 	
-	// this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
-	// this.camera.position.z = 250;
-	this.p = new THREE.Projector();
+
+    this.p = new THREE.Projector();
 	this.three_scenes = {}
 	this.scenes = {};
 	this.flares = {};
     this.actors = {};
     this.actorScene = {};
-	//  = new THREE.Scene();
-	this.clock = new THREE.Clock();
-	//this.geometry = new THREE.CubeGeometry(200, 200, 200);
-	var sg = new THREE.SphereGeometry(5);
-	// var wires = new THREE.MeshBasicMaterial({wireframe:true})
-	this.cur = new THREE.Mesh(sg) // , wires);
+
+    this.clock = new THREE.Clock();
+
+    var sg = new THREE.SphereGeometry(5);
+
+    this.cur = new THREE.Mesh(sg) // , wires);
 	this.vp_width = document.body.clientWidth;
 	this.vp_height = 400;//document.body.clientHeight;
 	this._main_viewport = 0
@@ -32,10 +31,8 @@ window.World.init = function(auth_hash, client_login){
 	this.sceneActions = {};
 	this._input_keymap = {};
     this._uniform_updaters = {};
-	// var ProtoBuf = dcodeIO.ProtoBuf;
-	// this.protobufBuilder = ProtoBuf.loadProtoFile( "/js/gl/client_message.proto" );
-	//this._main_viewport_actors = [];
-	var h3 = this.vp_height/3
+
+    var h3 = this.vp_height/3
 	var w4 = this.vp_width/4
 	var w34 = this.vp_width- w4
 	this._additional_vps_geom = [
@@ -79,35 +76,26 @@ window.World.init = function(auth_hash, client_login){
 		self.mouse_y = e.y;
 	}, false );
 	this.renderer.domElement.addEventListener('mouseup', function(e){
-		// console.log(e)
-		// console.log("MOUSE");
+
 		self.Inputs.input( 'lmouse', false)
 	})
 	
 	this.renderer.domElement.addEventListener('mousedown', function(e){
-		// console.log(e)
+
 		self.Inputs.input( 'lmouse', true)
 	})
 	document.addEventListener('keydown', function(e){
 		var code = e.keyCode;
-		// console.log(code);
+
 		self.Inputs.input( code, true)
 		
-		//if(code in self.actions){
-		//	var action = self.actions[code]
-		//	ControllersActionMap[action.type].act(self, action, true)
-		//}else{
-			//}
+
 		
 	}, false)
 	document.addEventListener('keyup', function(e){
 		var code = e.keyCode;
 		self.Inputs.input(code, false)
-		//if(code in self.actions){
-		//	var action = self.actions[code]
-		//	ControllersActionMap[action.type].act(self, action, false)
-		//}else{
-			//}
+
 		
 	}, false)
 	self.init_socket()

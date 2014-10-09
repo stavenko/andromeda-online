@@ -8,19 +8,22 @@ window.World.render = function(vp,geom){
 		console.log('render M');
 	}
     this._cur_cam = vp.three_camera;
-	this.renderer.render( this.three_scenes[vp.scene], vp.three_camera );
+	//this.276
+	// er.276
+	// ( this.three_scenes[vp.scene], vp.three_camera );
+
+    // console.log(this.three_scenes, vp.three_camera);
+
 	
-    //self.renderer.render(self.three_scene, self.camera);
+    this.renderer.render(this.three_scenes[vp.scene], vp.three_camera);
 	
 	
 }
 
 window.World.redrawSky = function(vp){
-	//var m = this.scenes[vp.scene].meshes[vp.object]
-	
-	//// var C = this.scene.mesh_for(this.login);
-	// var r= m.rotation
-	var mp = vp.three_camera.parent.matrix.clone()
+
+
+    var mp = vp.three_camera.parent.matrix.clone()
 	var m = vp.three_camera.matrix.clone()
 	mp.multiply(m)
 	var mr = new THREE.Matrix4().extractRotation(mp)
@@ -29,8 +32,11 @@ window.World.redrawSky = function(vp){
 	// console.log(vp.three_camera)
 	this.skyBoxCamera[vp.scene].rotation.copy( rot );
 
+
 	//this.renderer.setViewport(vp.geom.l, vp.geom.t, vp.geom.w, vp.geom.h);
-	this.renderer.render( this.skyboxScenes[vp.scene], this.skyBoxCamera[vp.scene] );
+
+
+    this.renderer.render( this.skyboxScenes[vp.scene], this.skyBoxCamera[vp.scene] );
 	// renderer.render( scene, camera );
 	// console.log(this.skyBox.position)
 	
@@ -264,12 +270,13 @@ window.World.go = function(){
         _.each(self._uniform_updaters, function(f, name){
             f();
         })
+        self.mouse_projection_vec.set( ( self.mouse_x/ geom.w ) * 2 - 1, - ( self.mouse_y / geom.h ) * 2 + 1, 0.99 );
+        
         self.render(mvp, geom);
         _.each(mvp.UIS, function(ui){
         	ui.refresh();
         })
-        self.mouse_projection_vec.set( ( self.mouse_x/ geom.w ) * 2 - 1, - ( self.mouse_y / geom.h ) * 2 + 1, 0.99 );
-
+        
         self.p.unprojectVector( self.mouse_projection_vec, mvp.three_camera );
 
         self.cur.position.copy( self.mouse_projection_vec );
