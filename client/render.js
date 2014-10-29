@@ -12,7 +12,6 @@ window.World.render = function(vp,geom){
 	// er.276
 	// ( this.three_scenes[vp.scene], vp.three_camera );
 
-    // console.log(this.three_scenes, vp.three_camera);
 
 	
     this.renderer.render(this.three_scenes[vp.scene], vp.three_camera);
@@ -201,6 +200,7 @@ window.World.setup_scene = function(scene){
 	   color: 0xff0000,
 	   wireframe: true
 	});
+
 	// console.log(scene._scene)
 	
 	var sunDirection = new THREE.Vector3().fromArray([0,1,0]) ;
@@ -252,21 +252,17 @@ window.World.go = function(){
 	
 	var makeTicks = function(){
 		_.each(self.scenes, function(s, g){
-			//console.log("recount ",g);
 			s.tick()
-			//console.log("is made syncy"); 
 		})
 	}
 	
 	
     var animate = function(){
-        // if (self.total_objects_count === self.loaded_objects_count){
         makeTicks();
-        //console.log(self._viewports)
+
         var mvp = self.get_main_viewport();
         var geom = self._main_vp_geom
-        // console.log("RENDER");
-        // Before rendering let's update our uniforms;
+
         _.each(self._uniform_updaters, function(f, name){
             f();
         })

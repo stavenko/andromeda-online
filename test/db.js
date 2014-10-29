@@ -56,7 +56,11 @@ describe("When taking database values", function(){
     })
     it("owner with id=2 has ship orbiting jupiter", function(){
         db.getAssets({user_id:2}, function(ships){
-            chai.expect(ships[0].location.g.orbit.C).to.equal('jupiter');
+            var celestialId = ships[0].location.g.orbit.C;
+            db.getCelestials({"GUID":celestialId}, function(v){
+                chai.expect(v.name).to.equal('jupiter');
+            })
+
         })
     })
     

@@ -46,7 +46,7 @@ var getUrls = function(map){
         }else{
             var u = "/" + addr;
         }
-        // console.log("R",u);
+
         var no = {url:u, _name: addr,  label:obj.label, ang:{controller:obj.controller, templateUrl:obj.templateUrl }};
         if('parent' in obj){
             no.parent = obj.parent;

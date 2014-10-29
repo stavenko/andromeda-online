@@ -20,7 +20,7 @@ app.service('authHash',['$http', '$log', function($http, $log){
             this._init( cb )
             //$log.log("L",this.q, this._hash);
             return this._hash; 
-        },
+        }
     }
   }] )
 
@@ -86,7 +86,7 @@ app.factory("socketPromise",["$q", "$rootScope", "authHash", function( $q, $root
         if(msg.err){
             is_authenticated.reject(msg.err);
         }else{
-            console.log(">>");
+
             $rootScope.$apply(function(){is_authenticated.resolve(true)})
         }
         

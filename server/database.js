@@ -23,36 +23,42 @@ var _PRE_GUIDS =
 
 
 var Celestials = {
-    sun: {
+    '64946f5b-0bd6-45a8-8b69-3685d0a20090': {
         R:6.9551 *Math.pow(10,8), // 1.392 * Math.pow(10,9),
         M:1.9891 * Math.pow(10,30),
-        type:"star"
+        GUID:'64946f5b-0bd6-45a8-8b69-3685d0a20090',
+        type:"star",
+        name:"sun"
     },
-    jupiter:{
+    '64946f5b-0bd6-45a8-8b69-3685d0a20091':{
         type:"planet",
         M: 1.8986 * Math.pow(10,27),
         R: 69911000,
-        orbit:{celestial:"sun", 
-               e:0.048775, 
+        name:"jupiter",
+        GUID:'64946f5b-0bd6-45a8-8b69-3685d0a20091',
+        orbit:{celestial:'64946f5b-0bd6-45a8-8b69-3685d0a20090',
+               e:0.048775,
                a:7.785472*Math.pow(10,8), 
                P:(275.066/360*(2*Math.PI)),
                T: 4332.589 * 24 * 60 * 60,
-               n: [0,1,0],
-               t0 :0 }
+               n: [0.6545084971874736,0.5877852522924731,-0.47552825814757665],
+            t0 :0 }
         
     },
-    ganimed:{
+    '64946f5b-0bd6-45a8-8b69-3685d0a20092':{
         type:"moon",
+        name:"ganimed",
         R: 2634100,
         M: 1.4819*Math.pow(10,23),
+        GUID:'64946f5b-0bd6-45a8-8b69-3685d0a20092',
         orbit:{
-            celestial:"jupiter",
+            celestial:'64946f5b-0bd6-45a8-8b69-3685d0a20091',
             e: 0.0013,
-            a: 1070400,
-            n: [0,1,0],
-            P: 0,
-            T: 7.15455296 * 24 * 60 * 60,
-            t0:0
+            a: 1070400, // large semiaxis
+            n: [0.6545084971874736,0.5877852522924731,-0.47552825814757665], // orbit plane normal
+            P: 0, // perihelium argument
+            T: 7.15455296 * 24 * 60 * 60, // Period
+            t0:0 // phase of orbit on first sightseeing
         }
     }
 }
@@ -67,15 +73,15 @@ var Users = [
 ]
 
 var Orbit1 = {
-            C: "ganimed", 
+            C: '64946f5b-0bd6-45a8-8b69-3685d0a20092',
             a:  3,  // 0<= a <= (Math.floor( celestial_radius*2 ) / height_step - min_height )  min_height + a * height_step
-            n:  12, // 0<= n <= 66;  Normal to orbit plane: there're 66 normals
-            t0: 2  // t0 <= n<= 5; phase = T/5 * t0;
+            n:  12, // 0<= n < 66;  Normal to orbit plane: there're 66 normals
+            t0: 2  // t0 <= n < 5; phase = T/5 * t0;
         
 }
 
 var Orbit2 = {
-            C: "jupiter", 
+            C: '64946f5b-0bd6-45a8-8b69-3685d0a20091',
             a:  5,  
             n:  12, 
             t0: 1
@@ -145,7 +151,7 @@ var shields = {
 };
 engines = {
 	'rotation':[0,1,2,3,4,5],
-	'propulsion':[6,7],
+	'propulsion':[6,7]
 }
 
 var PreviousState = {
@@ -221,8 +227,8 @@ var ST = {
             "type":"turret",
             "turret":"back",
             devices:[13]
-        },
-    },
+        }
+    }
 }
 var ShipTypes = {
     "rookie":ST
@@ -330,33 +336,40 @@ function getAssetsInLocation(gLocation){
 
 
 function getAssetsFor(user_id){
-    //var lst = [];
-    // console.log("Querying", user_id,AssetOwnerIx[user_id]);
+
     return  _.map(AssetOwnerIx[user_id], function(ix){return Assets[ix]})
-    // console.log("Q", lst[0].location.g.orbit);
-    // return lst;
+
 }
 function getAssets_(id){
     //console.log("IX",id, AssetsIx[id], AssetsIx);
     return Assets[AssetsIx[id]];
 }
 function DB(){
-    this.getCelestial = function (c_guid){
+
+    var getCelestial = function (c_guid){
         return Celestials[c_guid];
     
-    }
+    };
 
     this.getRelatedCelestials = function (celestial_guid, callback){
-        // Find the celestial, which corresponds to the solar system 
-        var C, lst;
-        C = getCelestial(celestial_guid);
+        // Find the celestial, which corresponds to the solar system
+        console.log("celestial", celestial_guid);
+        var C, lst = [];
+        C = getCelestial(celestial_guid.GUID);
         lst.push(C);
         while(C.type !== 'star'){
             C = getCelestial(C.orbit.celestial);
             lst.push(C);
         }
         callback(lst);
-    }
+    };
+
+    this.getCelestials = function (query, callback){
+        // Find the celestial, which corresponds to the solar system
+        var C;
+        C = getCelestial(query.GUID);
+        callback(C);
+    };
 
     this.getAssets = function getAssets(query, callback){
         //console.log("Q for A", query);
@@ -382,8 +395,10 @@ function DB(){
             return this.getUsers(query, callback);
         }else if (type === "A"){
             return this.getAssets(query, callback);
-        }else if (type === "C"){
+        }else if (type === "celectial-recursive") {
             return this.getRelatedCelestials(query, callback);
+        }else if (type === "celestials"){
+            return this.getCelestials(query, callback);
         }else if (type === "B"){
             return this.getBookmarks(query,callback);
         }else if (type === "T"){

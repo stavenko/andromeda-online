@@ -24,7 +24,8 @@ var app = require('express')()
   , path = require('path');
   
   
-  
+
+
   
 var DEBUG = false;
 
@@ -459,7 +460,7 @@ app.post('/auth/login/',  passport.authenticate('local', { failureRedirect: '/au
 		req.session.auth_hashes[req.user.id] = req.user.auth_hash
 		SocketAuthMap[req.session.auth_hashes[user.id] ] = user.id
 	
-		res.redirect('/console/');
+		res.redirect(config.consoleUrl);
 	});
 
 
@@ -467,6 +468,7 @@ app.get('/auth/logout/', function(req, res){
 	req.logout();
 	res.redirect('/');
 });
+
 
 
 app.get('/aconsole/', ensureAuthenticated, function(req, res){

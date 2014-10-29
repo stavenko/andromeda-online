@@ -67,30 +67,24 @@ EventQueue.prototype.process = function(now, processor){
 			return;
 		}
 		var is_from = self._include_last_once? self._last_processed <= ts : self._last_processed < ts;
-		console.log("FFF", [is_from,ts <= now], self._last_processed, ts, now, ts-now );
+		//console.log("FFF", [is_from,ts <= now], self._last_processed, ts, now, ts-now );
 		
 		if(is_from && ts <= now){
 			self._include_last_once = false;
 			_.each(self._events[ts], function(e){
 				if(!is_browser){
-					// console.log("processing", e.type)
 				}
-				
-				// console.log("q>>", self._last_processed, e.ident, now, e)
-				
+
 				processor(  e, ts )
 				processed_events += 1;
 			})
-			//console.log("last_proc was ", self._mesh_id, self._last_processed);
+
 			self._last_processed = ts;
-			//console.log("last_proc became ", self._mesh_id , self._last_processed);
+
 			
 		}
 	})
-	// L.setValue("events "+ self._mesh_id, processed_events);
-	
-	// console.log("E");
-	
+
 	_.each(removed_ixes, function(ix){
 		self._stamps.splice(ix, 1);
 	})

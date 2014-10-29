@@ -104,7 +104,7 @@ Controller.LocalInputActor = function(W, socket){
 		
 		
 		
-		//self.actor_login = actor_login
+
 		self._default_actions={
 		
 			87: {type:ROTATE, controller:"pilot",  p:{ a:0,d:-1}},
@@ -174,9 +174,7 @@ Controller.LocalInputActor = function(W, socket){
 			}
 		}
 		this.getLatestActions = function(scene, now){
-			// console.log("GLA");
-            
-            
+
             
             var actions = [];
 			_.each(self._keycodes_in_action, function(k_action, keycode){
@@ -191,8 +189,7 @@ Controller.LocalInputActor = function(W, socket){
 					delete self._keycodes_in_action[keycode]
 				}
 				var action = _.clone(self.actions[keycode]);
-				console.log("pressed", W._time_diff, W )
-				
+
 				if(keycode in W._input_keymap){
 					var act_desc  = W._input_keymap[keycode];
 					var new_action = {
@@ -208,11 +205,9 @@ Controller.LocalInputActor = function(W, socket){
 				}
 			});
 			return actions;
-					
-		}
-			
 
-		
+
+		}
 	};
 Controller.CSettingController = function(){
 	this.type="settings"
@@ -597,10 +592,6 @@ Controller.CPilotController = function(){
 				}	
 			}
 			
-			
-			
-			// var performance = mesh.type.devices[action.dev].performance;
-			//var performance = mesh.type.devices[action.dev].performance;
 		}
 		
 		/*

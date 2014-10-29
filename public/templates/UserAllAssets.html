@@ -4,7 +4,7 @@
             <table class="table">
                 <tr ng-repeat="ship in assets">
                     <td>{{ ship.type }}</td>
-                    <td>{{ ship.location.g.orbit.C }}</td>
+                    <td>{{ celestials[ ship.location.g.orbit.C ].name }}</td>
                     <td> <a class="btn btn-primary" ng-click="shippositions(ship)"> Details </a> </td>
                 </tr>
             </table>

@@ -14,6 +14,9 @@ config.redisHost = redisUrl.hostname;
 config.redisPort = redisUrl.port;
 config.redisDatabase = redisUrl.path.substring(1);
 
+config.consoleUrl = "/aconsole/";
+config.simulationUrl = "/world/";
+
 console.log('Using Redis store ' + config.redisDatabase)
 
 module.exports = config;

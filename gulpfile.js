@@ -8,8 +8,10 @@ var rename = require('gulp-rename');
 var mocha  = require('gulp-mocha');
 var watch = require('gulp-watch');
 var del = require('del');
+var shell = require('gulp-shell');
 
 var paths = {
+    engine_scripts_dir: ["./server/*"],
     engine_scripts: ["./server/entry.js"],
     client_scripts: ["./client/*"],
     console_scripts:["./user-console/*"]
@@ -31,7 +33,7 @@ gulp.task('test', function(){
     .pipe(mocha({reporter:"nyan"}));
 })
 
-gulp.task('engine_scripts', ['clean'], function() {
+gulp.task('engine_scripts', [], function() {
   // Minify and copy all JavaScript (except vendor scripts)
   // with sourcemaps all the way down
   return gulp.src(paths.engine_scripts)
@@ -51,7 +53,7 @@ gulp.task('engine_scripts', ['clean'], function() {
     .pipe(gulp.dest('public/js/gl/'));
 });
 
-gulp.task('client_scripts', ['clean'], function() {
+gulp.task('client_scripts', [], function() {
   // Minify and copy all JavaScript (except vendor scripts)
   // with sourcemaps all the way down
   return gulp.src(paths.client_scripts)
@@ -65,7 +67,7 @@ gulp.task('client_scripts', ['clean'], function() {
   .pipe(gulp.dest('public/js/gl/'));
 });
 
-gulp.task('console_scripts', ['clean'], function() {
+gulp.task('console_scripts', [], function() {
   // Minify and copy all JavaScript (except vendor scripts)
   // with sourcemaps all the way down
   return gulp.src(paths.console_scripts)
@@ -89,19 +91,21 @@ gulp.task('images', ['clean'], function() {
 });
 */
 // Rerun the task when a file changes
-/*
+
 gulp.task('watch', function() {
-  gulp.watch(paths.engine_scripts, ['engine_scripts']);
+  gulp.watch(paths.engine_scripts_dir, ['engine_scripts', "client_scripts"]);
   
   gulp.watch(paths.client_scripts, ['client_scripts']);
   
   gulp.watch(paths.console_scripts, ['console_scripts']);
   
-  // gulp.watch(paths.images, ['images']);
-});
-*/
 
+});
+
+gulp.task('build', ['engine_scripts','client_scripts', 'console_scripts'])
 // The default task (called when you run `gulp` from cli)
 // gulp.task('default', ['watch', 'scripts', 'images']);
 
-gulp.task('default', ['test', 'engine_scripts', "client_scripts", "console_scripts"]);
+gulp.task('default', function(){
+    gulp.src('.').pipe(shell(['gulp build', 'gulp watch']));
+});

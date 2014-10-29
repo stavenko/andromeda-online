@@ -1,9 +1,34 @@
-app.controller('UserAllAssets', ["$scope", "socketPromise", function($scope, socketPromise){
+app.controller('UserAllAssets', ["$scope", "socketPromise", "$q", function($scope, socketPromise, $q){
     socketPromise.get("A", {user_id: true }).then(function(res){
         $scope.assets = res;
-        // console.log("RESOLVED", res)
+        var promises = [];
+        console.log(res);
+        angular.forEach(res, function(asset, ix){
+            console.log(asset);
+            if(asset.location){
+                var g = asset.location.g;
+                if(g.orbit){
+                    promises.push(socketPromise.get("celestials",{"GUID": g.orbit.C })
+                        .then(function(a){console.log(a); return a;}) );
+                }
+                if(g.coordinates){
+                    console.log("coordinates", g.coordinates);
+                }
+            }
+        })
+        $q.all(promises).then(function(cels){
+            var celestials = {};
+            angular.forEach(cels, function(C){
+                console.log("CCC", C);
+                celestials[C.GUID] = C;
+            })
+            console.log("Co", celestials);
+            $scope.celestials = celestials;
+
+        })
+
     });
-    $scope.d = ["a"]
+    $scope.d = ["a"];
     
     $scope.connect = function(position){
         // TODO Убрать возможность нажимать на кнопку еще хоть раз

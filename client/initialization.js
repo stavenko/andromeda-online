@@ -38,7 +38,7 @@ window.World.init = function(auth_hash, client_login){
 	this._additional_vps_geom = [
 		{l:w34, t:h3*2, w:w4, h:h3},
 		{l:w34, t:h3, w:w4, h:h3},
-		{l:w34, t:0, w:w4, h:h3},
+		{l:w34, t:0, w:w4, h:h3}
 	
 	]
 	this._main_vp_geom = {l:0, t:0, w:this.vp_width, h:this.vp_height};
@@ -107,5 +107,3 @@ window.World.init = function(auth_hash, client_login){
 window.World.set_actions = function(){
 	self.actions = self._default_actions
 }
-
-// module.exports.W = window;
