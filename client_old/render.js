@@ -1,3 +1,6 @@
+
+
+
 window.World.render = function(vp,geom){
 	this.redrawSun(vp)
 	// console.log(vp)
@@ -8,12 +11,7 @@ window.World.render = function(vp,geom){
 		console.log('render M');
 	}
     this._cur_cam = vp.three_camera;
-	//this.276
-	// er.276
-	// ( this.three_scenes[vp.scene], vp.three_camera );
 
-
-	
     this.renderer.render(this.three_scenes[vp.scene], vp.three_camera);
 	
 	
@@ -222,9 +220,9 @@ window.World.setup_scene = function(scene){
 	
 }
 
-
+/*
 window.World.bindCamera = function(){
-	
+	console.log("do we bind camera?");
 	var self = this;
 	// console.log(self.actors);
 	var actor 		 = self.get_current_actor();
@@ -234,7 +232,7 @@ window.World.bindCamera = function(){
 	self.setCamera();
 	
 }
-
+*/
 
 window.World.go = function(){
 	var self = this;
@@ -276,7 +274,7 @@ window.World.go = function(){
         self.p.unprojectVector( self.mouse_projection_vec, mvp.three_camera );
 
         self.cur.position.copy( self.mouse_projection_vec );
-        //console.log(self.mouse_projection_vec);
+
 
 
         _.each(self._additional_vps, function(vp_name, i){

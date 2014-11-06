@@ -98,7 +98,7 @@ window.World.init = function(auth_hash, client_login){
 
 		
 	}, false)
-	self.init_socket()
+	self.init_socket();
 	return self;
 	
 }

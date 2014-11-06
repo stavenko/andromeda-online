@@ -46,7 +46,7 @@ function socketService(listener){
         for(var i =0;i <Queue.length; i++){
             socket.emit(Queue[i].T, Queue[i].p);
         }
-    })
+    });
     
     var S = {};
     var cbs = {};
@@ -61,7 +61,7 @@ function socketService(listener){
         cbix =  getCBIx();
         cbs[cbix] = {
             cb: d
-        }
+        };
         var o = {p:p};
         o.cbix = cbix;
         o.T = t;
@@ -74,7 +74,7 @@ function socketService(listener){
         }
 
         return d.promise;
-    }
+    };
     
     var messages_to_hear = ["Q", "R", 'S'];
     _.each(messages_to_hear, function(message_type){
@@ -82,12 +82,12 @@ function socketService(listener){
             // console.log("R>>>", msg);
             var cbix = msg.cbix;
             if(cbs.hasOwnProperty(cbix)) {
-                cbs[cbix].cb.resolve(msg.d)
+                cbs[cbix].cb.resolve(msg.d);
                 delete cbs[cbix];
             }
         })
         
-    })
+    });
     
     socket.on('F', function(data){
         listener("F", data);
@@ -95,20 +95,20 @@ function socketService(listener){
     socket.on("ALM", function(data){
         listener("ALM", data);
 
-    })
+    });
     
     S.get = function(t,p){
         return Req("Q", t,p)
-    }
+    };
     S.sync = function(){
         return Req("S",'',{})
-    }
+    };
     S.request = function(t,p){
         return Req("R", t,p)
-    }
+    };
     S.action =function(mess){
         socket.emit("A",mess)
-    }
+    };
     return S;
 }
 
@@ -141,7 +141,7 @@ window.World.init_socket = function(){
     this.socket_srv.request("CTX",{user_id:true})
     .then(function(ctx){
         // console.log("ctx received", ctx);
-        self.syncTime()
+        self.syncTime();
         
         var total_scenes  = 0;
         var loaded_scenes = 0;
@@ -244,7 +244,7 @@ window.World.syncTime = function(){
 	// var Actions = this.protobufBuilder.build("Actions");
 	
 	var messages = {};
-	var diff_statistics_length = 50
+	var diff_statistics_length = 50;
 
 
     this.socket_srv.sync().then(function(data){
