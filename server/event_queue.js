@@ -25,10 +25,6 @@ var EventQueue = function(mesh_id){
 	// this._stamps_ix
 }
 EventQueue.prototype.add = function( e, ts ){
-	//if(is_browser==false){
-	//	console.log("ADDING", e, ts);
-	//}
-	// var ts = e.ident;
 	if(this._events[ts]){
 		this._events[ts].push(e);	
 	}else{
@@ -39,18 +35,11 @@ EventQueue.prototype.add = function( e, ts ){
 	this._stamps.sort();
 }
 EventQueue.prototype.set_last_processed = function(ts){
-	
-	//if(! is_browser){
-	//	console.log("just checking - we can't get here on serverside");
-	//}
-	
 	this._last_processed = ts;
 	this._include_last_once = true;
 }
 EventQueue.prototype.remove = function(remove_before_ts){
 	this._rem_comm += 1;
-	//L.setValue("removing_command " + this._mesh_id, this._rem_comm);
-	// console.log("removing_command" + this._mesh_id, remove_before_ts);
 	this._remove_before = remove_before_ts; // Lazy removing
 	
 }

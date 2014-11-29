@@ -3,12 +3,12 @@ var u = require('./utils');
 var THR = require('three');
 var Controller = require('./controller');
 var AObject = require('./object');
-var EQ = require("./event_queue")
+var EQ = require("./event_queue");
 
 var _     = require('underscore');
 
 var SceneObject = function(threeScene, W){
-	this.description= "Scene routines"
+	this.description= "Scene routines";
 	this.GUID =  u.make_guid();
 	// this.broadcaster = broadcaster;
 
@@ -16,16 +16,16 @@ var SceneObject = function(threeScene, W){
     this.use_client_rendering = false;
     if(threeScene !== undefined && W !== undefined){
     	this.W = W;
-    	this.three_scene = threeScene
+    	this.three_scene = threeScene;
         this.use_client_rendering = true;
     }
     
 	this._create();
 	
-}
+};
 Scene = {constructor: SceneObject}
 if(typeof window === 'undefined'){
-	Scene.THREE = THR // Saveing THREE.js as part of scene - this step could be done on a certain platform
+	Scene.THREE = THR; // Saveing THREE.js as part of scene - this step could be done on a certain platform
 	Scene.do_prepare_rendering = false
 	Scene.ajax_load_models = false
 	Scene.need_update_matrix = true
@@ -35,12 +35,12 @@ if(typeof window === 'undefined'){
 	
 }else{
 	var is_browser = true;
-	Scene.THREE = THREE
-	Scene.do_prepare_rendering = true
-	Scene.ajax_load_models = true
-	Scene.need_update_matrix = false
-	Scene.localActions = true
-	Scene.INPUT_TIMESTEP = 0.0700 // seconds
+	Scene.THREE = THREE;
+	Scene.do_prepare_rendering = true;
+	Scene.ajax_load_models = true;
+	Scene.need_update_matrix = false;
+	Scene.localActions = true;
+	Scene.INPUT_TIMESTEP = 0.0700; // seconds
 	Scene.time_since_last_actions_acquired = 0;
 	
 	// Scene.save_meshes_past = true
@@ -68,13 +68,13 @@ Scene._create = function(){
 	this.clock = new (this.THREE.Clock)();
 	this.time_inc  = 0;
 	this.tick_counter = 0;
-	this._scene_object_cache = {}
-	this._scene_obj_actors={}
+	this._scene_object_cache = {};
+	this._scene_obj_actors={};
 	this._network_messages = [];
     this._last_user_activity = new Date().getTime();
-	this._last_server_report = {}
-	this.loaded_objects_count = 0
-	this._model_cache = {}
+	this._last_server_report = {};
+	this.loaded_objects_count = 0;
+	this._model_cache = {};
     
     
 	this._server_sync_queue = [];
@@ -551,7 +551,24 @@ Scene.addNetworkMessage = function(mes){
     this._last_user_activity = new Date().getTime();
 
 	this._network_messages.push(mes) // = this._network_messages.concat(mes)
-}
+};
+Scene.clear = function(){
+    for (var i in this.meshes){
 
-SceneObject.prototype = Scene
-module.exports = SceneObject
+        this.meshes[i].clear();
+        this.meshes[i] = null;
+
+    };
+    this.three_scene = null;
+    this.actors = null;
+    this.W = null;
+    this.onLoadCallback = null;
+    this._scene_object_cache = null;
+    for (var mc in this._model_cache){
+        delete this._model_cache[mc];
+
+    }
+};
+
+SceneObject.prototype = Scene;
+module.exports = SceneObject;

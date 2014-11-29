@@ -6,3 +6,11 @@ public/js/gl/main.js
 
 public/js/gl/engine.js
 bower_components/*
+
+.idea/compiler.xml
+
+.idea/copyright/profiles_settings.xml
+
+.idea/uiDesigner.xml
+
+.idea/workspace.xml

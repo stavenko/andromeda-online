@@ -1,11 +1,11 @@
 function socketService(listener){
-    
+
     var authHashF = function(cb){
         var d = Q.defer();
         var xhr = new XMLHttpRequest();
         xhr.open('GET', '/my-auth-hash/', true);
         xhr.send();
-        
+
         xhr.onreadystatechange = function() {
             if (xhr.readyState == 4) {
                  if(xhr.status == 200) {
@@ -15,17 +15,15 @@ function socketService(listener){
                  }
              }
         };
-        
+
     }
     var socket = io.connect();
     var is_ready = false;
     var Queue = [];
-    
+
     is_authenticated = Q.defer();
     socket.on('connected', function(){
-        //console.log("reconnection");
         authHashF(function(json){
-            // console.log(">>>",json);
             socket.emit("auth_hash", {auth: json.hash});
         })
     })
@@ -33,11 +31,9 @@ function socketService(listener){
         if(msg.err){
             is_authenticated.reject(msg.err);
         }else{
-            //console.log(">>");
             is_authenticated.resolve(true);
-            //$rootScope.$apply(function(){is_authenticated.resolve(true)})
         }
-        
+
     })
     // console.log(is_authenticated);
     is_authenticated.promise.then(function(s,e){
@@ -47,7 +43,7 @@ function socketService(listener){
             socket.emit(Queue[i].T, Queue[i].p);
         }
     });
-    
+
     var S = {};
     var cbs = {};
     var curcbix = 0;
@@ -55,7 +51,7 @@ function socketService(listener){
         curcbix+=1;
         return curcbix % 10000;
     };
-    
+
     var Req = function(mt, t, p){
         var d = Q.defer(),
         cbix =  getCBIx();
@@ -67,15 +63,15 @@ function socketService(listener){
         o.T = t;
         if(!is_ready){
             Queue.push({T:mt,p:o});
-            
+
         }else{
             socket.emit(mt, o);
-            
+
         }
 
         return d.promise;
     };
-    
+
     var messages_to_hear = ["Q", "R", 'S'];
     _.each(messages_to_hear, function(message_type){
         socket.on(message_type, function(msg){
@@ -86,9 +82,9 @@ function socketService(listener){
                 delete cbs[cbix];
             }
         })
-        
+
     });
-    
+
     socket.on('F', function(data){
         listener("F", data);
     } );
@@ -96,7 +92,7 @@ function socketService(listener){
         listener("ALM", data);
 
     });
-    
+
     S.get = function(t,p){
         return Req("Q", t,p)
     };

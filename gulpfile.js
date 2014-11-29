@@ -54,13 +54,9 @@ gulp.task('engine_scripts', [], function() {
 });
 
 gulp.task('client_scripts', [], function() {
-  // Minify and copy all JavaScript (except vendor scripts)
-  // with sourcemaps all the way down
   return gulp.src(paths.client_scripts)
-  //.pipe(watch())
-  
+
   .pipe(sourcemaps.init())
-    //.pipe(coffee())
     .pipe(uglify())
     .pipe(concat('client.min.js'))
   .pipe(sourcemaps.write())
@@ -68,13 +64,8 @@ gulp.task('client_scripts', [], function() {
 });
 
 gulp.task('console_scripts', [], function() {
-  // Minify and copy all JavaScript (except vendor scripts)
-  // with sourcemaps all the way down
   return gulp.src(paths.console_scripts)
-  // .pipe(watch())
   .pipe(sourcemaps.init())
-    //.pipe(coffee())
-    // .pipe(uglify())
     .pipe(concat('user-console.min.js'))
   .pipe(sourcemaps.write())
   .pipe(gulp.dest('public/js/'));

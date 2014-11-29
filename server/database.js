@@ -217,8 +217,8 @@ var ST = {
             devices:[0,1,2,3,4,5,6,7,8,9,10,11]
         },
         "Front turret":{
-            "views":["front"],
-            "type":"turret",
+            "views": ["front"],
+            "type":  "turret",
             "turret":"front",
             devices:[12]
         },

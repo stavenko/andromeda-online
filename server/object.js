@@ -37,7 +37,6 @@ if(typeof window === 'undefined'){
 function createObject(scene, mat, geom){
 	
 	var THREE = get_three();
-	// // CL("WWW", TH, THR);
 	var m = THREE.Mesh;
 	m.prototype._scene = scene;
 	m.prototype.some_counter = 0;
@@ -620,9 +619,10 @@ function createObject(scene, mat, geom){
 					self.uis.push(contr.getUI(self._scene.W));
 				}
 			}
-		})
+		});
         
 		self.reload_saved_state();
+
 		
 		
 	
@@ -665,7 +665,13 @@ function createObject(scene, mat, geom){
 			
 		})
 		return obj;
-	}
+
+	};
+    m.prototype.clear = function(){
+        this._scene = null;
+        this.geometry = null;
+
+    }
 	return (new m(mat, geom));
 }
 

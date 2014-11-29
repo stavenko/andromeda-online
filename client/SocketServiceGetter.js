@@ -1,7 +1,7 @@
 window.SocketServiceGetter = function(listener){
     "use strict";
     if(window._socketServiceCache == undefined){
-        window._socketServiceCache = function(){
+        var SocketServive = function(){
             var authHashF = function(cb){
                 var d = Q.defer();
                 var xhr = new XMLHttpRequest();
@@ -110,10 +110,12 @@ window.SocketServiceGetter = function(listener){
                 socket.emit("A",mess)
             };
             return S;
-        }
-    }else{
-        return _socketServiceCache;
+        };
+        window._socketServiceCache = new SocketServive();
+
     }
+    return window._socketServiceCache;
+
 
 
 

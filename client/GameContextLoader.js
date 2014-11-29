@@ -6,27 +6,28 @@ window.GameContextLoader = function(socketService){
     var scenes_in_process = [];
 
     var contextActors = [];
-
+    var returnDefer = Q.defer();
 
     socketService.request("CTX", {user_id:true})
         .then(function(context){
+            console.log("CONTEXT", context);
             _.each(context.contexts, function(scene_desc, actor_guid){
                 var objectPromises = [];
                 contextActors.push(actor_guid);
-
                 var scene_guid = scene_desc.GUID;
+                var sceneDef = Q.defer();
                 if(scenes_in_process.indexOf( scene_guid  ) !== -1){
                     return;
                 }else{
+
                     scenes_in_process.push(scene_guid);
+                    scenePromises.push(sceneDef.promise)
                 }
                 var objects = scene_desc.objects;
-
                 var scene_actors = scene_desc.actors;
-
                 if(scene_desc.location.g.orbit){
                     celestialPromises.push(
-                        socketService.socket_srv.get("celectial-recursive", {GUID: scene_desc.location.g.orbit.C})
+                        socketService.get("celectial-recursive", {GUID: scene_desc.location.g.orbit.C})
                     );
                 }
                 _.each(objects, function(oguid) {
@@ -41,26 +42,45 @@ window.GameContextLoader = function(socketService){
                     objectPromises.push(p);
                 });
                 Q.all(objectPromises).then(function(objects){
-
-                    self.three_scenes[scene_guid] = new THREE.Scene();
-                    var scene = new Scene(self.three_scenes[scene_guid], self);
+                    console.log("II", objects);
+                    var threeScene =  new THREE.Scene();
+                    var scene = new Scene(threeScene, self);
                     scene.GUID = scene_guid;
-                    var sceneDef = Q.defer();
                     scene.onLoadCallback = function(){
-                        //self.setup_scene(scene);
-                        scenePromises.push(sceneDef.resolve({scene:scene, actors: scene_desc.actors, objects:objects} ));
-                    }
-                    scenePromises.push(sceneDef.promise)
+                        sceneDef.resolve({
+                            scene:scene,
+                            threeScene: threeScene,
+                            actors: scene_desc.actors
+                        });
+                    };
+                    _.each(scene_actors, function(act){
+                        scene.join_actor(act);
+                    });
 
+                    _.each(objects, function(obj){
+                        scene.join_object(obj, obj.GUID);
+                    });
+                }).catch(function(e){
+                    console.error(e);
                 });
-            })
+            });
 
+            if( scenePromises.length == 0){
+                returnDefer.reject("No scenes to load");
+            }else{
+                Q.all( scenePromises).then(function(scenes){
+                    returnDefer.resolve({scenes:scenes, currentUserActors: contextActors});
+                });
+            }
+
+        })
+        .catch(function(e){
+            console.error(e);
         });
 
-    if( scenePromises.length == 0){
-        console.error("Scene promise array is empty");
-    }
-    return Q.all( scenePromises).then(function(scenes){
-        return {scenes:scenes, currentUserActors: contextActors};
-    });
+
+
+
+    return returnDefer.promise;
+
 }

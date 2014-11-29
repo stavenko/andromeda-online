@@ -39,7 +39,7 @@
 				//var hash = "#{auth_hash}";
 				//var user_id = "#{ user.id }"
 				// console.log(hash, login)
-				var W = World.init();
+				var W = new World(); //.init();
 				document.getElementById("make-main").onclick = function() {
 					W.make_main()
 				};

@@ -1,4 +1,15 @@
-window.Viewport = function(){
+window.Viewport = function( config ){
 
-    console.error("Viewport is not defined yet");
+    this.config = config;
+
+
+    this.doDrawUI = function(){
+        return this.config.drawUI;
+
+    };
+
+    this.bind = function( view ){
+        this.view = view;
+
+    }
 }
