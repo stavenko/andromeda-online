@@ -4,7 +4,7 @@
 
 var Mod = {
     
-    createExposionObject : function(id, ts, position, size, scene, W){
+    createExposionObject : function(id, ts, position, size, scene){
         var geom  = new THREE.PlaneGeometry( 1, 1 );
         var TIME_ = 1403660000000;
         var explosion_time = 5000.;
@@ -112,12 +112,13 @@ var Mod = {
         uniforms.scale.value = mesh.scale;
         mesh.position.fromArray(position);
         
-        var uniupd = "exp_" + id + "_" + ts
+        var uniformUpdaterName = "exp_" + id + "_" + ts
+        var uniformUpdaters = CustomUpdaterGetter();
         
-        W.addUniformUpdater( uniupd, upd_uniforms);
+        uniformUpdaters.add( uniformUpdaterName, upd_uniforms);
         var deleter = function(){
             
-            W.removeUniformUpdater( uniupd );
+            uniformUpdaters(uniformUpdaterName);
             scene.remove(mesh)
             
         }

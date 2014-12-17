@@ -19,10 +19,8 @@ app.controller('UserAllAssets', ["$scope", "socketPromise", "$q", function($scop
         $q.all(promises).then(function(cels){
             var celestials = {};
             angular.forEach(cels, function(C){
-                console.log("CCC", C);
                 celestials[C.GUID] = C;
             })
-            console.log("Co", celestials);
             $scope.celestials = celestials;
 
         })
@@ -38,13 +36,10 @@ app.controller('UserAllAssets', ["$scope", "socketPromise", "$q", function($scop
         socketPromise.request("C", position).then(function(res){
             console.log("something to return", res);
         })
-        // console.log(position);
     }
     
     $scope.shippositions = function(ship){
-        //console.log(">>G", ship);
-        socketPromise.get("T", {"type": ship.ship_type} ).then(function(res){
-            // console.log(res);
+        socketPromise.get("T", {"type": ship.sub_type} ).then(function(res){
             $scope.positions =[]
             angular.forEach(res.workpoints, function(wp, wp_name){
                 $scope.positions.push({name:wp_name, type:wp.type, object_guid: ship.GUID});

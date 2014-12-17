@@ -32,46 +32,26 @@ describe("THREE LIB", function() {
         CGUIDS.forEach(function(i) {
             DB.getCelestials({"GUID": i}, function (C) {
                 chai.expect(C).to.have.property('orbit');
-
                 var c = new CelestialCounter();
-
                 var pos = c._position(C, 0);
                 var pos1 = c._position(C, C.orbit.T);
                 chai.expect(pos).to.be.deep.equal(pos1);
-
             });
         })
-
     })
-
-
     it("half period minus period coords /2 == large semiaxis", function(){
         CGUIDS.forEach(function(i) {
             DB.getCelestials({"GUID": i}, function (C) {
-
                 chai.expect(C).to.have.property('orbit');
                 var c = new CelestialCounter();
-
                 var pos = c._position(C, 0);
-
                 var pos1 = c._position(C, C.orbit.T / 2);
-
                 var d = pos.clone().sub(pos1);
                 var half = d.length() / 2;
                 var diff = Math.abs(half - C.orbit.a);
                 var diff_p =  (diff / C.orbit.a) * 100;
-
-
-
                 chai.expect(diff_p).to.be.below(0.01);
-
             });
         });
-
     })
-
-
-
-
-
 })

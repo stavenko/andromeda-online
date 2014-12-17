@@ -28,7 +28,8 @@ var Celestials = {
         M:1.9891 * Math.pow(10,30),
         GUID:'64946f5b-0bd6-45a8-8b69-3685d0a20090',
         type:"star",
-        name:"sun"
+        name:"sun",
+        position:[0,0,0]
     },
     '64946f5b-0bd6-45a8-8b69-3685d0a20091':{
         type:"planet",
@@ -73,6 +74,7 @@ var Users = [
 ]
 
 var Orbit1 = {
+            is_predefined: true,
             C: '64946f5b-0bd6-45a8-8b69-3685d0a20092',
             a:  3,  // 0<= a <= (Math.floor( celestial_radius*2 ) / height_step - min_height )  min_height + a * height_step
             n:  12, // 0<= n < 66;  Normal to orbit plane: there're 66 normals
@@ -81,6 +83,7 @@ var Orbit1 = {
 }
 
 var Orbit2 = {
+            is_predefined: true,
             C: '64946f5b-0bd6-45a8-8b69-3685d0a20091',
             a:  5,  
             n:  12, 
@@ -187,7 +190,7 @@ var PreviousState = {
 };
 var ST = {
     type:'ship',
-    "ship_type":"rookie_ship",
+    "sub_type":"rookie_ship",
     model_3d:'/models/StarCruiser.js',
 
     "cameras":{
@@ -239,7 +242,7 @@ var ShipTypes = {
 var Assets = [{
     GUID: _PRE_GUIDS[1],
     type:"ship",
-    ship_type:"rookie",
+    sub_type:"rookie",
     location:{ g:{type:"orbit", orbit:Orbit1}},
     last_state: PreviousState,
     owner: 1
@@ -247,7 +250,7 @@ var Assets = [{
 
     GUID: _PRE_GUIDS[2],
     type:"ship",
-    ship_type:"rookie",
+    sub_type:"rookie",
     location:{g:{type:"coords", coordinates:{}}},
     last_state: PreviousState,
     owner:1

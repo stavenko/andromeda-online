@@ -518,7 +518,7 @@ function createObject(scene, mat, geom){
 		self._previous_states_index = {}
 		self.total_angular_impulses = [];
 				// // CL(i, mesh.total_torques, mesh.total_powers)
-		self.type=object.ship_type
+		self.type=object.sub_type
 		//var object_rotated = false
 		// Setting defaults 
 		//self.avel = new THREE.Vector3(0,0,0)
@@ -568,15 +568,8 @@ function createObject(scene, mat, geom){
 		}
         */
 		// // CL(mesh.position)
+        console.log("Creating object", self.type);
 		self.cameras = self.type.cameras;
-		//self.engines = object.engines;
-		//self.has_engines = object.engines !== undefined;
-		//if (self.has_engines){
-		//	self.on_engines_rotation = [];
-		//	self.on_engines_propulsion = [];
-		//}
-		// mesh.put_off = put_off;
-		// mesh.put_on  = put_on;
 		self.mass = self.type.mass;
 		// self.angular_impulse = self.avel.clone().multiplyScalar(object.mass)
 		// self.impulse = self.vel.clone().multiplyScalar(object.mass)

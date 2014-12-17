@@ -15,6 +15,7 @@
     "q": "^1.0.1",
     "socket.io": "0.9.16",
     "stylus": "*",
+    "three": "^0.66.32-dev",
     "underscore": "1.5.2",
     "webworker-threads": "*"
   },

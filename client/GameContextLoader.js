@@ -33,9 +33,9 @@ window.GameContextLoader = function(socketService){
                 _.each(objects, function(oguid) {
                     var p = socketService.get("A", {id: oguid})
                         .then(function (obj) {
-                            return socketService.get("T", {type: obj.ship_type})
+                            return socketService.get("T", {type: obj.sub_type})
                                 .then(function (t) {
-                                    obj.ship_type = t;
+                                    obj.sub_type = t;
                                     return obj;
                                 })
                         });

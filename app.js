@@ -294,6 +294,7 @@ io.on('connection', function(socket){
                 if(msg.p['user_id'] === true){
                     msg.p.user_id = user_id;
                 }
+                console.log("Request message", msg);
                 msg.type = msg.T;
                 simulator.send(msg);
             

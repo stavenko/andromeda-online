@@ -78,12 +78,8 @@ Simulation.prototype = {
     // Mission would be done in a very independent way to Global scenes
     
     connectRequest : function(controllableObject, callback){
-        // userobject represents data about user
-        // controllable - represents all workpoints on any ships be become
-        // in space
         console.log("start scene with", controllableObject);
         var self = this;
-        // Controllable objects изначально может быть равно единице
         var scene_guids = [];
         var obj = controllableObject;
         var assetId = obj.object_guid;
@@ -108,9 +104,9 @@ Simulation.prototype = {
             }
             var asyncObjTyper_ = function(o){
                 var d = q.defer();
-                DB.getType({type:o.ship_type}, function(r){
+                DB.getType({type:o.sub_type}, function(r){
                 
-                    o.ship_type = r
+                    o.sub_type = r
                     d.resolve( o );
                 })
                 return d.promise;
@@ -123,34 +119,26 @@ Simulation.prototype = {
             })
             .then( asyncObjTyper )
             .then(function(os){
-                // console.log("FOUND", os.length, " OBJECTS");
                 _.each(os, function(o){
-                    //console.log("loadong")
+                    console.log("Object:", o);
                     scene.join_object(o, o.GUID)
                     self.assetsPerScene[o.GUID] = scene.GUID;
-                    //console.log("not");
                 })
-                // console.log(">>");
             })
             .then(function(){
-                //console.log("CC act");
         		var new_actor_guid = Utils.make_short_guid();
         		var controllable = {object_guid:obj.object_guid, workpoint:obj.name, type: obj.type} // viewport:'front', controls:['Pilot', 'Turret']} 
-        		    //console.log("make actor",  controllable);
                 self.addUserActor(obj.user_id, new_actor_guid, scene.GUID);
                 var actor = { control: controllable, GUID:  new_actor_guid };
                 scene.join_actor(actor);
                 callback( { new_actor:actor, scene:scene.GUID, user_ids:[ obj.user_id ]} );
             }).catch(function(err){
-                //console.log(err.stack);
-                for(v in err){
-                    // console.log("catch", v);
-                
-                }
+                console.error("Something happend", err.stack);
             })       
         }
         
         if(scene_guid === undefined){
+            console.log("creating new scene");
             var scene = new Scene();
             self._scenes[scene.GUID] = scene;
             initNewScene() // Просто создали сцену с актором

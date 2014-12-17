@@ -15,6 +15,7 @@ var SceneObject = function(threeScene, W){
 
     this.use_client_rendering = false;
     if(threeScene !== undefined && W !== undefined){
+        this.inputService = InputServiceGetter();
     	this.W = W;
     	this.three_scene = threeScene;
         this.use_client_rendering = true;
@@ -176,7 +177,7 @@ Scene.load_object = function(object, ix){
     
 	
 	if (! self.ajax_load_models){
-		var m = object.ship_type.model_3d.split('/')[2];
+		var m = object.sub_type.model_3d.split('/')[2];
 		var model_path= "./public/models/" + m
 	}
 
@@ -214,7 +215,7 @@ Scene.load_object = function(object, ix){
 		
 		
 		if(self.ajax_load_models){
-			self._get_model(object.ship_type.model_3d,self._ajax_getter, with_geom_and_mat)
+			self._get_model(object.sub_type.model_3d,self._ajax_getter, with_geom_and_mat)
 		}else{
 			self._get_model(model_path, self._fs_getter, with_geom_and_mat)
 
@@ -488,21 +489,7 @@ Scene.getNetworkActions = function(){
 	return ret;
 }
 Scene.getLocalActions = function(now){
-
-		if(this.GUID == this.W.get_main_viewport().scene){
-			var acts =this.W.Inputs.getLatestActions(this.GUID, now);  
-			if(acts.length > 0){
-
-			}
-			return acts;
-			
-		}else{
-			return[];
-		}
-
-	
-	
-	
+    return this.inputService.getLatestActions(this.GUID, now);
 }
 Scene.makeSceneBroadcast = function(action){
 	if(this.broadcaster){
