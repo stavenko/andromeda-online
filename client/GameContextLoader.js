@@ -41,6 +41,11 @@ window.GameContextLoader = function(socketService){
                         });
                     objectPromises.push(p);
                 });
+                Q.all(celestialPromises).spread(function( celestials ){
+                    console.log("Loaded celetestials", celestials );
+                })
+
+
                 Q.all(objectPromises).then(function(objects){
                     console.log("II", objects);
                     var threeScene =  new THREE.Scene();

@@ -31,8 +31,8 @@ window.RendererGetter = (function(){
 
         this.render = function ( viewPort ){
             this.glRenderer.setViewport(viewPort.config.l, viewPort.config.t, viewPort.config.w, viewPort.config.h)
-            this.renderSkyBox();
-            this.renderCelestialScene();
+            this.renderSkyBox( viewPort );
+            this.renderCelestialScene( viewPort );
             this.renderScene( viewPort );
         }
 
